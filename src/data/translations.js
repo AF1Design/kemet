@@ -1,0 +1,252 @@
+export const translations = {
+  ar: {
+    // Header & Navigation
+    promoText: "🔥 عروض أطقم 2027 الرسمية خامة (Player Edition) بسعر 280 ج.م بدلاً من 400 ج.م | شحن لجميع المحافظات!",
+    navHome: "الرئيسية",
+    navCategories: "الفئات",
+    navKits: "أطقم الأندية والمنتخبات 2027",
+    navTraining: "ملابس التدريب والجيم 2027",
+    navShorts: "شورتات ومستلزمات رياضية",
+    navAllProducts: "جميع المنتجات الرياضية",
+    navOrders: "الطلبات",
+    navMyOrders: "طلباتي وحالة الشحنة",
+    navTrackOrder: "تتبع شحنة البريد المصري",
+    navStory: "قصة كيميت",
+    navReturnPolicy: "سياسة الاسترجاع",
+    navWhyUs: "لماذا KEMET؟",
+    cartTitle: "عربة التسوق",
+    themeDark: "دارك 🌙",
+    themeLight: "لايت ☀️",
+    
+    // Hero Section
+    heroBadge: "👑 أطقم 2027 الرسمية (Player Edition)",
+    heroTitle: "علينا الراحة والتصميم.. وعليك الأداء",
+    heroSubtitle: "أطقم ومستلزمات رياضية مصممة بأعلى معايير الجوده لتعطيك الأداء الأفضل في الملعب والجيم.",
+    heroCtaPrimary: "تسوق الكولكشن الجديد",
+    heroCtaSecondary: "استكشف الأقسام",
+    heroStat1: "خامات 100% Player Edition",
+    heroStat2: "توصيل لكافة المحافظات",
+    heroStat3: "ضمان شامل ضد عيوب الصناعة",
+
+    // Home Page Specifics
+    featuredProductsTitle: "الأكثر مبيعاً 🔥",
+    featuredProductsSubtitle: "الأطقم والمنتجات الأكثر طلباً هذا الاسبوع",
+    viewAllProducts: "عرض جميع المنتجات في الأقسام ←",
+    categoriesTitle: "تصفح الأقسام الرئيسية",
+    categoriesSubtitle: "اضغط على أي قسم للانتقال لصفحته المستقلة وتصفح منتجاته المخصصة",
+
+    // Story Page & Section
+    storyTitle: "قصة KEMET",
+    storySubtitle: "من شغف كرة القدم والجودة الحقيقية.. كيف بدأت رحلتنا لبناء براند رياضي مصري يفوق التوقعات",
+    storyText: "قصة KEMET بدأت لما اشترى مؤسسها قميصاً رياضياً من براند مصري معروف. اختار أعلى فئة كانت متاحة وقتها، لأنه كان متأكد إنه هيحصل على منتج يستحق اللي دفعه فيه. لكن بعد أول غسلة، اكتشف إن المشكلة مش في الفئات، المشكلة إن المنتج نفسه ما كانش قد التوقعات.\n\nوبما إننا من الناس اللي بتحب الكورة وبتلبس القمصان الرياضية بشكل مستمر، قررنا ندور على حل بدل ما نفضل نشتكي من المشكلة. ومن هنا بدأت KEMET.\n\nهدفنا من أول يوم ما كانش إننا نبيع تيشيرتات وبس. كان هدفنا نقدم المنتج اللي إحنا نفسنا كنا نتمنى نلاقيه. خامات تعيش، تفاصيل متقنة، وجودة تحسسك إن كل جنيه دفعته كان في مكانه.\n\nولما جه وقت اختيار الاسم، كنا عايزين اسم يعبر عن جذور وهوية مصر. اخترنا KEMET لأنه اسم تاريخي بالنسبة لينا بيعبر عن الأصالة والهوية المصرية، الاسم اللي كان المصريون القدماء بيطلقوه على أرض مصر الخصبة، واللي كان رمز للحياة والنمو و القوة.\n\nإحنا لسه في بداية الرحلة، لكن في كل منتج بنشتغل عليه بنسأل نفس السؤال اللي بدأنا بيه: هل إحنا نفسنا هنلبس المنتج ده؟ لو الإجابة آه، يبقى يستحق يوصل لعميلنا.\n\nأهلًا بيك في KEMET.",
+
+    // Order Tracking Feature
+    trackOrderTitle: "تتبع شحنة البريد المصري (Egypt Post Tracking)",
+    trackOrderSubtitle: "أدخل رقم تتبع الشحنة المكون من حروف وأرقام لمعرفة مكان شحنتك وحالتها فورياً",
+    trackInputPlaceholder: "أدخل رقم التتبع (مثال: EG123456789EG أو KM-9842)",
+    trackBtn: "تتبع الشحنة الآن 🔍",
+    trackOfficialBtn: "فتح موقع البريد المصري الرسمي للتتبع 🇪🇬",
+    trackWhatsappBtn: "استفسار مباشر عن الشحنة عبر الواتساب 📱",
+    trackNotFound: "يرجى كتابة كود التتبع المرفق في رسالة الشحن",
+    step1: "تم تأكيد وتجهيز الطلب",
+    step2: "تم التسليم للبريد المصري",
+    step3: "الشحنة في الطريق للمحافظة",
+    step4: "جاري التوصيل لباب المنزل",
+
+    // Product Card & Price
+    currency: "ج.م",
+    priceNote: "+ مصاريف الشحن",
+    sizesTitle: "المقاسات المتاحة:",
+    addToCart: "أضف للسلة",
+    viewDetails: "تفاصيل المنتج الكاملة",
+    bestSellerBadge: "الأكثر مبيعاً 🔥",
+    newBadge: "جديد 2027 ⚡",
+
+    // Product Detail Page
+    productBackBtn: "← العودة للمنتجات",
+    productInStock: "متوفر في المخزون جاهز للشحن (Player Edition 2027) 🟢",
+    selectSizeLabel: "اختر المقاس المطلوب (M, L, XL, XXL):",
+    productSpecsTitle: "مواصفات ودليل الخامة:",
+    spec1: "🥇 خامات رياضية عالية الجودة خفيفة الوزن طارده للعرق (Player Edition).",
+    spec2: "🎨 طباعة حراريه وشعارات رسمية 2027 مقاومه للتقشير.",
+    spec3: "🛡️ ضمان ضد عيوب المنتج",
+    deliveryGuarantee: "🚚 الشحن خلال من يومين لـ اربع ايام عمل",
+
+    // Return Policy Section
+    returnPolicyTitle: "سياسة الاسترجاع والضمان",
+    returnPolicySubtitle: "نحن نضمن رضاك الكامل واسترجاع أموالك في حال وجود أي عيب صناعة أو اختلاف عن الصور.",
+    returnRule1Title: "مدة الاسترجاع:",
+    returnRule1Desc: "الاسترجاع يكون خلال 3 أيام من تاريخ شراء واستلام المنتج.",
+    returnRule2Title: "ضمان المطابقة وعيوب الصناعة:",
+    returnRule2Desc: "لو المنتج وصل فيه عيوب صناعة أو مختلف عن الصور، العميل بيحتفظ بالمنتج وبيسترجع المبلغ كاملاً سواء عمل معاينة أو لأ.",
+
+    // Cart Drawer
+    cartEmpty: "عربة التسوق فارغة حالياً.",
+    cartEmptyBtn: "ابدأ التسوق الآن",
+    cartSubtotal: "المجموع الفرعي:",
+    cartShipping: "مصاريف الشحن:",
+    cartShippingCalc: "حسب المحافظة (40 - 60 ج.م)",
+    cartTotal: "الإجمالي الكلي:",
+    cartCheckoutBtn: "إتمام الطلب الآن (دفع عند الاستلام)",
+
+    // Checkout Page
+    checkoutTitle: "إتمام طلب الشراء من KEMET",
+    checkoutSubtitle: "ادخل بياناتك وسنقوم بتجهيز وشحن طلبك فوراً عبر البريد المصري!",
+    fullName: "الاسم بالكامل *",
+    phone: "رقم الهاتف (واتساب) *",
+    governorate: "المحافظة *",
+    selectGov: "اختر المحافظة...",
+    address: "العنوان التفصيلي *",
+    notes: "ملاحظات التوصيل (اختياري)",
+    codNotice: "💵 طريقة الدفع: الدفع نقداً عند الاستلام مع ضمان كامل ضد عيوب الصناعة.",
+    submitOrder: "تأكيد وإرسال الطلب الآن 🛍️",
+    orderSuccessTitle: "تم استلام طلبك بنجاح! 🎉",
+    orderSuccessDesc: "شكراً لطلبك من براند KEMET! سيتم إرسال كود تتبع البريد المصري على الواتساب فور شحن الطلب.",
+    backHomeBtn: "العودة للصفحة الرئيسية",
+
+    // Why KEMET?
+    whyTitle: "لماذا تختار براند KEMET؟",
+    whySubtitle: "نحن ندمج العراقة المصرية مع أحدث خامات الملابس الرياضية العالمية (Player Edition)",
+    feature1Title: "خامات رياضية Player Edition",
+    feature1Desc: "أقمشة مطاطية ومريحة تسمح بتنفس البشرة وطرد الرطوبة والعرق أثناء ممارسة الرياضة.",
+    feature2Title: "توصيل عبر البريد المصري",
+    feature2Desc: "نغطي كافة المحافظات المصرية بشحن سريع وآمن خلال 2 إلى 4 أيام عمل.",
+    feature3Title: "استرجاع كامل وضمان الجودة",
+    feature3Desc: "استرجاع خلال 3 أيام، وفي حال وجود عيب صناعة أو اختلاف عن الصور تسترد المبلغ كاملاً مع الاحتفاظ بالمنتج.",
+
+    // Footer
+    footerAbout: "براند مصري متخصص في تقديم أحدث الملابس والأطقم الرياضية الفاخرة التي تجمع بين الأصالة والأداء الرفيع.",
+    footerLinks: "روابط الأقسام",
+    footerPolicyTitle: "خدمة العملاء والسياسات",
+    policy1: "سياسة الاسترجاع (خلال 3 أيام)",
+    policy2: "دليل المقاسات والعناية بالمنتج",
+    policy3: "الشحن عبر البريد المصري",
+    whatsappBtn: "تواصل عبر الواتساب",
+    socialTitle: "تابعنا على منصات التواصل",
+    copyright: "جميع الحقوق محفوظة © 2026-2027 براند KEMET للملابس الرياضية."
+  },
+  en: {
+    // Header & Navigation
+    promoText: "🔥 2027 Official Player Edition Kits on Sale: 280 EGP instead of 400 EGP!",
+    navHome: "Home",
+    navCategories: "Categories",
+    navKits: "2027 Kits",
+    navTraining: "2027 Gym Wear",
+    navShorts: "Shorts & Activewear",
+    navAllProducts: "All Sportswear Products",
+    navOrders: "Orders",
+    navMyOrders: "My Orders & Status",
+    navTrackOrder: "Egypt Post Tracking",
+    navStory: "KEMET Story",
+    navReturnPolicy: "Return Policy",
+    navWhyUs: "Why KEMET?",
+    cartTitle: "Shopping Cart",
+    themeDark: "Dark 🌙",
+    themeLight: "Light ☀️",
+
+    // Home Page Specifics
+    featuredProductsTitle: "الأكثر مبيعاً 🔥",
+    featuredProductsSubtitle: "الأطقم والمنتجات الأكثر طلباً هذا الاسبوع",
+    viewAllProducts: "View All Products ←",
+
+    // Story Page
+    storyTitle: "The KEMET Story",
+    storySubtitle: "Born from a passion for football and true quality.. How our journey began to craft an Egyptian sports brand that exceeds expectations",
+    storyText: "The KEMET story began when its founder bought a sports jersey from a well-known Egyptian brand. He chose the highest tier available, confident he would receive a product worthy of what he paid. But after the very first wash, he discovered the issue wasn't the tier—the product itself simply didn't live up to expectations.\n\nAs football lovers who wear sports jerseys constantly, we decided to find a real solution instead of just complaining. And from there, KEMET was born.\n\nFrom day one, our goal wasn't just to sell t-shirts. Our goal was to create the product we wished we could find ourselves: durable fabrics, immaculate details, and quality that makes every pound spent feel completely justified.\n\nWhen it came to choosing the name, we wanted something reflecting Egypt's rich roots and identity. We chose KEMET—the historic name that represents Egyptian identity, the ancient name given by ancient Egyptians to the fertile black land of Egypt, symbolizing life, growth, and strength.\n\nWe are still at the beginning of this journey, but with every product we design, we ask the same question we started with: 'Would we wear this ourselves?' If the answer is yes, then it deserves to reach our customer.\n\nWelcome to KEMET.",
+
+    // Hero Section
+    heroBadge: "👑 2027 Official Player Edition Kits Collection",
+    heroTitle: "Comfort & Design on Us.. Performance on You",
+    heroSubtitle: "Activewear designed to the highest quality standards for your peak performance on field and gym.",
+    heroCtaPrimary: "Shop Best Sellers",
+    heroCtaSecondary: "Explore Categories",
+    heroStat1: "100% Player Edition Fabric",
+    heroStat2: "Egypt Post Shipping",
+    heroStat3: "Full Defect Guarantee",
+
+    // Order Tracking Feature
+    trackOrderTitle: "Egypt Post Shipment Tracking",
+    trackOrderSubtitle: "Enter your shipment tracking code to check your parcel status in real time",
+    trackInputPlaceholder: "Enter tracking number (e.g. EG123456789EG or KM-9842)",
+    trackBtn: "Track Parcel Now 🔍",
+    trackOfficialBtn: "Open Official Egypt Post Tracker 🇪🇬",
+    trackWhatsappBtn: "Direct Inquiry via WhatsApp 📱",
+    trackNotFound: "Please enter the tracking code sent in your dispatch message",
+    step1: "Order Confirmed & Prepared",
+    step2: "Handed over to Egypt Post",
+    step3: "In transit to governorate",
+    step4: "Out for home delivery",
+
+    // Product Card & Price
+    currency: "EGP",
+    priceNote: "+ Shipping Fee",
+    sizesTitle: "Available Sizes:",
+    addToCart: "Add to Cart",
+    viewDetails: "View Full Product Details",
+    bestSellerBadge: "Best Seller 🔥",
+    newBadge: "New 2027 ⚡",
+
+    // Product Detail Page
+    productBackBtn: "← Back to Products",
+    productInStock: "In Stock & Ready for Dispatch (Player Edition 2027) 🟢",
+    selectSizeLabel: "Select Desired Size (M, L, XL, XXL):",
+    productSpecsTitle: "Fabric & Product Specifications:",
+    spec1: "🥇 Player Edition ultra-lightweight moisture-wicking sportswear fabrics.",
+    spec2: "🎨 Official 2027 heat prints resistant to peeling.",
+    spec3: "🛡️ Full warranty against product defects.",
+    deliveryGuarantee: "🚚 Shipping via Egypt Post within 2 to 4 business days.",
+
+    // Return Policy Section
+    returnPolicyTitle: "Return Policy & Guarantee",
+    returnPolicySubtitle: "Complete satisfaction guaranteed with full refunds on any defects or photo mismatch.",
+    returnRule1Title: "Return Window:",
+    returnRule1Desc: "Returns are accepted within 3 days of product purchase and delivery.",
+    returnRule2Title: "Defect & Photo Mismatch Guarantee:",
+    returnRule2Desc: "If the product arrives with manufacturing defects or differs from photos, the customer keeps the product and receives a full refund.",
+
+    // Cart Drawer
+    cartEmpty: "Your cart is currently empty.",
+    cartEmptyBtn: "Start Shopping Now",
+    cartSubtotal: "Subtotal:",
+    cartShipping: "Shipping Fee:",
+    cartShippingCalc: "Based on governorate (40-60 EGP)",
+    cartTotal: "Total Amount:",
+    cartCheckoutBtn: "Checkout Now (Cash on Delivery)",
+
+    // Checkout Page
+    checkoutTitle: "Complete KEMET Purchase",
+    checkoutSubtitle: "Enter your delivery details. Shipped via Egypt Post!",
+    fullName: "Full Name *",
+    phone: "Phone Number (WhatsApp) *",
+    governorate: "Governorate *",
+    selectGov: "Select Governorate...",
+    address: "Detailed Address *",
+    notes: "Delivery Notes (Optional)",
+    codNotice: "💵 Payment Method: Cash on Delivery with full manufacturing defect warranty.",
+    submitOrder: "Confirm & Submit Order Now 🛍️",
+    orderSuccessTitle: "Order Received Successfully! 🎉",
+    orderSuccessDesc: "Thank you for choosing KEMET! Your Egypt Post tracking code will be sent via WhatsApp upon dispatch.",
+    backHomeBtn: "Return to Home Page",
+
+    // Why KEMET?
+    whyTitle: "Why Choose KEMET?",
+    whySubtitle: "We merge Egyptian heritage with top-tier international activewear technology (Player Edition)",
+    feature1Title: "Player Edition Fabrics",
+    feature1Desc: "Breathable & stretchable textiles engineered to wick moisture and keep you cool.",
+    feature2Title: "Egypt Post Shipping",
+    feature2Desc: "Fast and reliable shipping to all 27 Egyptian governorates via Egypt Post within 2-4 business days.",
+    feature3Title: "Full Refund & Guarantee",
+    feature3Desc: "Returns within 3 days. On manufacturing defect or photo mismatch, keep the product and get a 100% full refund.",
+
+    // Footer
+    footerAbout: "An Egyptian sports brand crafting elite sportswear that combines rich heritage with high athletic performance.",
+    footerLinks: "Category Links",
+    footerPolicyTitle: "Customer Care & Policies",
+    policy1: "Return Policy (3 Days)",
+    policy2: "Size & Fabric Care Guide",
+    policy3: "Egypt Post Shipping Rates",
+    whatsappBtn: "Chat on WhatsApp",
+    socialTitle: "Follow Us",
+    copyright: "All Rights Reserved © 2026-2027 KEMET Sportswear Brand."
+  }
+};

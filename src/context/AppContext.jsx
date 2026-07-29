@@ -1,0 +1,205 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { translations } from '../data/translations';
+
+const AppContext = createContext();
+
+export const AppProvider = ({ children }) => {
+  const [lang, setLang] = useState('ar');
+  const [theme, setTheme] = useState('dark');
+  const [cart, setCart] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [user, setUser] = useState(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Initialize client state safely from localStorage after mount
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const savedLang = localStorage.getItem('kemet_lang');
+      if (savedLang) setLang(savedLang);
+
+      const savedTheme = localStorage.getItem('kemet_theme');
+      if (savedTheme) setTheme(savedTheme);
+
+      const savedCart = localStorage.getItem('kemet_cart');
+      if (savedCart) setCart(JSON.parse(savedCart));
+
+      const savedUser = localStorage.getItem('kemet_user');
+      if (savedUser) setUser(JSON.parse(savedUser));
+
+      const savedOrders = localStorage.getItem('kemet_orders');
+      if (savedOrders) {
+        setOrders(JSON.parse(savedOrders));
+      } else {
+        setOrders([
+          {
+            id: 'KM-2027-8941',
+            date: '2026-07-28',
+            time: '02:30 م',
+            status: 'قيد التجهيز والشحن 📦',
+            items: [
+              {
+                id: 'kit-real-madrid-navy-2027',
+                nameAr: 'طقم ريال مدريد الاحتياطي التيل والزمردي 2027 (بلاير إديشن)',
+                nameEn: 'Real Madrid Away Teal Player Edition Kit 2027',
+                price: 280,
+                size: 'L',
+                quantity: 1,
+                image: '/assets/kit-real-madrid-navy-2027.jpg'
+              }
+            ],
+            subtotal: 280,
+            shipping: 50,
+            total: 330,
+            customer: {
+              fullName: 'أحمد محمود',
+              phone: '01012345678',
+              governorate: 'القاهرة',
+              address: 'مدينة نصر - شارع الطيران'
+            }
+          }
+        ]);
+      }
+    } catch (e) {
+      console.error('Error loading local state:', e);
+    }
+  }, []);
+
+  // Sync lang & dir
+  useEffect(() => {
+    if (!mounted) return;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    localStorage.setItem('kemet_lang', lang);
+  }, [lang, mounted]);
+
+  // Sync theme
+  useEffect(() => {
+    if (!mounted) return;
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('kemet_theme', theme);
+  }, [theme, mounted]);
+
+  // Sync cart
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem('kemet_cart', JSON.stringify(cart));
+  }, [cart, mounted]);
+
+  // Sync orders
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem('kemet_orders', JSON.stringify(orders));
+  }, [orders, mounted]);
+
+  // Sync user
+  useEffect(() => {
+    if (!mounted) return;
+    if (user) {
+      localStorage.setItem('kemet_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('kemet_user');
+    }
+  }, [user, mounted]);
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
+
+  const toggleLang = () => {
+    setLang(prev => (prev === 'ar' ? 'en' : 'ar'));
+  };
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const loginUser = (userData) => {
+    setUser(userData);
+    showToast(`مرحباً بك ${userData.fullName || 'عزيزنا العميل'} في KEMET 👑`);
+  };
+
+  const logoutUser = () => {
+    setUser(null);
+    showToast('تم تسجيل الخروج بنجاح 👋');
+  };
+
+  const addToCart = (product, selectedSize = 'L') => {
+    setCart(prev => {
+      const existingIndex = prev.findIndex(item => item.id === product.id && item.size === selectedSize);
+      if (existingIndex > -1) {
+        const updated = [...prev];
+        updated[existingIndex].quantity += 1;
+        return updated;
+      }
+      return [...prev, { ...product, size: selectedSize, quantity: 1 }];
+    });
+    showToast(`تم إضافة ${product.nameAr || product.nameEn} مقاس (${selectedSize}) للسلة 🛍️`);
+  };
+
+  const removeFromCart = (id, size) => {
+    setCart(prev => prev.filter(item => !(item.id === id && item.size === size)));
+  };
+
+  const updateQuantity = (id, size, delta) => {
+    setCart(prev => {
+      return prev.map(item => {
+        if (item.id === id && item.size === size) {
+          const newQty = item.quantity + delta;
+          return newQty > 0 ? { ...item, quantity: newQty } : null;
+        }
+        return item;
+      }).filter(Boolean);
+    });
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const addOrder = (newOrder) => {
+    setOrders(prev => [newOrder, ...prev]);
+  };
+
+  const t = (key) => {
+    return translations[lang]?.[key] || key;
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        lang,
+        theme,
+        cart,
+        orders,
+        user,
+        isCartOpen,
+        toast,
+        mounted,
+        toggleLang,
+        toggleTheme,
+        loginUser,
+        logoutUser,
+        setIsCartOpen,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        addOrder,
+        showToast,
+        t
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => useContext(AppContext);
