@@ -67,7 +67,7 @@ export default function CategoryPage({ params }) {
 
   const getCategoryTitle = () => {
     if (searchQueryParam) {
-      return `نتائج البحث عن: "${searchQueryParam}"`;
+      return lang === 'ar' ? `نتائج البحث عن: "${searchQueryParam}"` : `Search Results for: "${searchQueryParam}"`;
     }
     switch (id) {
       case 'kits':
@@ -77,8 +77,24 @@ export default function CategoryPage({ params }) {
       case 'shorts':
         return t('navShorts');
       default:
-        return t('navAllProducts');
+        return lang === 'ar' ? 'المنتجات الأكثر مبيعاً خلال آخر 7 أيام' : 'Best Selling Products (Last 7 Days)';
     }
+  };
+
+  const getCategorySubtitle = () => {
+    if (searchQueryParam) {
+      return lang === 'ar' 
+        ? `عثرنا على (${filteredProducts.length}) منتجات تطابق كلماتك البحثية` 
+        : `Found (${filteredProducts.length}) products matching your search`;
+    }
+    if (!id || id === 'all') {
+      return lang === 'ar' 
+        ? 'تشكيلة من ملابس وأطقم KEMET التي حصلت على أكبر نسبة مبيعات هذا الأسبوع' 
+        : 'Collection of KEMET kits and activewear with the highest sales volume this week';
+    }
+    return lang === 'ar'
+      ? 'استعرض أحدث تشكيلة من ملابس وأطقم KEMET الرياضية المصممة بمواصفات عالمية'
+      : 'Explore KEMET official sportswear designed to high athletic standards';
   };
 
   return (
@@ -91,10 +107,8 @@ export default function CategoryPage({ params }) {
             <h1 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>
               <span className="brand-glow">{getCategoryTitle()}</span>
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '650px', margin: '0 auto' }}>
-              {searchQueryParam 
-                ? `عثرنا على (${filteredProducts.length}) منتجات تطابق كلماتك البحثية` 
-                : 'استعرض أحدث تشكيلة من ملابس وأطقم KEMET الرياضية المصممة بمواصفات عالمية'}
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '680px', margin: '0 auto' }}>
+              {getCategorySubtitle()}
             </p>
 
             {searchQueryParam && (

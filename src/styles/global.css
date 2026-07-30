@@ -329,8 +329,8 @@ select option {
 
 .animated-logo-container {
   position: relative;
-  height: 46px;
-  width: 140px;
+  height: 52px;
+  width: 155px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -341,13 +341,11 @@ select option {
   position: absolute;
   top: 50%;
   left: 0;
-  transform: translateY(-50%) scale(0.92);
+  transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), filter 0.3s ease;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
 }
 
 [dir="rtl"] .animated-logo-item {
@@ -357,27 +355,50 @@ select option {
 
 .animated-logo-item.active {
   opacity: 1;
-  transform: translateY(-50%) scale(1);
   pointer-events: auto;
 }
 
 .brand-emblem {
-  height: 42px;
-  width: 130px;
+  height: 48px;
+  width: 72px;
   object-fit: contain;
-  filter: drop-shadow(0 0 8px var(--gold-glow));
+  object-position: right center;
+  filter: drop-shadow(0 0 10px var(--gold-glow));
 }
 
 .brand-text-img {
-  height: 28px;
-  width: 130px;
+  height: 32px;
+  width: 145px;
   object-fit: contain;
+  object-position: right center;
 }
 
 [data-theme="light"] .brand-emblem,
 [data-theme="light"] .brand-text-img {
   filter: brightness(0) !important;
 }
+
+.mobile-header-icon-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.mobile-header-icon-btn:hover {
+  color: var(--gold-primary);
+}
+
+.mobile-search-overlay-bar {
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-gold-bright);
+  animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 
 /* Navigation Menu */
 .nav-menu {
@@ -949,13 +970,14 @@ select option {
 }
 
 .hero-main-heading {
-  font-family: var(--font-heading-en);
-  font-size: 3.8rem;
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: 1px;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 3.1rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 1.2px;
   color: var(--text-primary);
   margin-bottom: 1rem;
+  text-transform: uppercase;
 }
 
 .hero-sub-heading {
@@ -1127,31 +1149,31 @@ select option {
 .product-image-box {
   position: relative;
   width: 100%;
-  height: 220px;
+  height: 270px;
   overflow: hidden;
-  background: rgba(3, 4, 7, 0.8);
+  background: rgba(3, 4, 7, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.6rem;
+  padding: 0;
   border-bottom: 1px solid var(--border-color);
 }
 
 [data-theme="light"] .product-image-box {
-  background: rgba(240, 243, 248, 0.8);
+  background: rgba(240, 243, 248, 0.95);
 }
 
 .product-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  transition: transform 0.4s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  transform: scale(1.08);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .product-card:hover .product-img {
-  transform: scale(1.06);
+  transform: scale(1.18);
 }
 
 .product-badge {
@@ -1456,7 +1478,8 @@ select option {
     gap: 0.5rem;
   }
 
-  .mobile-hamburger-btn {
+  .mobile-hamburger-btn,
+  .mobile-header-icon-btn {
     display: flex;
   }
 
@@ -1496,7 +1519,7 @@ select option {
   }
 
   .product-image-box {
-    height: 165px;
+    height: 215px;
   }
 
   .zoom-image-wrapper {

@@ -20,15 +20,15 @@ export default function Home() {
       {/* 1. Hero Banner */}
       <Hero />
 
-      {/* 2. الأكثر مبيعاً 🔥 (Best Sellers Section - Real Madrid 2nd & Atletico Madrid) */}
+      {/* 2. الأكثر مبيعاً 🔥 (Best Sellers Section) */}
       <section className="section" style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <h2 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-              <span className="brand-glow">الأكثر مبيعاً 🔥</span>
+              <span className="brand-glow">{t('featuredProductsTitle')}</span>
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 700, maxWidth: '600px', margin: '0 auto' }}>
-              الأطقم والمنتجات الأكثر طلباً هذا الاسبوع
+              {t('featuredProductsSubtitle')}
             </p>
           </div>
 
@@ -46,7 +46,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. Main Category Cards with Vector SVG Icons */}
+      {/* 3. Main Category Cards */}
       <section className="section">
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
@@ -66,7 +66,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t('navKits')}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>تصفح أطقم 2027 الرسمية (Player Edition)</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('catKitsDesc')}</p>
             </Link>
 
             {/* Category 2: Gym & Training */}
@@ -81,7 +81,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t('navTraining')}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>ملابس التدريب الضاغطة للجيم والرياضيين</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('catTrainingDesc')}</p>
             </Link>
 
             {/* Category 3: Shorts & Activewear */}
@@ -92,7 +92,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t('navShorts')}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>شورتات ومستلزمات مريحة لحرية الحركة</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('catShortsDesc')}</p>
             </Link>
 
           </div>
@@ -112,13 +112,13 @@ export default function Home() {
           }}>
             <img src="/assets/kemet-emblem-icon.png" alt="KEMET" style={{ height: '48px', margin: '0 auto 1.25rem' }} />
             <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '1rem' }}>
-              <span className="brand-glow">📜 قصة KEMET</span>
+              <span className="brand-glow">{t('storyPreviewTitle')}</span>
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: '720px', margin: '0 auto 2rem', lineHeight: 1.7 }}>
-              "بدأت قصة KEMET لما اشترى مؤسسها قميصاً رياضياً من براند مصري معروف.. واكتشف إن المنتج ما كانش قد التوقعات. فقررنا نبني البراند اللي تمنينا نلاقيه بخامات تفوق التوقعات وقيمة تستحق كل جنيه..."
+              "{t('storyPreviewText')}"
             </p>
             <Link href="/our-story" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-              اقرأ القصة بالكامل 📜
+              {t('readStoryBtn')}
             </Link>
           </div>
         </div>

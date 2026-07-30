@@ -15,6 +15,15 @@ export default function ProductDetailPage({ params }) {
   const product = products.find(p => p.id === id) || products[0];
   const [selectedSize, setSelectedSize] = useState('L');
 
+  // Product 4-Images Gallery State (Ready for Supabase)
+  const productGallery = product.images || [
+    product.image,
+    product.image,
+    product.image,
+    product.image
+  ];
+  const [activeImage, setActiveImage] = useState(productGallery[0]);
+
   if (!product) return null;
 
   const title = lang === 'ar' ? product.nameAr : product.nameEn;
@@ -46,14 +55,48 @@ export default function ProductDetailPage({ params }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
             
-            {/* Interactive Image Zoom Gallery Component */}
-            <div style={{ position: 'relative' }}>
-              <ImageZoom src={product.image} alt={title} />
-              {badgeText && (
-                <div className="product-badge" style={{ top: '15px', right: '15px', fontSize: '0.8rem' }}>
-                  {badgeText}
-                </div>
-              )}
+            {/* Interactive 4-Image Gallery Viewer */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              {/* Main Image View */}
+              <div style={{ position: 'relative' }}>
+                <ImageZoom src={activeImage} alt={title} />
+                {badgeText && (
+                  <div className="product-badge" style={{ top: '15px', right: '15px', fontSize: '0.8rem' }}>
+                    {badgeText}
+                  </div>
+                )}
+              </div>
+
+              {/* 4 Thumbnails Gallery Strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                {productGallery.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImage(imgUrl)}
+                    style={{
+                      border: activeImage === imgUrl ? '2px solid var(--border-gold-bright)' : '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      overflow: 'hidden',
+                      height: '75px',
+                      background: '#000',
+                      cursor: 'pointer',
+                      opacity: activeImage === imgUrl ? 1 : 0.65,
+                      transition: 'all 0.25s ease',
+                      boxShadow: activeImage === imgUrl ? 'var(--shadow-glow)' : 'none',
+                      padding: 0
+                    }}
+                  >
+                    <img 
+                      src={imgUrl} 
+                      alt={`${title} detail ${idx + 1}`} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  </button>
+                ))}
+              </div>
+
             </div>
 
             {/* Product Details & Purchase Form */}

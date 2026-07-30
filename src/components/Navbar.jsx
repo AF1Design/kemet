@@ -28,6 +28,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const categoriesRef = useRef(null);
   const ordersRef = useRef(null);
@@ -52,7 +53,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter products for instant search dropdown using smart multi-word matching
+  // Filter products for instant search dropdown
   const filteredProducts = searchQuery.trim()
     ? products.filter(product => {
         const queryNorm = normalizeText(searchQuery);
@@ -73,12 +74,14 @@ export const Navbar = ({ onOpenMobileMenu }) => {
     if (searchQuery.trim()) {
       router.push(`/category/all?search=${encodeURIComponent(searchQuery.trim())}`);
       setIsSearchFocused(false);
+      setIsMobileSearchOpen(false);
     }
   };
 
   const handleSelectProduct = (productId) => {
     router.push(`/product/${productId}`);
     setIsSearchFocused(false);
+    setIsMobileSearchOpen(false);
     setSearchQuery('');
   };
 
@@ -95,20 +98,8 @@ export const Navbar = ({ onOpenMobileMenu }) => {
       <header className="header">
         <div className="container header-container">
           
-          {/* Right/Left: Mobile Hamburger + Animated Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button 
-              type="button"
-              onClick={onOpenMobileMenu} 
-              className="mobile-hamburger-btn" 
-              title="فتح القائمة"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
+          {/* Right (in RTL): Brand Emblem Logo + KEMET Title + Slogan */}
+          <div className="header-brand-section">
             <AnimatedLogo />
           </div>
 
@@ -185,7 +176,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               )}
             </li>
 
-            {/* Unified Dropdown: الطلبات (Orders - My Orders & Egypt Post Tracking) */}
+            {/* Dropdown: الطلبات (Orders - My Orders & Egypt Post Tracking) */}
             <li className="nav-dropdown-item" ref={ordersRef}>
               <button 
                 type="button"
@@ -238,11 +229,11 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             </li>
           </ul>
 
-          {/* Search Bar & Actions */}
+          {/* Left (in RTL): Search, Language, Theme, User, Cart, Hamburger */}
           <div className="header-actions">
             
-            {/* Search Input Control */}
-            <div className="search-bar-wrapper" ref={searchRef}>
+            {/* Search Bar Input Control (Desktop) */}
+            <div className="search-bar-wrapper desktop-only" ref={searchRef}>
               <form onSubmit={handleSearchSubmit} className="search-form">
                 <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"></circle>
@@ -250,7 +241,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                 </svg>
                 <input 
                   type="text"
-                  placeholder="ابحث..."
+                  placeholder="ابحث عن منتج..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
@@ -284,7 +275,34 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               )}
             </div>
 
-            {/* Language Switcher Button (Modern Vector Icon) */}
+            {/* Mobile Search Toggle Icon Button */}
+            <button 
+              type="button" 
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className="mobile-header-icon-btn mobile-only" 
+              title="بحث"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+
+            {/* Mobile Hamburger Menu Button */}
+            <button 
+              type="button"
+              onClick={onOpenMobileMenu} 
+              className="mobile-hamburger-btn" 
+              title="فتح القائمة"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+
+            {/* Language Switcher Button (Desktop) */}
             <button type="button" onClick={toggleLang} className="action-icon-btn desktop-only" title="تغيير اللغة Language">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -294,7 +312,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               <span className="action-label" style={{ fontWeight: 800 }}>{lang === 'ar' ? 'EN' : 'عربي'}</span>
             </button>
 
-            {/* Icon-Only Theme Switcher Button */}
+            {/* Icon-Only Theme Switcher Button (Desktop) */}
             <button type="button" onClick={toggleTheme} className="action-icon-btn desktop-only" title="تغيير المود" style={{ padding: '0.55rem' }}>
               {theme === 'dark' ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -315,7 +333,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               )}
             </button>
 
-            {/* Dedicated User Account / Login Button -> Directs strictly to /login */}
+            {/* User Account Button (Desktop) */}
             <Link 
               href={user ? "/my-orders" : "/login"} 
               className={`action-icon-btn desktop-only ${user ? 'brand-user-active' : ''}`} 
@@ -330,14 +348,48 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               </span>
             </Link>
 
-            {/* Shopping Bag Button */}
-            <button type="button" onClick={() => setIsCartOpen(true)} className="cart-action-btn" title="سلة التسوق">
-              <CartIcon size={36} />
+            {/* Shopping Bag Button (Desktop) */}
+            <button type="button" onClick={() => setIsCartOpen(true)} className="cart-action-btn desktop-only" title="سلة التسوق">
+              <CartIcon size={32} />
               {totalCartCount > 0 && <span className="cart-badge">{totalCartCount}</span>}
             </button>
 
           </div>
         </div>
+
+        {/* Mobile Expandable Search Bar Overlay */}
+        {isMobileSearchOpen && (
+          <div className="mobile-search-overlay-bar">
+            <form onSubmit={handleSearchSubmit} className="search-form" style={{ width: '100%' }}>
+              <input 
+                type="text"
+                placeholder="ابحث عن أطقم وملابس KEMET..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                autoFocus
+                className="search-input"
+                style={{ width: '100%', padding: '0.65rem 1rem' }}
+              />
+            </form>
+            {searchQuery.trim().length > 0 && filteredProducts.length > 0 && (
+              <div className="mobile-search-dropdown">
+                {filteredProducts.map(product => (
+                  <div 
+                    key={product.id} 
+                    onClick={() => handleSelectProduct(product.id)}
+                    className="search-result-item"
+                  >
+                    <img src={product.image} alt={product.nameAr} className="search-result-img" />
+                    <div>
+                      <div className="search-result-name">{lang === 'ar' ? product.nameAr : product.nameEn}</div>
+                      <div className="search-result-price">{product.price} {t('currency')}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </header>
     </>
   );

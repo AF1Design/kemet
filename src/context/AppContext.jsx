@@ -40,7 +40,8 @@ export const AppProvider = ({ children }) => {
             id: 'KM-2027-8941',
             date: '2026-07-28',
             time: '02:30 م',
-            status: 'قيد التجهيز والشحن 📦',
+            status: 'قيد التجهيز 📦',
+            isShipped: false,
             items: [
               {
                 id: 'kit-real-madrid-navy-2027',
@@ -168,6 +169,34 @@ export const AppProvider = ({ children }) => {
     setOrders(prev => [newOrder, ...prev]);
   };
 
+  const cancelOrder = (orderId) => {
+    setOrders(prev => prev.filter(order => order.id !== orderId));
+    showToast('تم إلغاء الطلب بنجاح 🗑️');
+  };
+
+  const updateFullOrder = (orderId, { customer, items }) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id === orderId) {
+        const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const shipping = order.shipping || 50;
+        const total = subtotal + shipping;
+
+        return {
+          ...order,
+          customer: {
+            ...order.customer,
+            ...customer
+          },
+          items,
+          subtotal,
+          total
+        };
+      }
+      return order;
+    }));
+    showToast('تم تعديل تفاصيل ومحتويات الطلب بنجاح ✏️');
+  };
+
   const t = (key) => {
     return translations[lang]?.[key] || key;
   };
@@ -193,6 +222,8 @@ export const AppProvider = ({ children }) => {
         updateQuantity,
         clearCart,
         addOrder,
+        cancelOrder,
+        updateFullOrder,
         showToast,
         t
       }}

@@ -57,12 +57,15 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
             {t('navAllProducts')}
           </Link>
 
-          <div className="mobile-menu-section-title">إدارة وتتبع الطلبات</div>
+          <div className="mobile-menu-section-title">⚙️ إدارة الحساب والطلبات</div>
+          <Link href="/login" className="mobile-menu-link" onClick={onClose} style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>
+            ⚙️ {t('accountSettingsTitle')}
+          </Link>
           <Link href="/my-orders" className="mobile-menu-link" onClick={onClose}>
-            {t('navMyOrders')}
+            📦 {t('navMyOrders')}
           </Link>
           <Link href="/track-order" className="mobile-menu-link" onClick={onClose}>
-            {t('navTrackOrder')}
+            🚚 {t('navTrackOrder')}
           </Link>
 
           <div className="mobile-menu-section-title">المعلومات والسياسات</div>

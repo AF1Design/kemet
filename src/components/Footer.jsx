@@ -55,7 +55,7 @@ export const Footer = () => {
               <li><Link href="/category/kits" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{t('navKits')}</Link></li>
               <li><Link href="/category/training" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{t('navTraining')}</Link></li>
               <li><Link href="/category/shorts" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{t('navShorts')}</Link></li>
-              <li><Link href="/my-orders" style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>طلباتي وحالة الشحنة</Link></li>
+              <li><Link href="/my-orders" style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>{t('navMyOrders')}</Link></li>
               <li><Link href="/track-order" style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>{t('navTrackOrder')}</Link></li>
             </ul>
           </div>

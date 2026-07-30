@@ -7,6 +7,12 @@ export const products = [
     price: 280,
     oldPrice: 400,
     image: '/assets/kit-real-madrid-white-2027.jpg',
+    images: [
+      '/assets/kit-real-madrid-white-2027.jpg',
+      '/assets/kit-white-emerald.jpg',
+      '/assets/kit-real-madrid-navy-2027.jpg',
+      '/assets/kit-atletico-madrid-2027.jpg'
+    ],
     isBestSeller: true,
     isNew: true,
     descriptionAr: 'طقم ريال مدريد الأساسي الأبيض الرسمي لعام 2027 خامة بلاير إديشن (Player Edition) بملمس رياضي بارد ومجسم وطرق امتصاص عرق احترافية.',
@@ -21,6 +27,12 @@ export const products = [
     price: 280,
     oldPrice: 400,
     image: '/assets/kit-real-madrid-navy-2027.jpg',
+    images: [
+      '/assets/kit-real-madrid-navy-2027.jpg',
+      '/assets/kit-teal-hieroglyph.jpg',
+      '/assets/kit-real-madrid-white-2027.jpg',
+      '/assets/kit-atletico-madrid-2027.jpg'
+    ],
     isBestSeller: true,
     isNew: true,
     descriptionAr: 'طقم ريال مدريد الثاني البلاير إديشن لعام 2027 بنقوش رقمية مبهرة وخامة رياضيّة مريحة جداً.',
@@ -35,6 +47,12 @@ export const products = [
     price: 280,
     oldPrice: 400,
     image: '/assets/kit-atletico-madrid-2027.jpg',
+    images: [
+      '/assets/kit-atletico-madrid-2027.jpg',
+      '/assets/kit-red-striped.jpg',
+      '/assets/kit-real-madrid-white-2027.jpg',
+      '/assets/kit-real-madrid-navy-2027.jpg'
+    ],
     isBestSeller: true,
     isNew: true,
     descriptionAr: 'طقم أتلتيكو مدريد الإسباني لعام 2027 خامة بلاير إديشن بخطوط حمراء وبيضاء وتطريز الشعار الرسمي.',
