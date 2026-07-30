@@ -114,7 +114,7 @@ export default function CategoryPage({ params }) {
             {searchQueryParam && (
               <div style={{ marginTop: '1rem' }}>
                 <Link href={`/category/${id || 'all'}`} className="btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                  ✕ إزالة فلتر البحث
+                  ✕ {lang === 'ar' ? 'إزالة فلتر البحث' : 'Clear Search Filter'}
                 </Link>
               </div>
             )}
@@ -122,7 +122,7 @@ export default function CategoryPage({ params }) {
 
           {/* Loading State with Logo Animation */}
           {isLoading ? (
-            <KemetLoader message={`جاري البحث في كولكشن KEMET عن: "${searchQueryParam || id}"...`} />
+            <KemetLoader message={lang === 'ar' ? `جاري البحث في كولكشن KEMET عن: "${searchQueryParam || id}"...` : `Searching KEMET collection for: "${searchQueryParam || id}"...`} />
           ) : filteredProducts.length === 0 ? (
             
             /* Empty Search Results */
@@ -139,17 +139,19 @@ export default function CategoryPage({ params }) {
             }}>
               <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🔍</div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
-                عذراً، لم نجد نتائج تطابق "{searchQueryParam}"
+                {lang === 'ar' ? `عذراً، لم نجد نتائج تطابق "${searchQueryParam}"` : `Sorry, no products matched "${searchQueryParam}"`}
               </h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: 1.6 }}>
-                جرب البحث بكلمات أبسط مثل (ريال مدريد، تيشيرت، أهلي، زمالك، تمرين، شورت)، أو استعرض جميع منتجات المتجر.
+                {lang === 'ar' 
+                  ? 'جرب البحث بكلمات أبسط مثل (ريال مدريد، تيشيرت، أهلي، زمالك، تمرين، شورت)، أو استعرض جميع منتجات المتجر.'
+                  : 'Try searching with simpler keywords like (Real Madrid, Jersey, Gym, Shorts), or browse all store products.'}
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/category/all" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-                  تصفح كافة الأقسام 🛍️
+                  {lang === 'ar' ? 'تصفح كافة الأقسام 🛍️' : 'Browse All Categories 🛍️'}
                 </Link>
-                <a href="https://wa.me/201000000000" target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '0.85rem 2.2rem' }}>
-                  طلب طقم خاص عبر الواتساب 📱
+                <a href="https://api.whatsapp.com/send?phone=201114687759" target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '0.85rem 2.2rem' }}>
+                  {lang === 'ar' ? 'طلب طقم خاص عبر الواتساب 📱' : 'Order Custom Kit via WhatsApp 📱'}
                 </a>
               </div>
             </div>

@@ -132,7 +132,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               {isCategoriesOpen && (
                 <div className="mega-menu-dropdown">
                   <div className="container mega-menu-container">
-                    <div className="mega-menu-title">الفئات الرئيسية</div>
+                    <div className="mega-menu-title">{lang === 'ar' ? 'الفئات الرئيسية' : 'Main Categories'}</div>
                     
                     <div className="mega-menu-grid">
                       <Link 
@@ -141,7 +141,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                         onClick={() => setIsCategoriesOpen(false)}
                       >
                         <span className="category-bold-title">{t('navKits')}</span>
-                        <span className="category-sub-desc">أطقم 2027 الرسمية (Player Edition) بسعر 280 ج.م</span>
+                        <span className="category-sub-desc">{lang === 'ar' ? 'أطقم 2027 الرسمية (Player Edition) بسعر 280 ج.م' : 'Official 2027 Kits (Player Edition) at 280 EGP'}</span>
                       </Link>
 
                       <Link 
@@ -150,7 +150,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                         onClick={() => setIsCategoriesOpen(false)}
                       >
                         <span className="category-bold-title">{t('navTraining')}</span>
-                        <span className="category-sub-desc">تيشيرتات وخامات ضاغطة للتمرين</span>
+                        <span className="category-sub-desc">{lang === 'ar' ? 'تيشيرتات وخامات ضاغطة للتمرين وشورتات' : 'Gym compression wear, cut tees & shorts'}</span>
                       </Link>
 
                       <Link 
@@ -159,7 +159,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                         onClick={() => setIsCategoriesOpen(false)}
                       >
                         <span className="category-bold-title">{t('navShorts')}</span>
-                        <span className="category-sub-desc">شورتات أداء مريحة ومرنة</span>
+                        <span className="category-sub-desc">{lang === 'ar' ? 'حقائب رياضية، حظاظات، شنكار ومستلزمات' : 'Sports bags, wristbands, shin guards & gear'}</span>
                       </Link>
 
                       <Link 
@@ -168,7 +168,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                         onClick={() => setIsCategoriesOpen(false)}
                       >
                         <span className="category-bold-title">{t('navAllProducts')}</span>
-                        <span className="category-sub-desc">استعرض الكولكشن الكلي لـ KEMET</span>
+                        <span className="category-sub-desc">{lang === 'ar' ? 'استعرض الكولكشن الكلي لـ KEMET' : 'Explore the full KEMET collection'}</span>
                       </Link>
                     </div>
                   </div>
@@ -241,7 +241,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                 </svg>
                 <input 
                   type="text"
-                  placeholder="ابحث عن منتج..."
+                  placeholder={lang === 'ar' ? 'ابحث عن منتج...' : 'Search products...'}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
@@ -254,7 +254,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                 <div className="search-results-dropdown">
                   {filteredProducts.length === 0 ? (
                     <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      لا توجد نتائج مطابقة لـ "{searchQuery}"
+                      {lang === 'ar' ? `لا توجد نتائج مطابقة لـ "${searchQuery}"` : `No matching results for "${searchQuery}"`}
                     </div>
                   ) : (
                     filteredProducts.map(product => (
@@ -280,7 +280,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               type="button" 
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
               className="mobile-header-icon-btn mobile-only" 
-              title="بحث"
+              title={lang === 'ar' ? 'بحث' : 'Search'}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -293,7 +293,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               type="button"
               onClick={onOpenMobileMenu} 
               className="mobile-hamburger-btn" 
-              title="فتح القائمة"
+              title={lang === 'ar' ? 'فتح القائمة' : 'Open Menu'}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -303,7 +303,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             </button>
 
             {/* Language Switcher Button (Desktop) */}
-            <button type="button" onClick={toggleLang} className="action-icon-btn desktop-only" title="تغيير اللغة Language">
+            <button type="button" onClick={toggleLang} className="action-icon-btn desktop-only" title="Language / تغيير اللغة">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="2" y1="12" x2="22" y2="12"></line>
@@ -313,7 +313,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             </button>
 
             {/* Icon-Only Theme Switcher Button (Desktop) */}
-            <button type="button" onClick={toggleTheme} className="action-icon-btn desktop-only" title="تغيير المود" style={{ padding: '0.55rem' }}>
+            <button type="button" onClick={toggleTheme} className="action-icon-btn desktop-only" title={lang === 'ar' ? 'تغيير المود' : 'Toggle Theme'} style={{ padding: '0.55rem' }}>
               {theme === 'dark' ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="5"></circle>
@@ -337,19 +337,19 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             <Link 
               href={user ? "/my-orders" : "/login"} 
               className={`action-icon-btn desktop-only ${user ? 'brand-user-active' : ''}`} 
-              title={user ? "حسابي وحالة الطلبات" : "تسجيل الدخول"}
+              title={user ? (lang === 'ar' ? 'حسابي وحالة الطلبات' : 'My Account & Orders') : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
               <span className="action-label" style={{ fontWeight: 800 }}>
-                {user ? (user.fullName ? user.fullName.split(' ')[0] : 'حسابي') : 'تسجيل الدخول'}
+                {user ? (user.fullName ? user.fullName.split(' ')[0] : (lang === 'ar' ? 'حسابي' : 'Account')) : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
               </span>
             </Link>
 
             {/* Shopping Bag Button (Desktop) */}
-            <button type="button" onClick={() => setIsCartOpen(true)} className="cart-action-btn desktop-only" title="سلة التسوق">
+            <button type="button" onClick={() => setIsCartOpen(true)} className="cart-action-btn desktop-only" title={t('cartTitle')}>
               <CartIcon size={32} />
               {totalCartCount > 0 && <span className="cart-badge">{totalCartCount}</span>}
             </button>
@@ -363,7 +363,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             <form onSubmit={handleSearchSubmit} className="search-form" style={{ width: '100%' }}>
               <input 
                 type="text"
-                placeholder="ابحث عن أطقم وملابس KEMET..."
+                placeholder={lang === 'ar' ? 'ابحث عن أطقم وملابس KEMET...' : 'Search KEMET kits & sportswear...'}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 autoFocus

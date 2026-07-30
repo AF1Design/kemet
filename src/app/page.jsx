@@ -84,11 +84,13 @@ export default function Home() {
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('catTrainingDesc')}</p>
             </Link>
 
-            {/* Category 3: Shorts & Activewear */}
+            {/* Category 3: Accessories & Sports Gear */}
             <Link href="/category/shorts" className="category-card">
               <div className="category-icon-wrapper">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l1.89 13.23a2 2 0 0 0 1.99 1.71h11.68a2 2 0 0 0 1.99-1.71l1.89-13.23a2 2 0 0 0-1.34-2.23z"></path>
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <path d="M16 10a4 4 0 0 1-8 0"></path>
                 </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t('navShorts')}</h3>

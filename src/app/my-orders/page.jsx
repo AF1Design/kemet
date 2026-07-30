@@ -7,7 +7,7 @@ import { products as storeProducts } from '../../data/products';
 import { Footer } from '../../components/Footer';
 
 export default function MyOrdersPage() {
-  const { user, orders, cancelOrder, updateFullOrder, t } = useApp();
+  const { lang, user, orders, cancelOrder, updateFullOrder, t } = useApp();
 
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editFormCustomer, setEditFormCustomer] = useState({
@@ -103,10 +103,12 @@ export default function MyOrdersPage() {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <h1 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-              <span className="brand-glow">🛍️ طلباتي ومتابعة الشحنة</span>
+              <span className="brand-glow">🛍️ {lang === 'ar' ? 'طلباتي ومتابعة الشحنة' : 'My Orders & Status'}</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto' }}>
-              سجل كافة طلباتك ومشترياتك السابقة من متجر KEMET وحالتها المباشرة
+              {lang === 'ar' 
+                ? 'سجل كافة طلباتك ومشترياتك السابقة من متجر KEMET وحالتها المباشرة'
+                : 'Your complete purchase history and live shipment status from KEMET store'}
             </p>
           </div>
 
@@ -139,17 +141,19 @@ export default function MyOrdersPage() {
                 🔒
               </div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
-                يرجى تسجيل الدخول أولاً لعرض طلباتك
+                {lang === 'ar' ? 'يرجى تسجيل الدخول أولاً لعرض طلباتك' : 'Please sign in first to view your orders'}
               </h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: 1.6 }}>
-                صفحة طلباتي محمية ومخصصة للعملاء المسجلين. قم بتسجيل الدخول برقم تليفونك لاستعراض شحناتك وسجلات الشراء.
+                {lang === 'ar' 
+                  ? 'صفحة طلباتي محمية ومخصصة للعملاء المسجلين. قم بتسجيل الدخول برقم تليفونك لاستعراض شحناتك وسجلات الشراء.'
+                  : 'My Orders page is protected for registered customers. Sign in with your phone number to manage your orders.'}
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/login" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-                  تسجيل الدخول 🔑
+                  {t('loginTab')} 🔑
                 </Link>
                 <Link href="/category/all" className="btn-secondary" style={{ padding: '0.85rem 2.2rem' }}>
-                  تصفح المنتجات 🛍️
+                  {t('browseProductsBtn')} 🛍️
                 </Link>
               </div>
             </div>
@@ -166,13 +170,13 @@ export default function MyOrdersPage() {
             }}>
               <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🛍️</div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
-                أهلاً {user.fullName}! لم تقم بإجراء أي طلبات بعد
+                {lang === 'ar' ? `أهلاً ${user.fullName || user.phone}! لم تقم بإجراء أي طلبات بعد` : `Welcome ${user.fullName || user.phone}! You have no orders yet`}
               </h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                استعرض كولكشن KEMET الرسمي موديلات 2027 واختر أطقمك المفضلة!
+                {lang === 'ar' ? 'استعرض كولكشن KEMET الرسمي موديلات 2027 واختر أطقمك المفضلة!' : 'Explore KEMET official 2027 collection and pick your favorite kits!'}
               </p>
               <Link href="/category/all" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-                استكشف المنتجات والأطقم 🛒
+                {lang === 'ar' ? 'استكشف المنتجات والأطقم 🛒' : 'Explore Products & Kits 🛒'}
               </Link>
             </div>
 
@@ -195,10 +199,10 @@ export default function MyOrdersPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span style={{ fontSize: '1.2rem' }}>👑</span>
-                  <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>مرحباً: <strong style={{ color: 'var(--gold-primary)' }}>{user.fullName || user.phone}</strong></span>
+                  <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{t('welcomeBackUser')} <strong style={{ color: 'var(--gold-primary)' }}>{user.fullName || user.phone}</strong></span>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                  إجمالي الطلبات: <strong style={{ color: 'var(--gold-primary)' }}>{orders.length}</strong>
+                  {lang === 'ar' ? 'إجمالي الطلبات:' : 'Total Orders:'} <strong style={{ color: 'var(--gold-primary)' }}>{orders.length}</strong>
                 </div>
               </div>
 
@@ -356,7 +360,7 @@ export default function MyOrdersPage() {
                         </>
                       ) : (
                         <a
-                          href={`https://wa.me/201114687759?text=${encodeURIComponent(`أهلاً KEMET، أريد إلغاء الطلب رقم #${order.id}`)}`}
+                          href={`https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`أهلاً KEMET، أريد إلغاء الطلب رقم #${order.id}`)}`}
                           target="_blank"
                           rel="noreferrer"
                           style={{

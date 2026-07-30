@@ -36,16 +36,16 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>{user ? `حسابي (${user.fullName || user.phone})` : 'تسجيل الدخول / حساب جديد'}</span>
+            <span>{user ? (lang === 'ar' ? `حسابي (${user.fullName || user.phone})` : `My Account (${user.fullName || user.phone})`) : (lang === 'ar' ? 'تسجيل الدخول / حساب جديد' : 'Sign In / Register')}</span>
           </Link>
 
           <Link href="/" className="mobile-menu-link" onClick={onClose}>
             {t('navHome')}
           </Link>
 
-          <div className="mobile-menu-section-title">الأقسام والفئات 2027</div>
+          <div className="mobile-menu-section-title">{lang === 'ar' ? 'الأقسام والفئات 2027' : '2027 Categories'}</div>
           <Link href="/category/kits" className="mobile-menu-sublink" onClick={onClose}>
-            {t('navKits')} (280 ج.م)
+            {t('navKits')} (280 {t('currency')})
           </Link>
           <Link href="/category/training" className="mobile-menu-sublink" onClick={onClose}>
             {t('navTraining')}
@@ -57,7 +57,7 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
             {t('navAllProducts')}
           </Link>
 
-          <div className="mobile-menu-section-title">⚙️ إدارة الحساب والطلبات</div>
+          <div className="mobile-menu-section-title">{lang === 'ar' ? '⚙️ إدارة الحساب والطلبات' : '⚙️ Account & Orders'}</div>
           <Link href="/login" className="mobile-menu-link" onClick={onClose} style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>
             ⚙️ {t('accountSettingsTitle')}
           </Link>
@@ -68,7 +68,7 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
             🚚 {t('navTrackOrder')}
           </Link>
 
-          <div className="mobile-menu-section-title">المعلومات والسياسات</div>
+          <div className="mobile-menu-section-title">{lang === 'ar' ? 'المعلومات والسياسات' : 'Information & Policies'}</div>
           <Link href="/our-story" className="mobile-menu-link" onClick={onClose}>
             {t('navStory')}
           </Link>

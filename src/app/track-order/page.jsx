@@ -67,7 +67,7 @@ export default function TrackOrderPage() {
                 {t('trackOfficialBtn')}
               </a>
               <a 
-                href="https://wa.me/201000000000" 
+                href="https://api.whatsapp.com/send?phone=201114687759" 
                 target="_blank" 
                 rel="noreferrer" 
                 className="btn-secondary" 
