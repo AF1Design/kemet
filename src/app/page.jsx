@@ -1,19 +1,47 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
 import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { WhyKemet } from '../components/WhyKemet';
 import { Footer } from '../components/Footer';
-import { products } from '../data/products';
-import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
+import { translations } from '../data/translations';
 
-export default function Home() {
-  const { t } = useApp();
-  
-  // Exactly Real Madrid 2nd Kit & Atletico Madrid Kit as requested
-  const bestSellerProducts = products.filter(p => p.id === 'kit-real-madrid-navy-2027' || p.id === 'kit-atletico-madrid-2027');
+// Incremental Static Regeneration (ISR) - Revalidate every 60 seconds
+export const revalidate = 60;
+
+export default async function Home() {
+  const t = (key) => translations.ar?.[key] || key;
+  let bestSellerProducts = [];
+
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .eq('is_best_seller', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching best sellers from Supabase Server Component:', error);
+    } else if (data) {
+      bestSellerProducts = data.map(p => ({
+        id: p.id,
+        nameAr: p.name_ar,
+        nameEn: p.name_en,
+        category: p.category_id,
+        price: Number(p.price),
+        oldPrice: p.old_price ? Number(p.old_price) : null,
+        image: p.main_image,
+        images: p.gallery_images,
+        isBestSeller: p.is_best_seller,
+        isNew: p.is_new,
+        keywords: p.keywords
+      }));
+    }
+  } catch (err) {
+    console.error('Unhandled error in Home Server Component:', err);
+  }
 
   return (
     <div>
