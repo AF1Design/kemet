@@ -202,6 +202,15 @@ export default function CheckoutPage() {
                 {t('codNotice')}
               </div>
 
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)', background: 'rgba(0,0,0,0.25)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <input 
+                  type="checkbox"
+                  defaultChecked={true}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--gold-primary)' }}
+                />
+                <span>{t('smsMarketingLabel')}</span>
+              </label>
+
               <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
                 {t('submitOrder')}
               </button>

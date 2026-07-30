@@ -11,10 +11,12 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [mode, setMode] = useState('login'); // 'login' or 'register'
+  const [email, setEmail] = useState(user?.email || '');
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [password, setPassword] = useState('');
   const [governorate, setGovernorate] = useState(user?.governorate || 'القاهرة');
+  const [allowSmsMarketing, setAllowSmsMarketing] = useState(user?.allowSmsMarketing ?? true);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
@@ -26,12 +28,14 @@ export default function LoginPage() {
     }
     loginUser({
       ...user,
+      email: email.trim(),
       fullName: fullName.trim(),
       phone: phone.trim(),
-      governorate: governorate
+      governorate: governorate,
+      allowSmsMarketing: allowSmsMarketing
     });
     setIsEditingProfile(false);
-    showToast('تم تحديث بيانات الحساب والملف الشخصي بنجاح ⚙️');
+    showToast('تم تحديث بيانات الحساب والتفضيلات التسويقية بنجاح ⚙️');
   };
 
   // If user is already logged in, present Account Settings & Profile management panel
@@ -107,8 +111,12 @@ export default function LoginPage() {
                 {!isEditingProfile ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                     <div>الاسم المسجل: <strong style={{ color: 'var(--text-primary)' }}>{user.fullName}</strong></div>
+                    <div>البريد الإلكتروني: <strong style={{ color: 'var(--text-primary)' }}>{user.email || 'غير مسجل'}</strong></div>
                     <div>رقم الهاتف: <strong style={{ color: 'var(--gold-primary)' }}>{user.phone}</strong></div>
                     <div>المحافظة: <strong style={{ color: 'var(--text-primary)' }}>{user.governorate || 'القاهرة'}</strong></div>
+                    <div style={{ fontSize: '0.85rem', color: user.allowSmsMarketing !== false ? 'var(--gold-primary)' : 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                      {user.allowSmsMarketing !== false ? '📱 مفعّل: استقبال العروض والخصومات الحصرية عبر SMS 🟢' : '📱 غير مفعّل: استقبال العروض عبر SMS 🔴'}
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
@@ -119,6 +127,17 @@ export default function LoginPage() {
                         value={fullName}
                         onChange={e => setFullName(e.target.value)}
                         required
+                        className="form-input"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.35rem' }}>البريد الإلكتروني:</label>
+                      <input 
+                        type="email" 
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                        placeholder="name@example.com"
                         className="form-input"
                       />
                     </div>
@@ -142,6 +161,15 @@ export default function LoginPage() {
                         className="form-input"
                       />
                     </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                      <input 
+                        type="checkbox"
+                        checked={allowSmsMarketing}
+                        onChange={e => setAllowSmsMarketing(e.target.checked)}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--gold-primary)' }}
+                      />
+                      <span>{t('smsMarketingLabel')}</span>
+                    </label>
                     <button type="submit" className="btn-primary" style={{ padding: '0.65rem', marginTop: '0.5rem', fontSize: '0.9rem' }}>
                       حفظ التعديلات 💾
                     </button>
@@ -181,8 +209,12 @@ export default function LoginPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      alert('يرجى إدخال اسمك بالكامل لإنشاء/دخول حسابك');
+    if (!email.trim() || !email.includes('@')) {
+      alert('يرجى إدخال بريد إلكتروني صحيح');
+      return;
+    }
+    if (mode === 'register' && !fullName.trim()) {
+      alert('يرجى إدخال اسمك بالكامل لإنشاء حسابك');
       return;
     }
     if (!phone || phone.length < 8) {
@@ -191,9 +223,11 @@ export default function LoginPage() {
     }
 
     const userData = {
-      fullName: fullName.trim(),
+      email: email.trim(),
+      fullName: fullName.trim() || email.split('@')[0],
       phone: phone.trim(),
-      governorate: governorate
+      governorate: governorate,
+      allowSmsMarketing: allowSmsMarketing
     };
 
     loginUser(userData);
@@ -271,17 +305,33 @@ export default function LoginPage() {
               
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
-                  {t('fullNameLabel')}
+                  {t('emailLabel')}
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   required
-                  placeholder={t('fullNamePlaceholder')}
-                  value={fullName}
-                  onChange={e => setFullName(e.target.value)}
+                  placeholder={t('emailPlaceholder')}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                   className="form-input"
                 />
               </div>
+
+              {mode === 'register' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                    {t('fullNameLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={t('fullNamePlaceholder')}
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    className="form-input"
+                  />
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
@@ -312,24 +362,36 @@ export default function LoginPage() {
               </div>
 
               {mode === 'register' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
-                    {t('govLabel')}
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                      {t('govLabel')}
+                    </label>
+                    <select
+                      value={governorate}
+                      onChange={e => setGovernorate(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="القاهرة">القاهرة (Cairo)</option>
+                      <option value="الجيزة">الجيزة (Giza)</option>
+                      <option value="الإسكندرية">الإسكندرية (Alexandria)</option>
+                      <option value="الدقهلية">الدقهلية (Dakahlia)</option>
+                      <option value="الشرقية">الشرقية (Sharqia)</option>
+                      <option value="الغربية">الغربية (Gharbia)</option>
+                      <option value="محافظة أخرى">محافظة أخرى (Other)</option>
+                    </select>
+                  </div>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)', background: 'rgba(212,175,55,0.06)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-gold)' }}>
+                    <input 
+                      type="checkbox"
+                      checked={allowSmsMarketing}
+                      onChange={e => setAllowSmsMarketing(e.target.checked)}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--gold-primary)' }}
+                    />
+                    <span>{t('smsMarketingLabel')}</span>
                   </label>
-                  <select
-                    value={governorate}
-                    onChange={e => setGovernorate(e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="القاهرة">القاهرة (Cairo)</option>
-                    <option value="الجيزة">الجيزة (Giza)</option>
-                    <option value="الإسكندرية">الإسكندرية (Alexandria)</option>
-                    <option value="الدقهلية">الدقهلية (Dakahlia)</option>
-                    <option value="الشرقية">الشرقية (Sharqia)</option>
-                    <option value="الغربية">الغربية (Gharbia)</option>
-                    <option value="محافظة أخرى">محافظة أخرى (Other)</option>
-                  </select>
-                </div>
+                </>
               )}
 
               <button
