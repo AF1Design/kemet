@@ -121,7 +121,12 @@ export const CartDrawer = () => {
 
         {/* Cart Drawer Footer */}
         {cart.length > 0 && (
-          <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-gold)', background: '#0E121B' }}>
+          <div style={{ 
+            padding: '1.25rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) 1.5rem', 
+            borderTop: '1px solid var(--border-gold)', 
+            background: '#0E121B',
+            boxShadow: '0 -6px 20px rgba(0,0,0,0.8)'
+          }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem', color: '#E2E8F0', fontSize: '0.95rem' }}>
               <span>{t('cartSubtotal')}</span>
               <span style={{ fontWeight: 800, color: '#FFFFFF' }}>{subtotal} {currency}</span>
