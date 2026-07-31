@@ -1,36 +1,148 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { products } from '../../../data/products';
+import { supabase } from '../../../lib/supabase';
 import { useApp } from '../../../context/AppContext';
 import { ImageZoom } from '../../../components/ImageZoom';
 import { Footer } from '../../../components/Footer';
+import { KemetLoader } from '../../../components/KemetLoader';
 
 export default function ProductDetailPage({ params }) {
   const { id } = params;
   const router = useRouter();
   const { lang, addToCart, t } = useApp();
 
-  const product = products.find(p => p.id === id) || products[0];
+  const [product, setProduct] = useState(null);
+  const [availableSizes, setAvailableSizes] = useState(['S', 'M', 'L', 'XL', 'XXL']);
   const [selectedSize, setSelectedSize] = useState('L');
+  const [activeImage, setActiveImage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
-  // Product 4-Images Gallery State (Ready for Supabase)
-  const productGallery = product.images || [
-    product.image,
-    product.image,
-    product.image,
-    product.image
-  ];
-  const [activeImage, setActiveImage] = useState(productGallery[0]);
+  useEffect(() => {
+    async function loadProductDetail() {
+      if (!id) return;
+      setIsLoading(true);
+      setFetchError(null);
 
-  if (!product) return null;
+      try {
+        // 1. Fetch Product details from Supabase products table
+        const { data: prodData, error: prodErr } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (prodErr || !prodData) {
+          console.error('Error or product not found:', prodErr);
+          setFetchError(prodErr?.message || 'المنتج غير موجود');
+          setProduct(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2. Fetch Product Variants (sizes & stock) from product_variants table
+        const { data: varData } = await supabase
+          .from('product_variants')
+          .select('size, stock_quantity')
+          .eq('product_id', id);
+
+        const mappedProduct = {
+          id: prodData.id,
+          nameAr: prodData.name_ar,
+          nameEn: prodData.name_en,
+          descriptionAr: prodData.description_ar,
+          descriptionEn: prodData.description_en,
+          category: prodData.category_id,
+          price: Number(prodData.price),
+          oldPrice: prodData.old_price ? Number(prodData.old_price) : null,
+          image: prodData.main_image,
+          images: prodData.gallery_images || [prodData.main_image],
+          isBestSeller: prodData.is_best_seller,
+          isNew: prodData.is_new,
+          keywords: prodData.keywords || []
+        };
+
+        setProduct(mappedProduct);
+        setActiveImage(mappedProduct.image);
+
+        if (varData && varData.length > 0) {
+          const sizesList = varData.map(v => v.size);
+          setAvailableSizes(sizesList);
+          if (sizesList.length > 0) {
+            setSelectedSize(sizesList.includes('L') ? 'L' : sizesList[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Unhandled error loading product:', err);
+        setFetchError('حدث خطأ غير متوقع في تحميل المنتج');
+        setProduct(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadProductDetail();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <section className="section" style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <KemetLoader message={lang === 'ar' ? 'جاري تحميل تفاصيل المنتج والمقاسات...' : 'Loading product details and sizes...'} />
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+
+  // STRICT 404 STATE - Absolute zero fallback to another product!
+  if (fetchError || !product) {
+    return (
+      <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <section className="section" style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ 
+            background: 'var(--bg-card)', 
+            backdropFilter: 'blur(16px)', 
+            border: '1px solid var(--border-gold)', 
+            borderRadius: 'var(--radius-lg)', 
+            padding: '4rem 2rem',
+            textAlign: 'center',
+            maxWidth: '550px',
+            width: '100%',
+            boxShadow: 'var(--shadow-glow)'
+          }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🛍️</div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+              {lang === 'ar' ? 'المنتج غير موجود (404)' : 'Product Not Found (404)'}
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: 1.6 }}>
+              {lang === 'ar' ? 'عذراً، هذا المنتج غير متاح حالياً أو قد تم إزالته من الكتالوج.' : 'Sorry, this product is currently unavailable or removed from catalog.'}
+            </p>
+            <Link href="/category/all" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
+              {lang === 'ar' ? 'تصفح كل أطقم KEMET 🛍️' : 'Browse KEMET Catalog 🛍️'}
+            </Link>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
 
   const title = lang === 'ar' ? product.nameAr : product.nameEn;
   const description = lang === 'ar' ? product.descriptionAr : product.descriptionEn;
   const currency = t('currency');
   const priceNote = t('priceNote');
-  const availableSizes = product.sizes || ['M', 'L', 'XL', 'XXL'];
+
+  // Product 4-Images Gallery State
+  const productGallery = product.images && product.images.length > 0 ? product.images : [
+    product.image,
+    product.image,
+    product.image,
+    product.image
+  ];
 
   let badgeText = '';
   if (product.isBestSeller) {

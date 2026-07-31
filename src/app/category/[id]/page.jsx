@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '../../../context/AppContext';
-import { products } from '../../../data/products';
+import { supabase } from '../../../lib/supabase';
 import { ProductCard } from '../../../components/ProductCard';
 import { Footer } from '../../../components/Footer';
 import { KemetLoader } from '../../../components/KemetLoader';
@@ -28,41 +28,78 @@ export default function CategoryPage({ params }) {
   const { lang, t } = useApp();
   const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
-    setIsLoading(true);
+    async function loadCategoryProducts() {
+      setIsLoading(true);
+      setFetchError(null);
 
-    const timer = setTimeout(() => {
-      let list = products;
+      try {
+        let query = supabase.from('products').select('*').eq('is_active', true);
 
-      // 1. Category Filter
-      if (id && id !== 'all') {
-        list = list.filter(p => p.category === id);
+        // 1. Category Filter - Filter by category_id if not 'all'
+        if (id && id !== 'all') {
+          query = query.eq('category_id', id);
+        }
+
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error loading category products from Supabase:', error);
+          setFetchError(error.message || 'فشل في جلب البيانات من قاعدة البيانات');
+          setFilteredProducts([]);
+        } else if (data) {
+          const mappedProducts = data.map(p => ({
+            id: p.id,
+            nameAr: p.name_ar,
+            nameEn: p.name_en,
+            descriptionAr: p.description_ar,
+            descriptionEn: p.description_en,
+            category: p.category_id,
+            price: Number(p.price),
+            oldPrice: p.old_price ? Number(p.old_price) : null,
+            image: p.main_image,
+            images: p.gallery_images,
+            isBestSeller: p.is_best_seller,
+            isNew: p.is_new,
+            keywords: p.keywords || []
+          }));
+
+          let list = mappedProducts;
+
+          // 2. Multi-word Intelligent Search Filter across Arabic & English fields
+          if (searchQueryParam.trim()) {
+            const queryNorm = normalizeText(searchQueryParam);
+            const queryTokens = queryNorm.split(/\s+/).filter(Boolean);
+
+            list = list.filter(product => {
+              const nameArNorm = normalizeText(product.nameAr);
+              const nameEnNorm = normalizeText(product.nameEn);
+              const descArNorm = normalizeText(product.descriptionAr);
+              const categoryNorm = normalizeText(product.category);
+              const keywordsNorm = (product.keywords || []).map(normalizeText).join(' ');
+
+              const fullHaystack = `${nameArNorm} ${nameEnNorm} ${descArNorm} ${categoryNorm} ${keywordsNorm}`;
+
+              return queryTokens.every(token => fullHaystack.includes(token)) || fullHaystack.includes(queryNorm);
+            });
+          }
+
+          setFilteredProducts(list);
+        }
+      } catch (err) {
+        console.error('Unhandled category fetch error:', err);
+        setFetchError('حدث خطأ غير متوقع أثناء الاتصال بالسيرفر');
+        setFilteredProducts([]);
+      } finally {
+        setIsLoading(false);
       }
+    }
 
-      // 2. Multi-word Intelligent Search Filter
-      if (searchQueryParam.trim()) {
-        const queryNorm = normalizeText(searchQueryParam);
-        const queryTokens = queryNorm.split(/\s+/).filter(Boolean);
-
-        list = list.filter(product => {
-          const nameArNorm = normalizeText(product.nameAr);
-          const nameEnNorm = normalizeText(product.nameEn);
-          const descArNorm = normalizeText(product.descriptionAr);
-          const categoryNorm = normalizeText(product.category);
-          const keywordsNorm = (product.keywords || []).map(normalizeText).join(' ');
-
-          const fullHaystack = `${nameArNorm} ${nameEnNorm} ${descArNorm} ${categoryNorm} ${keywordsNorm}`;
-
-          return queryTokens.every(token => fullHaystack.includes(token)) || fullHaystack.includes(queryNorm);
-        });
-      }
-
-      setFilteredProducts(list);
-      setIsLoading(false);
-    }, 250);
-
-    return () => clearTimeout(timer);
+    loadCategoryProducts();
   }, [id, searchQueryParam]);
 
   const getCategoryTitle = () => {
@@ -123,6 +160,22 @@ export default function CategoryPage({ params }) {
           {/* Loading State with Logo Animation */}
           {isLoading ? (
             <KemetLoader message={lang === 'ar' ? `جاري البحث في كولكشن KEMET عن: "${searchQueryParam || id}"...` : `Searching KEMET collection for: "${searchQueryParam || id}"...`} />
+          ) : fetchError ? (
+            <div style={{ 
+              background: 'var(--bg-card)', 
+              backdropFilter: 'blur(16px)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 'var(--radius-lg)', 
+              padding: '3rem 2rem',
+              textAlign: 'center',
+              maxWidth: '600px',
+              margin: '0 auto'
+            }}>
+              <p style={{ color: '#F43F5E', fontWeight: 700, marginBottom: '1rem' }}>{fetchError}</p>
+              <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
+                {lang === 'ar' ? 'إعادة المحاولة 🔄' : 'Retry 🔄'}
+              </button>
+            </div>
           ) : filteredProducts.length === 0 ? (
             
             /* Empty Search Results */

@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import { AnimatedLogo } from './AnimatedLogo';
 import { CartIcon } from './CartIcon';
-import { products } from '../data/products';
+import { supabase } from '../lib/supabase';
 
 // Helper text normalizer for intelligent search
 const normalizeText = (text = '') => {
@@ -29,12 +29,44 @@ export const Navbar = ({ onOpenMobileMenu }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState([]);
 
   const categoriesRef = useRef(null);
   const ordersRef = useRef(null);
   const searchRef = useRef(null);
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Fetch catalog products from Supabase for live search suggestions
+  useEffect(() => {
+    async function fetchSearchCatalog() {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('is_active', true);
+
+        if (!error && data) {
+          const mapped = data.map(p => ({
+            id: p.id,
+            nameAr: p.name_ar,
+            nameEn: p.name_en,
+            descriptionAr: p.description_ar,
+            descriptionEn: p.description_en,
+            category: p.category_id,
+            price: Number(p.price),
+            oldPrice: p.old_price ? Number(p.old_price) : null,
+            image: p.main_image,
+            keywords: p.keywords || []
+          }));
+          setCatalogProducts(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching search catalog:', err);
+      }
+    }
+    fetchSearchCatalog();
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -55,7 +87,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
 
   // Filter products for instant search dropdown
   const filteredProducts = searchQuery.trim()
-    ? products.filter(product => {
+    ? catalogProducts.filter(product => {
         const queryNorm = normalizeText(searchQuery);
         const queryTokens = queryNorm.split(/\s+/).filter(Boolean);
 
