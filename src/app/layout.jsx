@@ -1,11 +1,34 @@
 import '../styles/global.css';
 import { Providers } from './providers';
 
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kemetfit.com';
+
 export const metadata = {
-  title: 'KEMET | Build Your Legacy',
-  description: 'المتجر الرسمي لبراند KEMET لأحدث أطقم كرة القدم الرسمية موديلات 2027 خامة (Player Edition) والملابس الرياضية الفاخرة.',
-  keywords: ['KEMET', 'Build Your Legacy', 'كيميت', 'أطقم 2027', 'ريال مدريد', 'أتلتيكو مدريد', 'بلاير اديشن', 'Player Edition'],
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: 'KEMET | Build Your Legacy - أطقم وملابس رياضية فاخرة 2027',
+    template: '%s | KEMET Build Your Legacy',
+  },
+  description: 'المتجر الرسمي لبراند KEMET لأحدث أطقم كرة القدم الرسمية موديلات 2027 خامة (Player Edition) والملابس الرياضية الفاخرة بجودة عالمية وشحن لكافة المحافظات.',
+  keywords: [
+    'KEMET',
+    'Build Your Legacy',
+    'كيميت',
+    'براند كيميت',
+    'أطقم 2027',
+    'أطقم كرة قدم 2027',
+    'ريال مدريد 2027',
+    'أهلي وزمالك 2027',
+    'بلاير اديشن',
+    'Player Edition',
+    'ملابس جيم رياضية',
+    'شورتات رياضية',
+    'متجر رياضي مصري'
+  ],
   manifest: '/site.webmanifest',
+  alternates: {
+    canonical: './',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -18,16 +41,16 @@ export const metadata = {
     ],
   },
   openGraph: {
-    title: 'KEMET | Build Your Legacy',
-    description: 'تسوق أحدث أطقم كرة القدم والملابس الرياضية موديلات 2027 (Player Edition) بسعر حصري 280 ج.م',
-    url: 'https://kemet.co',
+    title: 'KEMET | Build Your Legacy - أطقم وملابس رياضية 2027',
+    description: 'تسوق أحدث أطقم كرة القدم والملابس الرياضية موديلات 2027 (Player Edition) خامات فاخرة وطباعة حرارية مقاومة للتقشير.',
+    url: baseUrl,
     siteName: 'KEMET',
     images: [
       {
         url: '/assets/kemet-og-image.png',
-        width: 2400,
-        height: 1260,
-        alt: 'KEMET Official Emblem Social Preview',
+        width: 1200,
+        height: 630,
+        alt: 'KEMET Build Your Legacy Official Banner',
       },
     ],
     locale: 'ar_EG',
@@ -39,9 +62,42 @@ export const metadata = {
     description: 'المتجر الرسمي لبراند KEMET لأحدث أطقم كرة القدم والملابس الرياضية الفاخرة 2027.',
     images: ['/assets/kemet-og-image.png'],
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 };
 
 export default function RootLayout({ children }) {
+  // Organization JSON-LD Structured Data
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'KEMET',
+    url: baseUrl,
+    logo: `${baseUrl}/assets/kemet-emblem-icon.png`,
+    description: 'Egyptian sportswear brand crafting elite 2027 Player Edition football kits & activewear.',
+    sameAs: [
+      'https://www.facebook.com/share/18tVb5nvWy/?mibextid=wwXIfr',
+      'https://www.instagram.com/kemetbrand.eg?igsh=bmxka2pzcGxyMDdy',
+      'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q'
+    ],
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: '+201114687759',
+      contactType: 'customer service',
+      areaServed: 'EG',
+      availableLanguage: ['Arabic', 'English']
+    }
+  };
+
   return (
     <html lang="ar" dir="rtl" data-theme="dark">
       <head>
@@ -50,6 +106,12 @@ export default function RootLayout({ children }) {
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
+        
+        {/* Inject Organization JSON-LD Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
       </head>
       <body>
         <Providers>
