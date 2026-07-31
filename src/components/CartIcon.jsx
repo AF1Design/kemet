@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const CartIcon = ({ className = '', size = 48 }) => {
+export const CartIcon = ({ className = '', size = 30 }) => {
   return (
     <img 
       src="/assets/kemet-cart-icon.png" 
@@ -14,8 +14,8 @@ export const CartIcon = ({ className = '', size = 48 }) => {
         height: 'auto',
         maxHeight: `${size}px`,
         width: 'auto',
-        maxWidth: `${size * 1.6}px`,
-        filter: 'drop-shadow(0 3px 10px rgba(212, 175, 55, 0.45))',
+        maxWidth: `${size * 1.5}px`,
+        filter: 'drop-shadow(0 2px 8px rgba(212, 175, 55, 0.4))',
         transition: 'transform 0.2s ease, filter 0.2s ease'
       }}
     />

@@ -113,8 +113,9 @@ export default function CategoryPage({ params }) {
         return t('navTraining');
       case 'shorts':
         return t('navShorts');
+      case 'all':
       default:
-        return lang === 'ar' ? 'المنتجات الأكثر مبيعاً خلال آخر 7 أيام' : 'Best Selling Products (Last 7 Days)';
+        return t('allProductsCategory');
     }
   };
 
@@ -126,8 +127,8 @@ export default function CategoryPage({ params }) {
     }
     if (!id || id === 'all') {
       return lang === 'ar' 
-        ? 'تشكيلة من ملابس وأطقم KEMET التي حصلت على أكبر نسبة مبيعات هذا الأسبوع' 
-        : 'Collection of KEMET kits and activewear with the highest sales volume this week';
+        ? 'استعرض جميع أطقم ومستلزمات KEMET الرياضية الفاخرة' 
+        : 'Explore all KEMET sportswear products, kits, and gym wear';
     }
     return lang === 'ar'
       ? 'استعرض أحدث تشكيلة من ملابس وأطقم KEMET الرياضية المصممة بمواصفات عالمية'
@@ -159,7 +160,7 @@ export default function CategoryPage({ params }) {
 
           {/* Loading State with Logo Animation */}
           {isLoading ? (
-            <KemetLoader message={lang === 'ar' ? `جاري البحث في كولكشن KEMET عن: "${searchQueryParam || id}"...` : `Searching KEMET collection for: "${searchQueryParam || id}"...`} />
+            <KemetLoader message={lang === 'ar' ? `جاري البحث في كولكشن KEMET...` : `Searching KEMET collection...`} />
           ) : fetchError ? (
             <div style={{ 
               background: 'var(--bg-card)', 

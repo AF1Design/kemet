@@ -1,72 +1,89 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useApp } from '../context/AppContext';
 import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { WhyKemet } from '../components/WhyKemet';
 import { Footer } from '../components/Footer';
+import { KemetLoader } from '../components/KemetLoader';
 import { supabase } from '../lib/supabase';
-import { translations } from '../data/translations';
 
-// Incremental Static Regeneration (ISR) - Revalidate every 60 seconds
-export const revalidate = 60;
+export default function Home() {
+  const { lang, t } = useApp();
 
-export default async function Home() {
-  const t = (key) => translations.ar?.[key] || key;
+  const [bestSellerProducts, setBestSellerProducts] = useState([]);
+  const [categoriesMap, setCategoriesMap] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
-  let bestSellerProducts = [];
-  let categoriesMap = {};
-  let fetchError = null;
+  useEffect(() => {
+    async function loadHomePageData() {
+      setIsLoading(true);
+      setFetchError(null);
 
-  try {
-    const [{ data: productsData, error: prodErr }, { data: categoriesData, error: catErr }] = await Promise.all([
-      supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .eq('is_best_seller', true)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('categories')
-        .select('*')
-    ]);
+      try {
+        const [{ data: productsData, error: prodErr }, { data: categoriesData, error: catErr }] = await Promise.all([
+          supabase
+            .from('products')
+            .select('*')
+            .eq('is_active', true)
+            .eq('is_best_seller', true)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('categories')
+            .select('*')
+        ]);
 
-    if (prodErr) {
-      console.error('Error fetching products from Supabase:', prodErr);
-      fetchError = prodErr.message;
-    } else if (productsData) {
-      bestSellerProducts = productsData.map(p => ({
-        id: p.id,
-        nameAr: p.name_ar,
-        nameEn: p.name_en,
-        category: p.category_id,
-        price: Number(p.price),
-        oldPrice: p.old_price ? Number(p.old_price) : null,
-        image: p.main_image,
-        images: p.gallery_images,
-        isBestSeller: p.is_best_seller,
-        isNew: p.is_new,
-        keywords: p.keywords
-      }));
+        if (prodErr) {
+          console.error('Error fetching products:', prodErr);
+          setFetchError(prodErr.message || 'فشل في جلب المنتجات');
+        } else if (productsData) {
+          const mapped = productsData.map(p => ({
+            id: p.id,
+            nameAr: p.name_ar,
+            nameEn: p.name_en,
+            descriptionAr: p.description_ar,
+            descriptionEn: p.description_en,
+            category: p.category_id,
+            price: Number(p.price),
+            oldPrice: p.old_price ? Number(p.old_price) : null,
+            image: p.main_image,
+            images: p.gallery_images,
+            isBestSeller: p.is_best_seller,
+            isNew: p.is_new,
+            keywords: p.keywords
+          }));
+          setBestSellerProducts(mapped);
+        }
+
+        if (catErr) {
+          console.error('Error fetching categories:', catErr);
+        } else if (categoriesData) {
+          const map = {};
+          categoriesData.forEach(c => {
+            map[c.id] = c;
+          });
+          setCategoriesMap(map);
+        }
+      } catch (err) {
+        console.error('Unhandled Home fetch error:', err);
+        setFetchError('حدث خطأ أثناء الاتصال بقاعدة البيانات');
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    if (catErr) {
-      console.error('Error fetching categories from Supabase:', catErr);
-    } else if (categoriesData) {
-      categoriesData.forEach(c => {
-        categoriesMap[c.id] = c;
-      });
-    }
-  } catch (err) {
-    console.error('Unhandled error in Home Server Component:', err);
-    fetchError = err.message || 'فشل في الاتصال بقاعدة البيانات';
-  }
+    loadHomePageData();
+  }, []);
 
-  // Pre-defined category order & static icons for 100% layout and design fidelity
+  // Dynamic Categories List localized based on current lang state
   const categoriesList = [
     {
       id: 'kits',
-      title: categoriesMap['kits']?.name_ar || t('navKits'),
-      desc: categoriesMap['kits']?.description_ar || t('catKitsDesc'),
+      title: lang === 'ar' ? (categoriesMap['kits']?.name_ar || t('navKits')) : (categoriesMap['kits']?.name_en || t('navKits')),
+      desc: lang === 'ar' ? (categoriesMap['kits']?.description_ar || t('catKitsDesc')) : (categoriesMap['kits']?.description_en || t('catKitsDesc')),
       href: '/category/kits',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -78,8 +95,8 @@ export default async function Home() {
     },
     {
       id: 'training',
-      title: categoriesMap['training']?.name_ar || t('navTraining'),
-      desc: categoriesMap['training']?.description_ar || t('catTrainingDesc'),
+      title: lang === 'ar' ? (categoriesMap['training']?.name_ar || t('navTraining')) : (categoriesMap['training']?.name_en || t('navTraining')),
+      desc: lang === 'ar' ? (categoriesMap['training']?.description_ar || t('catTrainingDesc')) : (categoriesMap['training']?.description_en || t('catTrainingDesc')),
       href: '/category/training',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -93,8 +110,8 @@ export default async function Home() {
     },
     {
       id: 'shorts',
-      title: categoriesMap['shorts']?.name_ar || t('navShorts'),
-      desc: categoriesMap['shorts']?.description_ar || t('catShortsDesc'),
+      title: lang === 'ar' ? (categoriesMap['shorts']?.name_ar || t('navShorts')) : (categoriesMap['shorts']?.name_en || t('navShorts')),
+      desc: lang === 'ar' ? (categoriesMap['shorts']?.description_ar || t('catShortsDesc')) : (categoriesMap['shorts']?.description_en || t('catShortsDesc')),
       href: '/category/shorts',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -123,10 +140,16 @@ export default async function Home() {
             </p>
           </div>
 
-          {fetchError ? (
+          {isLoading ? (
+            <KemetLoader message={lang === 'ar' ? 'جاري تحميل منتجات KEMET...' : 'Loading KEMET products...'} />
+          ) : fetchError ? (
             <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', maxWidth: '500px', margin: '0 auto' }}>
-              <p style={{ color: '#F43F5E', fontWeight: 700, marginBottom: '0.5rem' }}>مؤقتاً غير قادرين على جلب المنتجات</p>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>يرجى تحديث الصفحة أو المحاولة لاحقاً</p>
+              <p style={{ color: '#F43F5E', fontWeight: 700, marginBottom: '0.5rem' }}>
+                {lang === 'ar' ? 'مؤقتاً غير قادرين على جلب المنتجات' : 'Unable to load products temporarily'}
+              </p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                {lang === 'ar' ? 'يرجى تحديث الصفحة أو المحاولة لاحقاً' : 'Please refresh the page or try again later'}
+              </p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 420px))', gap: '2rem', justifyContent: 'center' }}>
@@ -199,4 +222,3 @@ export default async function Home() {
     </div>
   );
 }
-

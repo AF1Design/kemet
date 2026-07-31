@@ -18,6 +18,7 @@ export const translations = {
     themeDark: "دارك 🌙",
     themeLight: "لايت ☀️",
     accountSettingsTitle: "إعدادات الحساب والملف الشخصي",
+    allProductsCategory: "جميع المنتجات",
     
     // Hero Section
     heroBadge: "👑 أطقم 2027 الرسمية (Player Edition)",
@@ -148,10 +149,11 @@ export const translations = {
     footerAbout: "براند مصري متخصص في تقديم أحدث الملابس والأطقم الرياضية الفاخرة التي تجمع بين الأصالة والأداء الرفيع.",
     footerLinks: "روابط الأقسام",
     footerPolicyTitle: "خدمة العملاء والسياسات",
-    policy1: "سياسة الاسترجاع (خلال 3 أيام)",
+    policy1: "سياسة الاسترجاع (3 أيام)",
     policy2: "دليل المقاسات والعناية بالمنتج",
     policy3: "تتبع الشحنات والطلبات",
     whatsappBtn: "تواصل عبر الواتساب",
+    whatsappChannelBtn: "قناة KEMET Family على الواتساب",
     socialTitle: "تابعنا على منصات التواصل",
     copyright: "جميع الحقوق محفوظة © 2026 KEMET"
   },
@@ -174,6 +176,7 @@ export const translations = {
     themeDark: "Dark 🌙",
     themeLight: "Light ☀️",
     accountSettingsTitle: "Account Settings & Profile",
+    allProductsCategory: "All Sportswear Products",
 
     // Home Page Specifics
     featuredProductsTitle: "Best Sellers ⭐",
@@ -308,6 +311,7 @@ export const translations = {
     policy2: "Size & Fabric Care Guide",
     policy3: "Order & Parcel Tracking",
     whatsappBtn: "Chat on WhatsApp",
+    whatsappChannelBtn: "Join KEMET Family WhatsApp Channel",
     socialTitle: "Follow Us",
     copyright: "All Rights Reserved © 2026 KEMET"
   }

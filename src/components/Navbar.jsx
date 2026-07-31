@@ -123,119 +123,117 @@ export const Navbar = ({ onOpenMobileMenu }) => {
     <header className="header">
       <div className="header-container container">
         
-        {/* Right (in RTL): Brand Animated Logo & Main Nav Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <AnimatedLogo />
+        {/* Right (in RTL): Brand Animated Logo */}
+        <AnimatedLogo />
 
-          {/* Desktop Navigation Links */}
-          <nav className="desktop-only">
-            <ul className="nav-links">
-              <li>
-                <Link href="/" className={`nav-link ${isActive('/') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
-                  {t('navHome')}
-                </Link>
-              </li>
+        {/* Desktop Navigation Links (Center) */}
+        <nav className="desktop-only" style={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+          <ul className="nav-menu">
+            <li>
+              <Link href="/" className={`nav-link ${isActive('/') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
+                {t('navHome')}
+              </Link>
+            </li>
 
-              {/* Categories Mega Dropdown */}
-              <li className="dropdown-container" ref={categoriesRef}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsCategoriesOpen(!isCategoriesOpen)} 
-                  className={`nav-link ${pathname.startsWith('/category') ? 'active' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 800 }}
-                >
-                  {t('navCategories')}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-                {isCategoriesOpen && (
-                  <div className="simple-dropdown-menu">
-                    <Link 
-                      href="/category/all" 
-                      className="dropdown-menu-item" 
-                      onClick={() => setIsCategoriesOpen(false)}
-                      style={{ fontWeight: 800, color: 'var(--gold-primary)' }}
-                    >
-                      {t('allProductsCategory')}
-                    </Link>
-                    <Link 
-                      href="/category/kits" 
-                      className="dropdown-menu-item" 
-                      onClick={() => setIsCategoriesOpen(false)}
-                      style={{ fontWeight: 800 }}
-                    >
-                      {t('navKits')}
-                    </Link>
-                    <Link 
-                      href="/category/training" 
-                      className="dropdown-menu-item" 
-                      onClick={() => setIsCategoriesOpen(false)}
-                      style={{ fontWeight: 800 }}
-                    >
-                      {t('navTraining')}
-                    </Link>
-                    <Link 
-                      href="/category/shorts" 
-                      className="dropdown-menu-item" 
-                      onClick={() => setIsCategoriesOpen(false)}
-                      style={{ fontWeight: 800 }}
-                    >
-                      {t('navShorts')}
-                    </Link>
-                  </div>
-                )}
-              </li>
+            {/* Categories Dropdown */}
+            <li className="dropdown-container" ref={categoriesRef}>
+              <button 
+                type="button" 
+                onClick={() => setIsCategoriesOpen(!isCategoriesOpen)} 
+                className={`nav-link ${pathname.startsWith('/category') ? 'active' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 800 }}
+              >
+                {t('navCategories')}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              {isCategoriesOpen && (
+                <div className="simple-dropdown-menu">
+                  <Link 
+                    href="/category/all" 
+                    className="dropdown-menu-item" 
+                    onClick={() => setIsCategoriesOpen(false)}
+                    style={{ fontWeight: 800, color: 'var(--gold-primary)' }}
+                  >
+                    {t('allProductsCategory')}
+                  </Link>
+                  <Link 
+                    href="/category/kits" 
+                    className="dropdown-menu-item" 
+                    onClick={() => setIsCategoriesOpen(false)}
+                    style={{ fontWeight: 800 }}
+                  >
+                    {t('navKits')}
+                  </Link>
+                  <Link 
+                    href="/category/training" 
+                    className="dropdown-menu-item" 
+                    onClick={() => setIsCategoriesOpen(false)}
+                    style={{ fontWeight: 800 }}
+                  >
+                    {t('navTraining')}
+                  </Link>
+                  <Link 
+                    href="/category/shorts" 
+                    className="dropdown-menu-item" 
+                    onClick={() => setIsCategoriesOpen(false)}
+                    style={{ fontWeight: 800 }}
+                  >
+                    {t('navShorts')}
+                  </Link>
+                </div>
+              )}
+            </li>
 
-              {/* Orders Dropdown */}
-              <li className="dropdown-container" ref={ordersRef}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsOrdersOpen(!isOrdersOpen)} 
-                  className={`nav-link ${isActive('/my-orders') || isActive('/track-order') ? 'active' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 800 }}
-                >
-                  {t('navOrders')}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-                {isOrdersOpen && (
-                  <div className="simple-dropdown-menu">
-                    <Link 
-                      href="/my-orders" 
-                      className="dropdown-menu-item" 
-                      onClick={() => setIsOrdersOpen(false)}
-                      style={{ fontWeight: 800 }}
-                    >
-                      {t('navMyOrders')}
-                    </Link>
-                    <Link 
-                      href="/track-order" 
-                      className="dropdown-menu-item" 
-                      onClick={() => setIsOrdersOpen(false)}
-                      style={{ fontWeight: 800 }}
-                    >
-                      {t('navTrackOrder')}
-                    </Link>
-                  </div>
-                )}
-              </li>
+            {/* Orders Dropdown */}
+            <li className="dropdown-container" ref={ordersRef}>
+              <button 
+                type="button" 
+                onClick={() => setIsOrdersOpen(!isOrdersOpen)} 
+                className={`nav-link ${isActive('/my-orders') || isActive('/track-order') ? 'active' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 800 }}
+              >
+                {t('navOrders')}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              {isOrdersOpen && (
+                <div className="simple-dropdown-menu">
+                  <Link 
+                    href="/my-orders" 
+                    className="dropdown-menu-item" 
+                    onClick={() => setIsOrdersOpen(false)}
+                    style={{ fontWeight: 800 }}
+                  >
+                    {t('navMyOrders')}
+                  </Link>
+                  <Link 
+                    href="/track-order" 
+                    className="dropdown-menu-item" 
+                    onClick={() => setIsOrdersOpen(false)}
+                    style={{ fontWeight: 800 }}
+                  >
+                    {t('navTrackOrder')}
+                  </Link>
+                </div>
+              )}
+            </li>
 
-              <li>
-                <Link href="/our-story" className={`nav-link ${isActive('/our-story') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
-                  {t('navStory')}
-                </Link>
-              </li>
+            <li>
+              <Link href="/our-story" className={`nav-link ${isActive('/our-story') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
+                {t('navStory')}
+              </Link>
+            </li>
 
-              <li>
-                <Link href="/return-policy" className={`nav-link ${isActive('/return-policy') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
-                  {t('navReturnPolicy')}
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </div>
+            <li>
+              <Link href="/return-policy" className={`nav-link ${isActive('/return-policy') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
+                {t('navReturnPolicy')}
+              </Link>
+            </li>
+          </ul>
+        </nav>
 
         {/* Left (in RTL): Search, Language, Theme, Admin Badge, User Profile Link, Cart, Hamburger */}
         <div className="header-actions">
@@ -366,14 +364,18 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             </span>
           </Link>
 
-          {/* Shopping Cart Button Toggle */}
+          {/* Shopping Cart Button Toggle (Desktop Only & Sleek Compact Size) */}
           <button 
             type="button" 
             onClick={() => setIsCartOpen(true)} 
-            className="action-icon-btn cart-btn-badge"
+            className="action-icon-btn cart-btn-badge desktop-only"
             title={lang === 'ar' ? 'حقيبة التسوق' : 'Shopping Cart'}
+            style={{ padding: '0.35rem 0.55rem' }}
           >
-            <CartIcon count={totalCartCount} />
+            <CartIcon size={26} />
+            {totalCartCount > 0 && (
+              <span className="cart-badge-count" style={{ fontSize: '0.7rem', width: '18px', height: '18px' }}>{totalCartCount}</span>
+            )}
           </button>
 
           {/* Mobile Menu Toggle Hamburger Icon */}
