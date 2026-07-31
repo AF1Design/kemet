@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 export const revalidate = 3600; // Revalidate sitemap every hour
 
 export default async function sitemap() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kemetfit.com';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
 
   // Base static routes
   const staticRoutes = [

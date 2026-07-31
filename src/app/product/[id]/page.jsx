@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { ProductDetailClient } from '../../../components/ProductDetailClient';
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kemetfit.com';
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
 
 // Fetch helper for server component & metadata
 async function fetchProduct(id) {

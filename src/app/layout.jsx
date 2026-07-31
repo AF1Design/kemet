@@ -1,7 +1,7 @@
 import '../styles/global.css';
 import { Providers } from './providers';
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.kemetfit.com';
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
 
 export const metadata = {
   metadataBase: new URL(baseUrl),
