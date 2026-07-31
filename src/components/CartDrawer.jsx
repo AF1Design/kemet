@@ -3,7 +3,6 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
-import { products } from '../data/products';
 
 export const CartDrawer = () => {
   const { lang, cart, isCartOpen, setIsCartOpen, updateQuantity, t } = useApp();
@@ -61,12 +60,12 @@ export const CartDrawer = () => {
             </div>
           ) : (
             cart.map(item => {
-              const p = products.find(prod => prod.id === item.id) || item;
-              const itemPrice = p.price || 280;
+              const itemPrice = Number(item.price ?? 280);
               const itemTotal = itemPrice * item.quantity;
               subtotal += itemTotal;
 
-              const title = lang === 'ar' ? (p.nameAr || item.nameAr) : (p.nameEn || item.nameEn);
+              const title = lang === 'ar' ? (item.nameAr || item.name_ar || item.nameEn) : (item.nameEn || item.name_en || item.nameAr);
+              const itemImg = item.image || item.main_image || '/assets/kemet-hero-banner.jpg';
 
               return (
                 <div 
@@ -81,9 +80,9 @@ export const CartDrawer = () => {
                   }}
                 >
                   <img 
-                    src={p.image || item.image} 
+                    src={itemImg} 
                     alt={title} 
-                    style={{ width: '75px', height: '75px', objectFit: 'contain', background: '#030407', borderRadius: 'var(--radius-sm)', padding: '0.2rem' }} 
+                    style={{ width: '75px', height: '75px', objectFit: 'cover', background: '#030407', borderRadius: 'var(--radius-sm)' }} 
                   />
                   <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.3 }}>
@@ -98,16 +97,16 @@ export const CartDrawer = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.5rem' }}>
                       <button 
                         type="button"
-                        style={{ fontWeight: 800, padding: '0.2rem 0.6rem', border: '1px solid var(--border-gold)', background: '#1A2132', color: '#FFFFFF', borderRadius: '4px' }} 
                         onClick={() => updateQuantity(item.id, item.size, -1)}
+                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 800 }}
                       >
                         -
                       </button>
-                      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#FFFFFF' }}>{item.quantity}</span>
+                      <span style={{ fontWeight: 800, color: '#fff' }}>{item.quantity}</span>
                       <button 
                         type="button"
-                        style={{ fontWeight: 800, padding: '0.2rem 0.6rem', border: '1px solid var(--border-gold)', background: '#1A2132', color: '#FFFFFF', borderRadius: '4px' }} 
                         onClick={() => updateQuantity(item.id, item.size, 1)}
+                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 800 }}
                       >
                         +
                       </button>
@@ -122,25 +121,20 @@ export const CartDrawer = () => {
         {/* Cart Drawer Footer */}
         {cart.length > 0 && (
           <div style={{ 
-            padding: '1.25rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) 1.5rem', 
-            borderTop: '1px solid var(--border-gold)', 
-            background: '#0E121B',
-            boxShadow: '0 -6px 20px rgba(0,0,0,0.8)'
+            padding: '1.5rem', 
+            borderTop: '1px solid var(--border-color)', 
+            background: '#090C12', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1rem' 
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem', color: '#E2E8F0', fontSize: '0.95rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.1rem', fontWeight: 900, color: '#FFFFFF' }}>
               <span>{t('cartSubtotal')}</span>
-              <span style={{ fontWeight: 800, color: '#FFFFFF' }}>{subtotal} {currency}</span>
+              <span style={{ color: 'var(--gold-primary)' }}>{subtotal} {currency}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <span>{t('cartShipping')}</span>
-              <span style={{ color: '#F3E5AB' }}>{t('cartShippingCalc')}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', paddingTop: '0.6rem', borderTop: '1px solid var(--border-color)' }}>
-              <span>{t('cartTotal')}</span>
-              <span>{subtotal + 50} {currency}</span>
-            </div>
-            <button type="button" className="btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.9rem', fontSize: '1rem' }} onClick={handleCheckoutClick}>
-              💳 {t('cartCheckoutBtn')}
+
+            <button type="button" className="btn-primary" onClick={handleCheckoutClick} style={{ width: '100%', padding: '0.9rem', fontSize: '1rem' }}>
+              {t('cartCheckoutBtn')}
             </button>
           </div>
         )}

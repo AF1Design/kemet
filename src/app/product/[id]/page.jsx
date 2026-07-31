@@ -12,11 +12,11 @@ import { KemetLoader } from '../../../components/KemetLoader';
 export default function ProductDetailPage({ params }) {
   const { id } = params;
   const router = useRouter();
-  const { lang, addToCart, t } = useApp();
+  const { lang, addToCart, showToast, t } = useApp();
 
   const [product, setProduct] = useState(null);
-  const [availableSizes, setAvailableSizes] = useState(['S', 'M', 'L', 'XL', 'XXL']);
-  const [selectedSize, setSelectedSize] = useState('L');
+  const [variantsList, setVariantsList] = useState([]);
+  const [selectedSizeObj, setSelectedSizeObj] = useState(null);
   const [activeImage, setActiveImage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -68,13 +68,21 @@ export default function ProductDetailPage({ params }) {
         setProduct(mappedProduct);
         setActiveImage(mappedProduct.image);
 
+        let formattedVariants = [];
         if (varData && varData.length > 0) {
-          const sizesList = varData.map(v => v.size);
-          setAvailableSizes(sizesList);
-          if (sizesList.length > 0) {
-            setSelectedSize(sizesList.includes('L') ? 'L' : sizesList[0]);
-          }
+          formattedVariants = varData.map(v => ({
+            size: v.size,
+            stock: Number(v.stock_quantity ?? 50)
+          }));
+        } else {
+          formattedVariants = ['S', 'M', 'L', 'XL', 'XXL'].map(s => ({ size: s, stock: 50 }));
         }
+
+        setVariantsList(formattedVariants);
+
+        const firstInStock = formattedVariants.find(v => v.stock > 0);
+        setSelectedSizeObj(firstInStock || formattedVariants[0]);
+
       } catch (err) {
         console.error('Unhandled error loading product:', err);
         setFetchError('حدث خطأ غير متوقع في تحميل المنتج');
@@ -118,11 +126,11 @@ export default function ProductDetailPage({ params }) {
             <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
               {lang === 'ar' ? 'المنتج غير موجود (404)' : 'Product Not Found (404)'}
             </h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: 1.6 }}>
-              {lang === 'ar' ? 'عذراً، هذا المنتج غير متاح حالياً أو قد تم إزالته من الكتالوج.' : 'Sorry, this product is currently unavailable or removed from catalog.'}
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '2rem' }}>
+              {lang === 'ar' ? 'عذراً، المنتج الذي تحاول الوصول إليه غير متوفر في الكتالوج الحالي.' : 'Sorry, the product you are trying to view is not available.'}
             </p>
-            <Link href="/category/all" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-              {lang === 'ar' ? 'تصفح كل أطقم KEMET 🛍️' : 'Browse KEMET Catalog 🛍️'}
+            <Link href="/" className="btn-primary" style={{ padding: '0.85rem 2rem' }}>
+              {t('backHomeBtn')}
             </Link>
           </div>
         </section>
@@ -150,6 +158,17 @@ export default function ProductDetailPage({ params }) {
   } else if (product.isNew) {
     badgeText = t('newBadge');
   }
+
+  const isSelectedOutOfStock = selectedSizeObj ? selectedSizeObj.stock <= 0 : false;
+  const isAllOutOfStock = variantsList.every(v => v.stock <= 0);
+
+  const handleAddToCart = () => {
+    if (isAllOutOfStock || isSelectedOutOfStock) {
+      showToast(lang === 'ar' ? '⚠️ هذا المقاس غير متوفر حالياً (منتهي الكمية)' : '⚠️ Selected size is out of stock!');
+      return;
+    }
+    addToCart(product, selectedSizeObj.size);
+  };
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
@@ -202,7 +221,7 @@ export default function ProductDetailPage({ params }) {
                   >
                     <img 
                       src={imgUrl} 
-                      alt={`${title} detail ${idx + 1}`} 
+                      alt={`${title} view ${idx + 1}`} 
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                     />
                   </button>
@@ -213,8 +232,13 @@ export default function ProductDetailPage({ params }) {
 
             {/* Product Details & Purchase Form */}
             <div>
-              <div style={{ color: '#10B981', fontSize: '0.85rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-                {t('productInStock')}
+              <div style={{ 
+                color: isAllOutOfStock ? '#F43F5E' : '#10B981', 
+                fontSize: '0.85rem', 
+                fontWeight: 800, 
+                marginBottom: '0.5rem' 
+              }}>
+                {isAllOutOfStock ? '⚠️ منتهي الكمية بالكامل (Out of Stock)' : t('productInStock')}
               </div>
 
               <h1 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '0.75rem', lineHeight: 1.25 }}>
@@ -237,34 +261,64 @@ export default function ProductDetailPage({ params }) {
                 {description}
               </p>
 
-              {/* Size Selector */}
+              {/* Size Selector with Out-of-Stock Status */}
               <div style={{ marginBottom: '1.5rem', background: 'var(--bg-card)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '0.6rem' }}>
                   {t('selectSizeLabel')}
                 </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {availableSizes.map(size => (
-                    <button
-                      key={size}
-                      type="button"
-                      className={`size-pill ${size === selectedSize ? 'active' : ''}`}
-                      style={{ padding: '0.5rem 0', fontSize: '0.9rem' }}
-                      onClick={() => setSelectedSize(size)}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {variantsList.map(v => {
+                    const isOut = v.stock <= 0;
+                    const isSelected = selectedSizeObj?.size === v.size;
+
+                    return (
+                      <button
+                        key={v.size}
+                        type="button"
+                        className={`size-pill ${isSelected ? 'active' : ''}`}
+                        style={{ 
+                          padding: '0.5rem 1rem', 
+                          fontSize: '0.9rem',
+                          opacity: isOut ? 0.45 : 1,
+                          textDecoration: isOut ? 'line-through' : 'none',
+                          borderColor: isOut ? 'rgba(244,63,94,0.4)' : undefined,
+                          color: isOut ? '#F43F5E' : undefined
+                        }}
+                        onClick={() => setSelectedSizeObj(v)}
+                        title={isOut ? 'منتهي الكمية' : `متوفر: ${v.stock}`}
+                      >
+                        {v.size} {isOut ? '(منتهي ❌)' : ''}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Add to Cart CTA */}
+              {/* Add to Cart CTA Button */}
               <button 
                 type="button"
                 className="btn-primary" 
-                style={{ width: '100%', padding: '0.9rem', fontSize: '1.05rem', marginBottom: '1.75rem' }}
-                onClick={() => addToCart(product, selectedSize)}
+                disabled={isAllOutOfStock || isSelectedOutOfStock}
+                style={{ 
+                  width: '100%', 
+                  padding: '0.9rem', 
+                  fontSize: '1.05rem', 
+                  marginBottom: '1.75rem',
+                  opacity: (isAllOutOfStock || isSelectedOutOfStock) ? 0.6 : 1,
+                  cursor: (isAllOutOfStock || isSelectedOutOfStock) ? 'not-allowed' : 'pointer',
+                  background: (isAllOutOfStock || isSelectedOutOfStock) ? 'rgba(244,63,94,0.2)' : undefined,
+                  color: (isAllOutOfStock || isSelectedOutOfStock) ? '#F43F5E' : undefined,
+                  borderColor: (isAllOutOfStock || isSelectedOutOfStock) ? 'rgba(244,63,94,0.4)' : undefined
+                }}
+                onClick={handleAddToCart}
               >
-                {t('addToCart')} ({selectedSize})
+                {isAllOutOfStock 
+                  ? '⚠️ نَفَدَت الكَمّية بالكامل' 
+                  : (isSelectedOutOfStock 
+                      ? `⚠️ المقاس (${selectedSizeObj?.size}) غير متوفر` 
+                      : `${t('addToCart')} (${selectedSizeObj?.size})`
+                    )
+                }
               </button>
 
               {/* Fabric Specs & Guarantees */}

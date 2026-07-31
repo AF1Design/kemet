@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import { AnimatedLogo } from './AnimatedLogo';
 import { CartIcon } from './CartIcon';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase/client';
 
 // Helper text normalizer for intelligent search
 const normalizeText = (text = '') => {
@@ -120,309 +120,298 @@ export const Navbar = ({ onOpenMobileMenu }) => {
   const isActive = (path) => pathname === path;
 
   return (
-    <>
-      {/* Announcement Bar */}
-      <div className="announcement-bar">
-        <span>{t('promoText')}</span>
-      </div>
+    <header className="navbar-header">
+      <div className="navbar-container container">
+        
+        {/* Right (in RTL): Brand Animated Logo & Main Nav Links */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <AnimatedLogo />
 
-      {/* Main Header */}
-      <header className="header">
-        <div className="container header-container">
-          
-          {/* Right (in RTL): Brand Emblem Logo + KEMET Title + Slogan */}
-          <div className="header-brand-section">
-            <AnimatedLogo />
-          </div>
+          {/* Desktop Navigation Links */}
+          <nav className="desktop-only">
+            <ul className="nav-links">
+              <li>
+                <Link href="/" className={`nav-link ${isActive('/') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
+                  {t('navHome')}
+                </Link>
+              </li>
 
-          {/* Navigation Links Menu (Desktop) */}
-          <ul className="nav-menu">
-            <li>
-              <Link href="/" className={`nav-link ${isActive('/') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
-                {t('navHome')}
-              </Link>
-            </li>
-
-            {/* Mega Dropdown: الفئات (Categories) */}
-            <li className="nav-dropdown-item" ref={categoriesRef}>
-              <button 
-                type="button"
-                onClick={() => {
-                  setIsCategoriesOpen(!isCategoriesOpen);
-                  setIsOrdersOpen(false);
-                }}
-                className={`nav-link dropdown-trigger ${isCategoriesOpen || pathname.startsWith('/category') ? 'active' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 800 }}
-              >
-                <span>{t('navCategories')}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.3s ease', transform: isCategoriesOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-
-              {/* Mega Menu Horizontal Sub-Categories Bar */}
-              {isCategoriesOpen && (
-                <div className="mega-menu-dropdown">
-                  <div className="container mega-menu-container">
-                    <div className="mega-menu-title">{lang === 'ar' ? 'الفئات الرئيسية' : 'Main Categories'}</div>
-                    
-                    <div className="mega-menu-grid">
-                      <Link 
-                        href="/category/kits" 
-                        className="mega-menu-link" 
-                        onClick={() => setIsCategoriesOpen(false)}
-                      >
-                        <span className="category-bold-title">{t('navKits')}</span>
-                        <span className="category-sub-desc">{lang === 'ar' ? 'أطقم 2027 الرسمية (Player Edition) بسعر 280 ج.م' : 'Official 2027 Kits (Player Edition) at 280 EGP'}</span>
-                      </Link>
-
-                      <Link 
-                        href="/category/training" 
-                        className="mega-menu-link" 
-                        onClick={() => setIsCategoriesOpen(false)}
-                      >
-                        <span className="category-bold-title">{t('navTraining')}</span>
-                        <span className="category-sub-desc">{lang === 'ar' ? 'تيشيرتات وخامات ضاغطة للتمرين وشورتات' : 'Gym compression wear, cut tees & shorts'}</span>
-                      </Link>
-
-                      <Link 
-                        href="/category/shorts" 
-                        className="mega-menu-link" 
-                        onClick={() => setIsCategoriesOpen(false)}
-                      >
-                        <span className="category-bold-title">{t('navShorts')}</span>
-                        <span className="category-sub-desc">{lang === 'ar' ? 'حقائب رياضية، حظاظات، شنكار ومستلزمات' : 'Sports bags, wristbands, shin guards & gear'}</span>
-                      </Link>
-
-                      <Link 
-                        href="/category/all" 
-                        className="mega-menu-link highlight-all" 
-                        onClick={() => setIsCategoriesOpen(false)}
-                      >
-                        <span className="category-bold-title">{t('navAllProducts')}</span>
-                        <span className="category-sub-desc">{lang === 'ar' ? 'استعرض الكولكشن الكلي لـ KEMET' : 'Explore the full KEMET collection'}</span>
-                      </Link>
-                    </div>
+              {/* Categories Mega Dropdown */}
+              <li className="dropdown-container" ref={categoriesRef}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsCategoriesOpen(!isCategoriesOpen)} 
+                  className={`nav-link ${pathname.startsWith('/category') ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 800 }}
+                >
+                  {t('navCategories')}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                {isCategoriesOpen && (
+                  <div className="dropdown-menu">
+                    <Link 
+                      href="/category/all" 
+                      className="dropdown-menu-item" 
+                      onClick={() => setIsCategoriesOpen(false)}
+                      style={{ fontWeight: 800, color: 'var(--gold-primary)' }}
+                    >
+                      {t('allProductsCategory')}
+                    </Link>
+                    <Link 
+                      href="/category/kits" 
+                      className="dropdown-menu-item" 
+                      onClick={() => setIsCategoriesOpen(false)}
+                      style={{ fontWeight: 800 }}
+                    >
+                      {t('navKits')}
+                    </Link>
+                    <Link 
+                      href="/category/training" 
+                      className="dropdown-menu-item" 
+                      onClick={() => setIsCategoriesOpen(false)}
+                      style={{ fontWeight: 800 }}
+                    >
+                      {t('navTraining')}
+                    </Link>
+                    <Link 
+                      href="/category/shorts" 
+                      className="dropdown-menu-item" 
+                      onClick={() => setIsCategoriesOpen(false)}
+                      style={{ fontWeight: 800 }}
+                    >
+                      {t('navShorts')}
+                    </Link>
                   </div>
-                </div>
-              )}
-            </li>
+                )}
+              </li>
 
-            {/* Dropdown: الطلبات (Orders - My Orders & Egypt Post Tracking) */}
-            <li className="nav-dropdown-item" ref={ordersRef}>
-              <button 
-                type="button"
-                onClick={() => {
-                  setIsOrdersOpen(!isOrdersOpen);
-                  setIsCategoriesOpen(false);
-                }}
-                className={`nav-link dropdown-trigger ${isOrdersOpen || isActive('/my-orders') || isActive('/track-order') ? 'active' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 800 }}
-              >
-                <span>{t('navOrders')}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.3s ease', transform: isOrdersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
+              {/* Orders Dropdown */}
+              <li className="dropdown-container" ref={ordersRef}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsOrdersOpen(!isOrdersOpen)} 
+                  className={`nav-link ${isActive('/my-orders') || isActive('/track-order') ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 800 }}
+                >
+                  {t('navOrders')}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                {isOrdersOpen && (
+                  <div className="dropdown-menu">
+                    <Link 
+                      href="/my-orders" 
+                      className="dropdown-menu-item" 
+                      onClick={() => setIsOrdersOpen(false)}
+                      style={{ fontWeight: 800 }}
+                    >
+                      {t('navMyOrders')}
+                    </Link>
+                    <Link 
+                      href="/track-order" 
+                      className="dropdown-menu-item" 
+                      onClick={() => setIsOrdersOpen(false)}
+                      style={{ fontWeight: 800 }}
+                    >
+                      {t('navTrackOrder')}
+                    </Link>
+                  </div>
+                )}
+              </li>
 
-              {/* Orders Dropdown Submenu */}
-              {isOrdersOpen && (
-                <div className="simple-dropdown-menu">
-                  <Link 
-                    href="/my-orders" 
-                    className="dropdown-menu-item" 
-                    onClick={() => setIsOrdersOpen(false)}
-                    style={{ fontWeight: 800 }}
-                  >
-                    {t('navMyOrders')}
-                  </Link>
-                  <Link 
-                    href="/track-order" 
-                    className="dropdown-menu-item" 
-                    onClick={() => setIsOrdersOpen(false)}
-                    style={{ fontWeight: 800 }}
-                  >
-                    {t('navTrackOrder')}
-                  </Link>
-                </div>
-              )}
-            </li>
+              <li>
+                <Link href="/our-story" className={`nav-link ${isActive('/our-story') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
+                  {t('navStory')}
+                </Link>
+              </li>
 
-            <li>
-              <Link href="/our-story" className={`nav-link ${isActive('/our-story') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
-                {t('navStory')}
-              </Link>
-            </li>
+              <li>
+                <Link href="/return-policy" className={`nav-link ${isActive('/return-policy') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
+                  {t('navReturnPolicy')}
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
 
-            <li>
-              <Link href="/return-policy" className={`nav-link ${isActive('/return-policy') ? 'active' : ''}`} style={{ fontWeight: 800 }}>
-                {t('navReturnPolicy')}
-              </Link>
-            </li>
-          </ul>
-
-          {/* Left (in RTL): Search, Language, Theme, User, Cart, Hamburger */}
-          <div className="header-actions">
-            
-            {/* Search Bar Input Control (Desktop) */}
-            <div className="search-bar-wrapper desktop-only" ref={searchRef}>
-              <form onSubmit={handleSearchSubmit} className="search-form">
-                <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input 
-                  type="text"
-                  placeholder={lang === 'ar' ? 'ابحث عن منتج...' : 'Search products...'}
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  className="search-input"
-                />
-              </form>
-
-              {/* Instant Search Results Dropdown */}
-              {isSearchFocused && searchQuery.trim().length > 0 && (
-                <div className="search-results-dropdown">
-                  {filteredProducts.length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {lang === 'ar' ? `لا توجد نتائج مطابقة لـ "${searchQuery}"` : `No matching results for "${searchQuery}"`}
-                    </div>
-                  ) : (
-                    filteredProducts.map(product => (
-                      <div 
-                        key={product.id} 
-                        onClick={() => handleSelectProduct(product.id)}
-                        className="search-result-item"
-                      >
-                        <img src={product.image} alt={product.nameAr} className="search-result-img" />
-                        <div>
-                          <div className="search-result-name">{lang === 'ar' ? product.nameAr : product.nameEn}</div>
-                          <div className="search-result-price">{product.price} {t('currency')}</div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Search Toggle Icon Button */}
-            <button 
-              type="button" 
-              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-              className="mobile-header-icon-btn mobile-only" 
-              title={lang === 'ar' ? 'بحث' : 'Search'}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        {/* Left (in RTL): Search, Language, Theme, Admin Badge, User Profile Link, Cart, Hamburger */}
+        <div className="header-actions">
+          
+          {/* Search Bar Input Control (Desktop) */}
+          <div className="search-bar-wrapper desktop-only" ref={searchRef}>
+            <form onSubmit={handleSearchSubmit} className="search-form">
+              <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-            </button>
-
-            {/* Mobile Hamburger Menu Button */}
-            <button 
-              type="button"
-              onClick={onOpenMobileMenu} 
-              className="mobile-hamburger-btn" 
-              title={lang === 'ar' ? 'فتح القائمة' : 'Open Menu'}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-
-            {/* Language Switcher Button (Desktop) */}
-            <button type="button" onClick={toggleLang} className="action-icon-btn desktop-only" title="Language / تغيير اللغة">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-              </svg>
-              <span className="action-label" style={{ fontWeight: 800 }}>{lang === 'ar' ? 'EN' : 'عربي'}</span>
-            </button>
-
-            {/* Icon-Only Theme Switcher Button (Desktop) */}
-            <button type="button" onClick={toggleTheme} className="action-icon-btn desktop-only" title={lang === 'ar' ? 'تغيير المود' : 'Toggle Theme'} style={{ padding: '0.55rem' }}>
-              {theme === 'dark' ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5"></circle>
-                  <line x1="12" y1="1" x2="12" y2="3"></line>
-                  <line x1="12" y1="21" x2="12" y2="23"></line>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                  <line x1="1" y1="12" x2="3" y2="12"></line>
-                  <line x1="21" y1="12" x2="23" y2="12"></line>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                </svg>
-              )}
-            </button>
-
-            {/* User Account Button (Desktop) */}
-            <Link 
-              href={user ? "/my-orders" : "/login"} 
-              className={`action-icon-btn desktop-only ${user ? 'brand-user-active' : ''}`} 
-              title={user ? (lang === 'ar' ? 'حسابي وحالة الطلبات' : 'My Account & Orders') : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-              <span className="action-label" style={{ fontWeight: 800 }}>
-                {user ? (user.fullName ? user.fullName.split(' ')[0] : (lang === 'ar' ? 'حسابي' : 'Account')) : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
-              </span>
-            </Link>
-
-            {/* Shopping Bag Button (Desktop) */}
-            <button type="button" onClick={() => setIsCartOpen(true)} className="cart-action-btn desktop-only" title={t('cartTitle')}>
-              <CartIcon size={32} />
-              {totalCartCount > 0 && <span className="cart-badge">{totalCartCount}</span>}
-            </button>
-
-          </div>
-        </div>
-
-        {/* Mobile Expandable Search Bar Overlay */}
-        {isMobileSearchOpen && (
-          <div className="mobile-search-overlay-bar">
-            <form onSubmit={handleSearchSubmit} className="search-form" style={{ width: '100%' }}>
               <input 
                 type="text"
-                placeholder={lang === 'ar' ? 'ابحث عن أطقم وملابس KEMET...' : 'Search KEMET kits & sportswear...'}
+                placeholder={lang === 'ar' ? 'ابحث عن منتج...' : 'Search products...'}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                autoFocus
+                onFocus={() => setIsSearchFocused(true)}
                 className="search-input"
-                style={{ width: '100%', padding: '0.65rem 1rem' }}
               />
             </form>
-            {searchQuery.trim().length > 0 && filteredProducts.length > 0 && (
-              <div className="mobile-search-dropdown">
-                {filteredProducts.map(product => (
-                  <div 
-                    key={product.id} 
-                    onClick={() => handleSelectProduct(product.id)}
-                    className="search-result-item"
-                  >
-                    <img src={product.image} alt={product.nameAr} className="search-result-img" />
-                    <div>
-                      <div className="search-result-name">{lang === 'ar' ? product.nameAr : product.nameEn}</div>
-                      <div className="search-result-price">{product.price} {t('currency')}</div>
-                    </div>
+
+            {/* Instant Search Results Dropdown */}
+            {isSearchFocused && searchQuery.trim().length > 0 && (
+              <div className="search-results-dropdown">
+                {filteredProducts.length === 0 ? (
+                  <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    {lang === 'ar' ? `لا توجد نتائج مطابقة لـ "${searchQuery}"` : `No matching results for "${searchQuery}"`}
                   </div>
-                ))}
+                ) : (
+                  filteredProducts.map(product => (
+                    <div 
+                      key={product.id} 
+                      onClick={() => handleSelectProduct(product.id)}
+                      className="search-result-item"
+                    >
+                      <img src={product.image} alt={product.nameAr} className="search-result-img" />
+                      <div>
+                        <div className="search-result-name">{lang === 'ar' ? product.nameAr : product.nameEn}</div>
+                        <div className="search-result-price">{product.price} {t('egp')}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
-        )}
-      </header>
-    </>
+
+          {/* Admin Dashboard Quick Access Button (Prominent when user is Admin) */}
+          {user && user.role === 'admin' && (
+            <Link 
+              href="/admin" 
+              className="btn-primary desktop-only" 
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '0.35rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}
+              title="دخول لوحة تحكم الأدمن الإدارية"
+            >
+              👑 لوحة التحكم
+            </Link>
+          )}
+
+          {/* Mobile Search Toggle Icon */}
+          <button 
+            type="button" 
+            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)} 
+            className="action-icon-btn mobile-only" 
+            title="Search"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+
+          {/* Language Switcher Button (Desktop) */}
+          <button type="button" onClick={toggleLang} className="action-icon-btn desktop-only" title="Language / تغيير اللغة">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            <span className="action-label" style={{ fontWeight: 800 }}>{lang === 'ar' ? 'EN' : 'عربي'}</span>
+          </button>
+
+          {/* Icon-Only Theme Switcher Button (Desktop) */}
+          <button type="button" onClick={toggleTheme} className="action-icon-btn desktop-only" title={lang === 'ar' ? 'تغيير المود' : 'Toggle Theme'} style={{ padding: '0.55rem' }}>
+            {theme === 'dark' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            )}
+          </button>
+
+          {/* User Account & Profile Settings Button (Desktop) - Always links directly to /login Profile Panel */}
+          <Link 
+            href="/login" 
+            className={`action-icon-btn desktop-only ${user ? 'brand-user-active' : ''}`} 
+            title={user ? (lang === 'ar' ? `حسابي وإعداداتي (${user.fullName || user.email})` : `My Profile & Settings (${user.fullName || user.email})`) : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              background: user ? 'rgba(212, 175, 55, 0.15)' : 'transparent',
+              border: user ? '1px solid var(--border-gold-bright)' : '1px solid transparent',
+              padding: '0.45rem 0.8rem',
+              borderRadius: 'var(--radius-md)',
+              color: user ? 'var(--gold-primary)' : 'inherit',
+              textDecoration: 'none',
+              transition: 'all 0.25s ease'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span className="action-label" style={{ fontWeight: 800 }}>
+              {user ? (user.fullName ? user.fullName.split(' ')[0] : (lang === 'ar' ? 'حسابي' : 'Account')) : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign In')}
+            </span>
+          </Link>
+
+          {/* Shopping Cart Button Toggle */}
+          <button 
+            type="button" 
+            onClick={() => setIsCartOpen(true)} 
+            className="action-icon-btn cart-btn-badge"
+            title={lang === 'ar' ? 'حقيبة التسوق' : 'Shopping Cart'}
+          >
+            <CartIcon count={totalCartCount} />
+          </button>
+
+          {/* Mobile Menu Toggle Hamburger Icon */}
+          <button 
+            type="button" 
+            onClick={onOpenMobileMenu} 
+            className="action-icon-btn mobile-only"
+            title="Menu"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+      {/* Mobile Instant Search Input Overlay */}
+      {isMobileSearchOpen && (
+        <div style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-color)', padding: '0.75rem 1rem' }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+            <input 
+              type="text"
+              placeholder={lang === 'ar' ? 'ابحث عن منتج...' : 'Search products...'}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="search-input"
+              style={{ width: '100%', padding: '0.65rem' }}
+              autoFocus
+            />
+            <button type="submit" className="btn-primary" style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}>
+              {lang === 'ar' ? 'بحث' : 'Search'}
+            </button>
+          </form>
+        </div>
+      )}
+    </header>
   );
 };
