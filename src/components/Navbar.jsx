@@ -120,8 +120,8 @@ export const Navbar = ({ onOpenMobileMenu }) => {
   const isActive = (path) => pathname === path;
 
   return (
-    <header className="navbar-header">
-      <div className="navbar-container container">
+    <header className="header">
+      <div className="header-container container">
         
         {/* Right (in RTL): Brand Animated Logo & Main Nav Links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
@@ -150,7 +150,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                   </svg>
                 </button>
                 {isCategoriesOpen && (
-                  <div className="dropdown-menu">
+                  <div className="simple-dropdown-menu">
                     <Link 
                       href="/category/all" 
                       className="dropdown-menu-item" 
@@ -201,7 +201,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                   </svg>
                 </button>
                 {isOrdersOpen && (
-                  <div className="dropdown-menu">
+                  <div className="simple-dropdown-menu">
                     <Link 
                       href="/my-orders" 
                       className="dropdown-menu-item" 
