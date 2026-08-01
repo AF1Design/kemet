@@ -4,20 +4,17 @@ if (process.env.NODE_ENV !== 'production') {
 
 import { createClient } from '@supabase/supabase-js';
 
-// Server-Only Admin Client using Secret Service Role Key from environment
-// WARNING: NEVER import this file in Client Components or ship to the browser!
+// Standard Server-Only Admin Supabase Client using Service Role Key
 export const getAdminSupabase = () => {
   if (typeof window !== 'undefined') {
-    throw new Error('Security Error: Admin Supabase client cannot be instantiated on the browser.');
+    throw new Error('Security Guard: Admin Supabase client cannot be used in browser context.');
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://gamcgqbilnbjabxrvgcu.supabase.co';
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-                         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!serviceRoleKey) {
-    console.error('CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing in environment variables.');
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {

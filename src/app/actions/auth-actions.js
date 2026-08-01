@@ -1,25 +1,27 @@
 'use server';
 
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
-import { resend, SENDER_EMAIL } from '../../lib/resend.js';
+import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
 import { getConfirmationEmailHtml, getPasswordResetEmailHtml } from '../../lib/email-templates.js';
 
 /**
- * Custom Signup Server Action:
- * 1. Generates Supabase confirmation link (Without sending default Supabase email)
- * 2. Creates customer profile entry in Supabase `profiles` table (including email & role)
- * 3. Sends branded KEMET confirmation email directly via Resend API from noreply@kemetmisr.com
+ * Standard Signup Server Action (Zero Hack / Clean Architecture)
+ * 1. Generates Supabase confirmation link (Without triggering Supabase default email)
+ * 2. Creates customer profile entry in Supabase `profiles` table
+ * 3. Sends branded KEMET HTML email directly via Resend API from noreply@kemetmisr.com
  */
 export async function customSignupAction({ email, password, fullName, phone = '', governorate = 'القاهرة' }) {
   try {
     const supabaseAdmin = getAdminSupabase();
+    const resend = getResendClient();
+
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
     const cleanPhone = phone.trim() ? phone.trim() : null;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
     const redirectUrl = `${siteUrl}/auth/callback`;
 
-    // 1. Generate Supabase Signup Confirmation Link (does NOT trigger default Supabase email)
+    // 1. Generate Supabase Signup Confirmation Link
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: cleanEmail,
@@ -35,17 +37,17 @@ export async function customSignupAction({ email, password, fullName, phone = ''
     });
 
     if (linkErr) {
-      console.error('generateLink error:', linkErr);
+      console.error('Supabase generateLink error:', linkErr);
       return {
         success: false,
-        error: linkErr.message || 'فشل في إنشاء حساب المستخدم'
+        error: linkErr.message || 'فشل في إنشاء حساب المستخدم في Supabase Auth'
       };
     }
 
     const user = linkData.user;
     const properties = linkData.properties;
     
-    // Construct robust confirmation URL using action_link or token_hash
+    // Construct confirmation URL using action_link or token_hash fallback
     let confirmationUrl = properties?.action_link;
     if (!confirmationUrl && properties?.hashed_token) {
       confirmationUrl = `${redirectUrl}?token_hash=${properties.hashed_token}&type=signup&next=/my-orders`;
@@ -55,7 +57,7 @@ export async function customSignupAction({ email, password, fullName, phone = ''
       confirmationUrl = `${siteUrl}/login?confirmed=true`;
     }
 
-    // 2. Upsert Customer Profile in Supabase profiles table
+    // 2. Create/Upsert Customer Profile in Supabase profiles table
     if (user?.id) {
       const { error: profileErr } = await supabaseAdmin.from('profiles').upsert({
         id: user.id,
@@ -71,34 +73,29 @@ export async function customSignupAction({ email, password, fullName, phone = ''
       }
     }
 
-    // 3. Send 100% Branded KEMET Email via Resend from noreply@kemetmisr.com
-    let emailSent = false;
-    try {
-      const emailHtml = getConfirmationEmailHtml({
-        confirmationUrl: confirmationUrl,
-        fullName: cleanName
-      });
+    // 3. Send KEMET Branded Confirmation Email via Resend
+    const emailHtml = getConfirmationEmailHtml({
+      confirmationUrl: confirmationUrl,
+      fullName: cleanName
+    });
 
-      const { data: resendData, error: resendErr } = await resend.emails.send({
-        from: SENDER_EMAIL,
-        to: [cleanEmail],
-        subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
-        html: emailHtml
-      });
+    const { data: resendData, error: resendErr } = await resend.emails.send({
+      from: SENDER_EMAIL,
+      to: [cleanEmail],
+      subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
+      html: emailHtml
+    });
 
-      if (resendErr) {
-        console.error('Resend email error:', resendErr);
-      } else {
-        console.log('Resend email sent successfully:', resendData);
-        emailSent = true;
-      }
-    } catch (eErr) {
-      console.error('Email sending exception:', eErr);
+    if (resendErr) {
+      console.error('Resend API send error:', resendErr);
+      return {
+        success: false,
+        error: `تم إنشاء الحساب، ولكن تعذر إرسال بريد التفعيل من Resend: ${resendErr.message}`
+      };
     }
 
     return {
       success: true,
-      emailSent,
       message: 'تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩'
     };
   } catch (err) {
@@ -111,11 +108,13 @@ export async function customSignupAction({ email, password, fullName, phone = ''
 }
 
 /**
- * Custom Password Reset Action via Resend & Supabase
+ * Standard Password Reset Action via Resend & Supabase
  */
 export async function customPasswordResetAction(email) {
   try {
     const supabaseAdmin = getAdminSupabase();
+    const resend = getResendClient();
+
     const cleanEmail = email.trim().toLowerCase();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
     const redirectUrl = `${siteUrl}/auth/callback?type=recovery`;
