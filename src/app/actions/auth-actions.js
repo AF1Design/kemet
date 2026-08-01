@@ -15,6 +15,7 @@ export async function customSignupAction({ email, password, fullName, phone = ''
     const supabaseAdmin = getAdminSupabase();
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
+    const cleanPhone = phone.trim() ? phone.trim() : null;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
     const redirectUrl = `${siteUrl}/auth/callback`;
 
@@ -26,7 +27,7 @@ export async function customSignupAction({ email, password, fullName, phone = ''
       options: {
         data: {
           full_name: cleanName,
-          phone: phone.trim(),
+          phone: cleanPhone,
           governorate: governorate
         },
         redirectTo: redirectUrl
@@ -60,7 +61,7 @@ export async function customSignupAction({ email, password, fullName, phone = ''
         id: user.id,
         email: cleanEmail,
         full_name: cleanName,
-        phone: phone.trim(),
+        phone: cleanPhone,
         governorate: governorate,
         role: 'customer'
       }, { onConflict: 'id' });
