@@ -35,8 +35,16 @@ export const ProductCard = ({ product }) => {
   const isSelectedOutOfStock = selectedSizeObj ? selectedSizeObj.stock <= 0 : false;
   const isAllOutOfStock = sizesList.every(s => s.stock <= 0);
 
+  const isFeaturedProduct = Boolean(
+    product.isFeatured || 
+    product.is_featured || 
+    (Array.isArray(product.keywords) && product.keywords.includes('IS_FEATURED_GOLD'))
+  );
+
   let badgeText = '';
-  if (product.isBestSeller || product.is_best_seller) {
+  if (isFeaturedProduct) {
+    badgeText = '👑 Premium';
+  } else if (product.isBestSeller || product.is_best_seller) {
     badgeText = t('bestSellerBadge');
   } else if (product.isNew || product.is_new) {
     badgeText = t('newBadge');
@@ -51,9 +59,9 @@ export const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="product-card">
+    <div className={`product-card ${isFeaturedProduct ? 'featured-gold-card' : ''}`}>
       <div className="product-image-box">
-        {badgeText && <div className="product-badge">{badgeText}</div>}
+        {badgeText && <div className={`product-badge ${isFeaturedProduct ? 'gold-vip-badge' : ''}`}>{badgeText}</div>}
         <Link href={`/product/${product.id}`} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img src={product.image || product.main_image} alt={title} className="product-img" loading="lazy" />
         </Link>

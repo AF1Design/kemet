@@ -24,8 +24,8 @@ export const products = [
     nameAr: 'طقم ريال مدريد الاحتياطي التيل والزمردي 2027 (بلاير إديشن)',
     nameEn: 'Real Madrid Away Teal Player Edition Kit 2027',
     category: 'kits',
-    price: 280,
-    oldPrice: 400,
+    price: 360,
+    oldPrice: 500,
     image: '/assets/kit-real-madrid-navy-2027.jpg',
     images: [
       '/assets/kit-real-madrid-navy-2027.jpg',
@@ -33,10 +33,12 @@ export const products = [
       '/assets/kit-real-madrid-white-2027.jpg',
       '/assets/kit-atletico-madrid-2027.jpg'
     ],
+    isFeatured: true,
+    is_featured: true,
     isBestSeller: true,
     isNew: true,
-    descriptionAr: 'طقم ريال مدريد الثاني البلاير إديشن لعام 2027 بنقوش رقمية مبهرة وخامة رياضيّة مريحة جداً.',
-    descriptionEn: 'Real Madrid 2027 Away Teal Player Edition jersey with digital weave texture and gold accents.',
+    descriptionAr: 'طقم ريال مدريد الثاني البلاير إديشن الفاخر والبريميوم لعام 2027 بنقوش رقمية مبهرة وخامة رياضية فاخرة.',
+    descriptionEn: 'Real Madrid 2027 Away Teal VIP Gold Player Edition jersey with digital weave texture and gold accents.',
     keywords: ['ريال مدريد', 'Real Madrid', 'ريال', 'مدريد', 'كحلي', 'تيل', 'زمردي', '2027', 'بلاير اديشن', 'Player Edition', 'طقم', 'تيشيرت', 'أطقم أندية']
   },
   {

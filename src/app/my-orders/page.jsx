@@ -1,13 +1,53 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { products as storeProducts } from '../../data/products';
 import { Footer } from '../../components/Footer';
+import { supabase } from '../../lib/supabase/client';
 
 export default function MyOrdersPage() {
   const { lang, user, orders, cancelOrder, updateFullOrder, t } = useApp();
+  const [dbOrders, setDbOrders] = useState([]);
+
+  useEffect(() => {
+    async function fetchDbOrders() {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setDbOrders(data);
+        }
+      } catch (err) {
+        console.warn('Orders sync warning:', err);
+      }
+    }
+    fetchDbOrders();
+  }, []);
+
+  const displayOrders = (dbOrders.length > 0 ? dbOrders : orders).map(o => {
+    const matchedDb = dbOrders.find(dbo => dbo.id === o.id);
+    if (matchedDb) {
+      return {
+        id: matchedDb.id,
+        date: matchedDb.created_at ? new Date(matchedDb.created_at).toLocaleDateString('ar-EG') : o.date,
+        status: matchedDb.status || o.status,
+        customer: {
+          fullName: matchedDb.customer_name || o.customer?.fullName,
+          phone: matchedDb.customer_phone || o.customer?.phone,
+          governorate: matchedDb.governorate || o.customer?.governorate,
+          address: matchedDb.address || o.customer?.address
+        },
+        items: matchedDb.items || o.items,
+        total: matchedDb.total_amount || o.total
+      };
+    }
+    return o;
+  });
 
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editFormCustomer, setEditFormCustomer] = useState({

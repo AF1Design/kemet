@@ -4,9 +4,12 @@ import React, { useState, useEffect, useTransition } from 'react';
 import { 
   createProductAction, 
   updateProductAction, 
+  saveProductBatchAction,
   toggleProductActiveAction, 
+  deleteProductAction,
   updateProductInventoryAction,
-  createCategoryAction
+  createCategoryAction,
+  updateCategoryAction
 } from '../../app/admin/actions';
 
 export function ProductTable({ initialProducts, categories: initialCategories }) {
@@ -114,6 +117,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
       galleryImage1: '',
       galleryImage2: '',
       galleryImage3: '',
+      isFeatured: false,
       isBestSeller: false,
       isNew: true,
       isActive: true,
@@ -154,6 +158,11 @@ export function ProductTable({ initialProducts, categories: initialCategories })
       galleryImage1: gallery[1] || '',
       galleryImage2: gallery[2] || '',
       galleryImage3: gallery[3] || '',
+      isFeatured: Boolean(
+        prod.is_featured || 
+        prod.isFeatured || 
+        (Array.isArray(prod.keywords) && prod.keywords.includes('IS_FEATURED_GOLD'))
+      ),
       isBestSeller: prod.is_best_seller ?? false,
       isNew: prod.is_new ?? true,
       isActive: prod.is_active ?? true,
@@ -216,6 +225,21 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     });
   };
 
+  const handleDeleteProduct = (productId, productName) => {
+    const confirmDelete = window.confirm(`هل أنت تأكد من رغبتك في حذف المنتج "${productName}" نهائياً من قاعدة البيانات والدكان؟\nهذا الإجراء لا يمكن التراجع عنه.`);
+    if (!confirmDelete) return;
+
+    startTransition(async () => {
+      const res = await deleteProductAction(productId);
+      if (res.success) {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        alert(`تم حذف المنتج "${productName}" نهائياً بنجاح 🗑️`);
+      } else {
+        alert(`فشل حذف المنتج: ${res.error}`);
+      }
+    });
+  };
+
   // Helper to handle local file uploads and convert to Data URL
   const handleFileUpload = (e, fieldName) => {
     const file = e.target.files?.[0];
@@ -256,6 +280,23 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     });
   };
 
+  // Edit Existing Category Submit
+  const handleEditCategorySubmit = (catId, oldNameAr, oldNameEn) => {
+    const newAr = window.prompt(`تعديل الاسم بالعربي للقسم (${catId}):`, oldNameAr);
+    if (newAr === null || !newAr.trim()) return;
+    const newEn = window.prompt(`تعديل الاسم بالإنجليزي للقسم (${catId}):`, oldNameEn || newAr);
+
+    startTransition(async () => {
+      const res = await updateCategoryAction(catId, newAr, newEn || newAr);
+      if (res.success) {
+        setCategoriesList(prev => prev.map(c => c.id === catId ? res.category : c));
+        alert(`تم تعديل اسم القسم (${catId}) إلى: "${newAr}" بنجاح 🏷️`);
+      } else {
+        alert(`فشل تعديل الاسم: ${res.error}`);
+      }
+    });
+  };
+
   // Submit Product Form (Add or Edit)
   const handleSubmitForm = async (e) => {
     e.preventDefault();
@@ -277,93 +318,63 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     const parsedOldPrice = formData.oldPrice ? Number(formData.oldPrice) : null;
 
     startTransition(async () => {
-      if (editingProduct) {
-        // 1. Edit Product Action
-        const res = await updateProductAction(editingProduct.id, {
-          nameAr: formData.nameAr,
-          nameEn: formData.nameEn,
-          descriptionAr: formData.descriptionAr,
-          descriptionEn: formData.descriptionEn,
-          categoryId: formData.categoryId,
-          price: Number(formData.price),
-          oldPrice: parsedOldPrice,
-          mainImage: formData.mainImage,
-          galleryImages: galleryImages,
-          isBestSeller: formData.isBestSeller,
-          isNew: formData.isNew
-        });
+      const productPayload = {
+        id: editingProduct ? editingProduct.id : formData.id,
+        categoryId: formData.categoryId,
+        nameAr: formData.nameAr,
+        nameEn: formData.nameEn,
+        descriptionAr: formData.descriptionAr,
+        descriptionEn: formData.descriptionEn,
+        price: Number(formData.price),
+        oldPrice: parsedOldPrice,
+        mainImage: formData.mainImage,
+        galleryImages: galleryImages,
+        isBestSeller: formData.isBestSeller,
+        isFeatured: formData.isFeatured,
+        isNew: formData.isNew,
+        isActive: formData.isActive
+      };
 
-        if (res.success) {
-          // 2. Update Stock Variants Action
-          const invRes = await updateProductInventoryAction(editingProduct.id, formData.sizeVariants);
+      const res = await saveProductBatchAction(productPayload, formData.sizeVariants, Boolean(editingProduct));
 
-          if (invRes.success) {
-            const updatedVariants = formData.sizeVariants.map(v => ({
-              product_id: editingProduct.id,
-              size: v.size,
-              stock_quantity: Number(v.stockQuantity)
-            }));
+      if (res.success) {
+        const updatedVariants = formData.sizeVariants.map(v => ({
+          product_id: productPayload.id,
+          size: v.size,
+          stock_quantity: Number(v.stockQuantity)
+        }));
 
-            setProducts(prev =>
-              prev.map(p => p.id === editingProduct.id ? { 
-                ...p, 
-                ...res.product, 
-                price: Number(formData.price),
-                old_price: parsedOldPrice,
-                is_best_seller: formData.isBestSeller,
-                is_new: formData.isNew,
-                gallery_images: galleryImages,
-                product_variants: updatedVariants 
-              } : p)
-            );
-            setIsModalOpen(false);
-          } else {
-            setFormError(invRes.error || 'حدث خطأ في تحديث أعداد المخزون');
-          }
+        if (editingProduct) {
+          setProducts(prev =>
+            prev.map(p => p.id === editingProduct.id ? { 
+              ...p, 
+              ...res.product, 
+              price: Number(formData.price),
+              old_price: parsedOldPrice,
+              is_best_seller: formData.isBestSeller,
+              is_featured: formData.isFeatured,
+              isFeatured: formData.isFeatured,
+              is_new: formData.isNew,
+              gallery_images: galleryImages,
+              product_variants: updatedVariants 
+            } : p)
+          );
         } else {
-          setFormError(res.error);
-        }
-      } else {
-        // Create Action
-        const res = await createProductAction(
-          {
-            id: formData.id,
-            categoryId: formData.categoryId,
-            nameAr: formData.nameAr,
-            nameEn: formData.nameEn,
-            descriptionAr: formData.descriptionAr,
-            descriptionEn: formData.descriptionEn,
-            price: Number(formData.price),
-            oldPrice: parsedOldPrice,
-            mainImage: formData.mainImage,
-            galleryImages: galleryImages,
-            isBestSeller: formData.isBestSeller,
-            isNew: formData.isNew,
-            isActive: formData.isActive
-          },
-          formData.sizeVariants
-        );
-
-        if (res.success) {
-          const newVariants = formData.sizeVariants.map(v => ({
-            product_id: res.product.id,
-            size: v.size,
-            stock_quantity: Number(v.stockQuantity)
-          }));
-
           setProducts(prev => [{ 
             ...res.product, 
             price: Number(formData.price),
             old_price: parsedOldPrice,
             is_best_seller: formData.isBestSeller,
+            is_featured: formData.isFeatured,
+            isFeatured: formData.isFeatured,
             is_new: formData.isNew,
             gallery_images: galleryImages, 
-            product_variants: newVariants 
+            product_variants: updatedVariants 
           }, ...prev]);
-          setIsModalOpen(false);
-        } else {
-          setFormError(res.error);
         }
+        setIsModalOpen(false);
+      } else {
+        setFormError(res.error || 'حدث خطأ في حفظ البيانات');
       }
     });
   };
@@ -422,7 +433,11 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                       <img src={prod.main_image} alt={prod.name_ar} style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
                     </td>
                     <td style={{ padding: '0.85rem', fontWeight: 800 }}>
-                      <div>{prod.name_ar} {prod.is_best_seller && <span title="الأكثر مبيعاً">🔥</span>}</div>
+                      <div>
+                        {prod.name_ar}{' '}
+                        {(prod.is_featured || prod.isFeatured || (Array.isArray(prod.keywords) && prod.keywords.includes('IS_FEATURED_GOLD'))) && <span title="منتج مميز VIP Gold Card" style={{ color: '#FFDF73', fontSize: '0.82rem', background: 'rgba(212,175,55,0.2)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>👑 مميز</span>}{' '}
+                        {prod.is_best_seller && <span title="الأكثر مبيعاً">🔥</span>}
+                      </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{prod.name_en}</div>
                     </td>
                     <td style={{ padding: '0.85rem', fontSize: '0.85rem' }}>
@@ -454,23 +469,44 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                       </div>
                     </td>
                     <td style={{ padding: '0.85rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(prod.id, prod.is_active)}
-                        disabled={isPending}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          borderRadius: 'var(--radius-sm)',
-                          border: 'none',
-                          cursor: 'pointer',
-                          background: prod.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
-                          color: prod.is_active ? '#10B981' : '#F43F5E'
-                        }}
-                      >
-                        {prod.is_active ? '🟢 نشط' : '🔴 معطل'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(prod.id, prod.is_active)}
+                          disabled={isPending}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            borderRadius: 'var(--radius-sm)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: prod.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                            color: prod.is_active ? '#10B981' : '#F43F5E'
+                          }}
+                        >
+                          {prod.is_active ? '🟢 نشط' : '🔴 معطل'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(prod.id, prod.name_ar)}
+                          disabled={isPending}
+                          title="حذف المنتج نهائياً من قاعدة البيانات"
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid rgba(244,63,94,0.4)',
+                            cursor: 'pointer',
+                            background: 'rgba(244,63,94,0.1)',
+                            color: '#F43F5E'
+                          }}
+                        >
+                          🗑️ حذف
+                        </button>
+                      </div>
                     </td>
                     <td style={{ padding: '0.85rem', textAlign: 'center' }}>
                       <button
@@ -567,6 +603,30 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </button>
               </div>
             </form>
+
+            {/* Existing Categories Editor List */}
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '1rem' }}>
+                🏷️ إدارة وتعديل أسماء الأقسام الحالية ({categoriesList.length})
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '180px', overflowY: 'auto' }}>
+                {categoriesList.map(cat => (
+                  <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                    <div>
+                      <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#FFF' }}>{cat.name_ar}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>({cat.name_en || cat.id})</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleEditCategorySubmit(cat.id, cat.name_ar, cat.name_en)}
+                      style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', fontWeight: 800, borderRadius: '4px', background: 'rgba(212,175,55,0.15)', color: 'var(--gold-primary)', border: '1px solid var(--border-gold)', cursor: 'pointer' }}
+                    >
+                      ✏️ تعديل الاسم
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -835,8 +895,17 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </div>
               </div>
 
-              {/* Options Toggles (Best Seller & New) */}
-              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.85rem', borderRadius: 'var(--radius-sm)' }}>
+              {/* Options Toggles (Featured VIP Gold, Best Seller, & New) */}
+              <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginTop: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.85rem', borderRadius: 'var(--radius-sm)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', color: '#FFDF73' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={formData.isFeatured} 
+                    onChange={e => setFormData({ ...formData, isFeatured: e.target.checked })} 
+                    style={{ width: '18px', height: '18px', accentColor: '#D4AF37' }}
+                  />
+                  👑 منتج مميز وفاخر (VIP Gold Card) - الكارت الذهبي والسعر الأعلى
+                </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', color: 'var(--gold-primary)' }}>
                   <input 
                     type="checkbox" 

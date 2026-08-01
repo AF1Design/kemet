@@ -4,6 +4,33 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
+import { createOrderAction } from '../admin/actions';
+
+// Shipping rates by governorate in EGP
+const SHIPPING_RATES = {
+  'القاهرة': 40,
+  'الجيزة': 40,
+  'الإسكندرية': 50,
+  'القليوبية': 45,
+  'الشرقية': 50,
+  'الدقهلية': 50,
+  'الغربية': 50,
+  'المنوفية': 50,
+  'البحيرة': 55,
+  'كفر الشيخ': 55,
+  'دمياط': 55,
+  'الإسماعيلية': 55,
+  'السويس': 55,
+  'بورسعيد': 55,
+  'بني سويف': 60,
+  'المنيا': 60,
+  'أسيوط': 65,
+  'سوهاج': 65,
+  'قنا': 70,
+  'الأقصر': 70,
+  'أسوان': 75,
+  'محافظة أخرى': 60
+};
 
 export default function CheckoutPage() {
   const { cart, clearCart, addOrder, t } = useApp();
@@ -19,11 +46,11 @@ export default function CheckoutPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price || 280) * item.quantity, 0);
-  const shippingFee = 50;
+  const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
+  const shippingFee = SHIPPING_RATES[formData.governorate] || 50;
   const totalAmount = subtotal + shippingFee;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
 
@@ -32,13 +59,19 @@ export default function CheckoutPage() {
       id: orderId,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-      status: 'قيد التجهيز والشحن 📦',
+      status: 'جديد 📦',
       items: [...cart],
-      subtotal,
+      subtotal: subtotal,
       shipping: shippingFee,
       total: totalAmount,
       customer: { ...formData }
     };
+
+    try {
+      await createOrderAction(newOrder);
+    } catch (err) {
+      console.warn('Supabase order creation fallback:', err);
+    }
 
     addOrder(newOrder);
     setCreatedOrder(newOrder);
@@ -63,7 +96,9 @@ export default function CheckoutPage() {
                 {t('orderSuccessTitle')}
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '1.75rem' }}>
-                رقم طلبك المرسل هو: <strong style={{ color: 'var(--text-primary)', fontSize: '1.2rem' }}>#{createdOrder.id}</strong>
+                رقم طلبك الكلي المعتمد هو: <strong style={{ color: 'var(--text-primary)', fontSize: '1.2rem' }}>#{createdOrder.id}</strong>
+                <br />
+                الإجمالي المستحق شامل الشحن: <strong style={{ color: 'var(--gold-primary)', fontSize: '1.2rem' }}>{createdOrder.total} ج.م</strong>
                 <br />
                 {t('orderSuccessDesc')}
               </p>
@@ -99,7 +134,7 @@ export default function CheckoutPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
             
             {/* Customer Form */}
             <form onSubmit={handleSubmit} style={{ 
@@ -149,27 +184,9 @@ export default function CheckoutPage() {
                   value={formData.governorate}
                   onChange={e => setFormData({ ...formData, governorate: e.target.value })}
                 >
-                  <option value="القاهرة">القاهرة</option>
-                  <option value="الجيزة">الجيزة</option>
-                  <option value="الإسكندرية">الإسكندرية</option>
-                  <option value="الدقهلية">الدقهلية</option>
-                  <option value="الشرقية">الشرقية</option>
-                  <option value="القليوبية">القليوبية</option>
-                  <option value="كفر الشيخ">كفر الشيخ</option>
-                  <option value="الغربية">الغربية</option>
-                  <option value="المنوفية">المنوفية</option>
-                  <option value="البحيرة">البحيرة</option>
-                  <option value="الإسماعيلية">الإسماعيلية</option>
-                  <option value="السويس">السويس</option>
-                  <option value="بورسعيد">بورسعيد</option>
-                  <option value="دمياط">دمياط</option>
-                  <option value="بني سويف">بني سويف</option>
-                  <option value="المنيا">المنيا</option>
-                  <option value="أسيوط">أسيوط</option>
-                  <option value="سوهاج">سوهاج</option>
-                  <option value="قنا">قنا</option>
-                  <option value="الأقصر">الأقصر</option>
-                  <option value="أسوان">أسوان</option>
+                  {Object.keys(SHIPPING_RATES).map(gov => (
+                    <option key={gov} value={gov}>{gov} ({SHIPPING_RATES[gov]} ج.م شحن)</option>
+                  ))}
                 </select>
               </div>
 
@@ -212,7 +229,7 @@ export default function CheckoutPage() {
               </label>
 
               <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
-                {t('submitOrder')}
+                تأكيد الطلب بدفع {totalAmount} ج.م 🛍️
               </button>
             </form>
 
@@ -231,7 +248,7 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
                 {cart.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
-                    <img src={item.image} alt={item.nameAr} style={{ width: '54px', height: '54px', objectFit: 'contain', background: '#000', borderRadius: 'var(--radius-sm)' }} />
+                    <img src={item.image || item.main_image} alt={item.nameAr} style={{ width: '54px', height: '54px', objectFit: 'contain', background: '#000', borderRadius: 'var(--radius-sm)' }} />
                     <div style={{ flexGrow: 1 }}>
                       <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-primary)' }}>{item.nameAr}</div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>المقاس: {item.size} | الكمية: {item.quantity}</div>
@@ -243,17 +260,17 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-                  <span>المجموع الفرعي:</span>
+                  <span>المجموع الفرعي للمنتجات:</span>
                   <span>{subtotal} ج.م</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-                  <span>الشحن للبريد المصري:</span>
-                  <span>{shippingFee} ج.م</span>
+                  <span>مصاريف الشحن ({formData.governorate}):</span>
+                  <span>+ {shippingFee} ج.م</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.3rem', fontWeight: 900, color: 'var(--gold-primary)', paddingTop: '0.75rem', borderTop: '1px solid var(--border-gold)' }}>
-                  <span>الإجمالي المستحق:</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.35rem', fontWeight: 900, color: 'var(--gold-primary)', paddingTop: '0.75rem', borderTop: '1px solid var(--border-gold)' }}>
+                  <span>الإجمالي الكلي المطلوب:</span>
                   <span>{totalAmount} ج.م</span>
                 </div>
               </div>

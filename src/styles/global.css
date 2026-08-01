@@ -353,6 +353,123 @@ select option {
   right: 0;
 }
 
+/* ==========================================================================
+   Mobile Performance Optimization (Smooth 60FPS Scrolling & Quick Responsiveness)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Disable heavy GPU backdrop blurs on mobile screens for instant 60FPS rendering */
+  header, .navbar, .cart-drawer, .nav-glass, .product-card, [style*="backdropFilter"], [style*="backdrop-filter"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  
+  body::before {
+    background-size: 180px 180px;
+    opacity: 0.12;
+    will-change: auto;
+  }
+
+  html, body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cart-drawer-overlay, .mobile-menu-overlay {
+    will-change: opacity, transform;
+    transform: translateZ(0);
+  }
+}
+
+/* ==========================================================================
+   Full VIP Gold Product Card with Glowing Radiant Gold Text (👑 Premium)
+   ========================================================================== */
+.featured-gold-card {
+  background: linear-gradient(145deg, rgba(22, 17, 7, 0.96), rgba(9, 12, 18, 0.96)) !important;
+  border: 2px solid #FFDF73 !important;
+  box-shadow: 0 12px 35px rgba(212, 175, 55, 0.45), 0 0 25px rgba(255, 223, 115, 0.35) !important;
+  color: #FFDF73 !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
+  overflow: hidden;
+}
+
+.featured-gold-card:hover {
+  transform: translateY(-6px) scale(1.015) !important;
+  box-shadow: 0 16px 45px rgba(212, 175, 55, 0.65), 0 0 35px rgba(255, 235, 150, 0.5) !important;
+}
+
+/* Glowing Gold Text & Titles */
+.featured-gold-card .product-title,
+.featured-gold-card .product-title a,
+.featured-gold-card .product-info {
+  color: #FFDF73 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 0 12px rgba(255, 223, 115, 0.6), 0 0 4px rgba(212, 175, 55, 0.4) !important;
+}
+
+.featured-gold-card .product-image-box {
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, rgba(0, 0, 0, 0.65) 100%) !important;
+  border-bottom: 1px solid rgba(255, 223, 115, 0.3) !important;
+}
+
+.featured-gold-card .sizes-label {
+  color: #F3E5AB !important;
+  font-weight: 800 !important;
+  text-shadow: 0 0 8px rgba(243, 229, 171, 0.4) !important;
+}
+
+.featured-gold-card .size-pill {
+  background: rgba(212, 175, 55, 0.12) !important;
+  color: #FFDF73 !important;
+  border: 1px solid rgba(255, 223, 115, 0.4) !important;
+  font-weight: 800 !important;
+}
+
+.featured-gold-card .size-pill.active {
+  background: linear-gradient(135deg, #FFDF73 0%, #D4AF37 100%) !important;
+  color: #000000 !important;
+  border: 1px solid #FFE58F !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 12px rgba(255, 223, 115, 0.6) !important;
+}
+
+.featured-gold-card .price-row .product-price,
+.featured-gold-card .price-current {
+  color: #FFDF73 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 0 14px rgba(255, 223, 115, 0.7), 0 0 6px rgba(212, 175, 55, 0.5) !important;
+}
+
+.featured-gold-card .price-old {
+  color: rgba(255, 225, 120, 0.5) !important;
+  text-decoration: line-through !important;
+}
+
+.featured-gold-card .btn-add-cart,
+.featured-gold-card .btn-primary {
+  background: linear-gradient(135deg, #FFDF73 0%, #D4AF37 50%, #AA771C 100%) !important;
+  color: #000000 !important;
+  border: 1px solid #FFE58F !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 18px rgba(212, 175, 55, 0.5) !important;
+  text-shadow: none !important;
+}
+
+.featured-gold-card .btn-add-cart:hover,
+.featured-gold-card .btn-primary:hover {
+  background: linear-gradient(135deg, #FFF2B2 0%, #FFDF73 100%) !important;
+  box-shadow: 0 6px 24px rgba(255, 223, 115, 0.7) !important;
+}
+
+.product-badge.gold-vip-badge {
+  background: linear-gradient(135deg, #FFDF73 0%, #D4AF37 100%) !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+  border: 1px solid #FFE58F !important;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.6) !important;
+  font-size: 0.85rem !important;
+  padding: 0.35rem 0.85rem !important;
+  letter-spacing: 0.5px !important;
+}
+
 .animated-logo-item.active {
   opacity: 1;
   pointer-events: auto;

@@ -11,7 +11,9 @@ export const CartDrawer = () => {
   if (!isCartOpen) return null;
 
   const currency = t('currency');
-  let subtotal = 0;
+  const subtotal = cart.reduce((sum, item) => sum + Number(item.price ?? 280) * item.quantity, 0);
+  const estimatedShipping = 50;
+  const totalAmount = subtotal + estimatedShipping;
 
   const handleCheckoutClick = () => {
     setIsCartOpen(false);
@@ -62,8 +64,6 @@ export const CartDrawer = () => {
             cart.map(item => {
               const itemPrice = Number(item.price ?? 280);
               const itemTotal = itemPrice * item.quantity;
-              subtotal += itemTotal;
-
               const title = lang === 'ar' ? (item.nameAr || item.name_ar || item.nameEn) : (item.nameEn || item.name_en || item.nameAr);
               const itemImg = item.image || item.main_image || '/assets/kemet-hero-banner.jpg';
 
@@ -121,19 +121,29 @@ export const CartDrawer = () => {
         {/* Cart Drawer Footer */}
         {cart.length > 0 && (
           <div style={{ 
-            padding: '1.5rem', 
+            padding: '1.25rem', 
             borderTop: '1px solid var(--border-color)', 
             background: '#090C12', 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: '1rem' 
+            gap: '0.75rem' 
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.1rem', fontWeight: 900, color: '#FFFFFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               <span>{t('cartSubtotal')}</span>
-              <span style={{ color: 'var(--gold-primary)' }}>{subtotal} {currency}</span>
+              <span style={{ fontWeight: 800, color: '#FFF' }}>{subtotal} {currency}</span>
             </div>
 
-            <button type="button" className="btn-primary" onClick={handleCheckoutClick} style={{ width: '100%', padding: '0.9rem', fontSize: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <span>{t('cartShipping')}</span>
+              <span style={{ fontWeight: 800, color: 'var(--gold-primary)' }}>+ {estimatedShipping} {currency}</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#FFFFFF', paddingTop: '0.5rem', borderTop: '1px solid var(--border-gold)' }}>
+              <span>{t('cartTotal')}</span>
+              <span style={{ color: 'var(--gold-primary)' }}>{totalAmount} {currency}</span>
+            </div>
+
+            <button type="button" className="btn-primary" onClick={handleCheckoutClick} style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', marginTop: '0.25rem' }}>
               {t('cartCheckoutBtn')}
             </button>
           </div>
