@@ -193,29 +193,37 @@ img {
 .form-input,
 .form-select,
 .form-textarea,
+input,
 input[type="text"],
 input[type="tel"],
 input[type="email"],
+input[type="password"],
+input[type="number"],
 select,
 textarea {
   width: 100%;
   padding: 0.85rem 1rem;
+  font-size: 1rem !important; /* 16px prevents iOS/Android auto-zoom */
+  min-height: 50px !important;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-gold-bright);
   background: #111622 !important;
   color: #FFFFFF !important;
   font-family: inherit;
-  font-size: 0.95rem;
   font-weight: 600;
   transition: var(--transition);
+  box-sizing: border-box !important;
 }
 
 [data-theme="light"] .form-input,
 [data-theme="light"] .form-select,
 [data-theme="light"] .form-textarea,
+[data-theme="light"] input,
 [data-theme="light"] input[type="text"],
 [data-theme="light"] input[type="tel"],
 [data-theme="light"] input[type="email"],
+[data-theme="light"] input[type="password"],
+[data-theme="light"] input[type="number"],
 [data-theme="light"] select,
 [data-theme="light"] textarea {
   background: #FFFFFF !important;

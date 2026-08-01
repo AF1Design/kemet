@@ -1,8 +1,8 @@
 'use server';
 
-import { getAdminSupabase } from '../../lib/supabase/admin';
-import { resend, SENDER_EMAIL } from '../../lib/resend';
-import { getConfirmationEmailHtml, getPasswordResetEmailHtml } from '../../lib/email-templates';
+import { getAdminSupabase } from '../../lib/supabase/admin.js';
+import { resend, SENDER_EMAIL } from '../../lib/resend.js';
+import { getConfirmationEmailHtml, getPasswordResetEmailHtml } from '../../lib/email-templates.js';
 
 /**
  * Custom Signup Server Action:
@@ -35,7 +35,10 @@ export async function customSignupAction({ email, password, fullName, phone = ''
 
     if (linkErr) {
       console.error('generateLink error:', linkErr);
-      throw new Error(linkErr.message || 'فشل في إنشاء حساب المستخدم');
+      return {
+        success: false,
+        error: linkErr.message || 'فشل في إنشاء حساب المستخدم'
+      };
     }
 
     const user = linkData.user;
@@ -68,26 +71,33 @@ export async function customSignupAction({ email, password, fullName, phone = ''
     }
 
     // 3. Send 100% Branded KEMET Email via Resend from noreply@kemetmisr.com
-    const emailHtml = getConfirmationEmailHtml({
-      confirmationUrl: confirmationUrl,
-      fullName: cleanName
-    });
+    let emailSent = false;
+    try {
+      const emailHtml = getConfirmationEmailHtml({
+        confirmationUrl: confirmationUrl,
+        fullName: cleanName
+      });
 
-    const { data: resendData, error: resendErr } = await resend.emails.send({
-      from: SENDER_EMAIL,
-      to: [cleanEmail],
-      subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
-      html: emailHtml
-    });
+      const { data: resendData, error: resendErr } = await resend.emails.send({
+        from: SENDER_EMAIL,
+        to: [cleanEmail],
+        subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
+        html: emailHtml
+      });
 
-    if (resendErr) {
-      console.error('Resend email error:', resendErr);
-    } else {
-      console.log('Resend email sent successfully:', resendData);
+      if (resendErr) {
+        console.error('Resend email error:', resendErr);
+      } else {
+        console.log('Resend email sent successfully:', resendData);
+        emailSent = true;
+      }
+    } catch (eErr) {
+      console.error('Email sending exception:', eErr);
     }
 
     return {
       success: true,
+      emailSent,
       message: 'تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩'
     };
   } catch (err) {

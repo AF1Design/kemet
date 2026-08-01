@@ -48,6 +48,7 @@ export default function LoginPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [signupSuccessMsg, setSignupSuccessMsg] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   React.useEffect(() => {
@@ -192,6 +193,7 @@ export default function LoginPage() {
       }
 
       try {
+        setSignupSuccessMsg(null);
         const res = await customSignupAction({
           email: email.trim(),
           password: password,
@@ -201,14 +203,15 @@ export default function LoginPage() {
         });
 
         if (res.success) {
-          showToast('تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩');
-          setMode('login');
+          setSignupSuccessMsg(`🎉 تم إنشاء الحساب بنجاح! تم إرسال رسالة التفعيل الرسمية من KEMET إلى بريدك الإلكتروني (${email.trim()}). يرجى تفقد صندوق الوارد أو البريد العشوائي (Spam) والتأكيد.`);
           setAuthError(null);
+          showToast('تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩');
         } else {
-          setAuthError(res.error || 'فشل إنشاء الحساب');
+          setAuthError(res.error || 'حدث خطأ في عملية إنشاء الحساب');
         }
       } catch (err) {
-        setAuthError(err.message || 'فشل إنشاء الحساب');
+        console.error('Signup error:', err);
+        setAuthError(err.message || 'فشل في إنشاء الحساب');
       } finally {
         setIsLoading(false);
       }
@@ -373,6 +376,22 @@ export default function LoginPage() {
                   </button>
                 </div>
 
+                {signupSuccessMsg && (
+                  <div style={{ 
+                    background: 'rgba(212, 175, 55, 0.15)', 
+                    border: '1px solid var(--border-gold-bright)', 
+                    color: '#FFDF73', 
+                    padding: '1rem 1.2rem', 
+                    borderRadius: 'var(--radius-md)', 
+                    fontSize: '0.95rem',
+                    marginBottom: '1.5rem',
+                    fontWeight: 800,
+                    lineHeight: 1.6
+                  }}>
+                    {signupSuccessMsg}
+                  </div>
+                )}
+
                 {authError && (
                   <div style={{ 
                     background: 'rgba(244, 63, 94, 0.12)', 
@@ -444,14 +463,26 @@ export default function LoginPage() {
                         placeholder="••••••••"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
-                        style={{ width: '100%', paddingLeft: '3rem', paddingRight: '1rem', background: '#0D111A', color: '#FFFFFF', border: '1px solid var(--border-gold)' }}
+                        style={{ 
+                          width: '100%', 
+                          minHeight: '52px', 
+                          height: '52px',
+                          paddingLeft: '3.2rem', 
+                          paddingRight: '1.2rem', 
+                          fontSize: '1rem', 
+                          background: '#0D111A', 
+                          color: '#FFFFFF', 
+                          border: '1px solid var(--border-gold)',
+                          borderRadius: 'var(--radius-md)',
+                          boxSizing: 'border-box'
+                        }}
                       />
                       <button 
                         type="button" 
                         onClick={() => setShowPassword(!showPassword)}
                         style={{ 
                           position: 'absolute', 
-                          left: '0.75rem', 
+                          left: '0.85rem', 
                           top: '50%', 
                           transform: 'translateY(-50%)', 
                           background: 'transparent',
@@ -459,8 +490,9 @@ export default function LoginPage() {
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          padding: '0.2rem',
-                          zIndex: 2
+                          justifyContent: 'center',
+                          padding: '0.4rem',
+                          zIndex: 10
                         }}
                         title={showPassword ? 'إخفاء كلمة السر' : 'إظهار كلمة السر'}
                       >
