@@ -5,15 +5,14 @@ import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
 import { getConfirmationEmailHtml, getPasswordResetEmailHtml } from '../../lib/email-templates.js';
 
 /**
- * Standard Signup Server Action (Zero Hack / Clean Architecture)
- * 1. Generates Supabase confirmation link (Without triggering Supabase default email)
- * 2. Creates customer profile entry in Supabase `profiles` table
- * 3. Sends branded KEMET HTML email directly via Resend API from noreply@kemetmisr.com
+ * Standard Signup Server Action with Strict Email Verification Error Reporting
+ * 1. Creates account in Supabase Auth & generates activation link
+ * 2. Upserts customer record into `profiles` table
+ * 3. Sends confirmation email via Resend and returns explicit error if sending fails
  */
 export async function customSignupAction({ email, password, fullName, phone = '', governorate = 'القاهرة' }) {
   try {
     const supabaseAdmin = getAdminSupabase();
-    const resend = getResendClient();
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
@@ -40,7 +39,7 @@ export async function customSignupAction({ email, password, fullName, phone = ''
       console.error('Supabase generateLink error:', linkErr);
       return {
         success: false,
-        error: linkErr.message || 'فشل في إنشاء حساب المستخدم في Supabase Auth'
+        error: `فشل إنشاء الحساب في Supabase: ${linkErr.message || 'خطأ في خادم الهوية'}`
       };
     }
 
@@ -73,36 +72,54 @@ export async function customSignupAction({ email, password, fullName, phone = ''
       }
     }
 
-    // 3. Send KEMET Branded Confirmation Email via Resend
-    const emailHtml = getConfirmationEmailHtml({
-      confirmationUrl: confirmationUrl,
-      fullName: cleanName
-    });
+    // 3. Send KEMET Email via Resend - Strict Error reporting
+    let emailSent = false;
+    let emailErrorMessage = null;
 
-    const { data: resendData, error: resendErr } = await resend.emails.send({
-      from: SENDER_EMAIL,
-      to: [cleanEmail],
-      subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
-      html: emailHtml
-    });
+    try {
+      const resend = getResendClient();
+      const emailHtml = getConfirmationEmailHtml({
+        confirmationUrl: confirmationUrl,
+        fullName: cleanName
+      });
 
-    if (resendErr) {
-      console.error('Resend API send error:', resendErr);
+      const { data: resendData, error: resendErr } = await resend.emails.send({
+        from: SENDER_EMAIL,
+        to: [cleanEmail],
+        subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
+        html: emailHtml
+      });
+
+      if (resendErr) {
+        console.error('Resend API error:', resendErr);
+        emailErrorMessage = resendErr.message || 'خطأ في خدمة Resend';
+      } else {
+        console.log('Resend email sent successfully:', resendData);
+        emailSent = true;
+      }
+    } catch (resendException) {
+      console.error('Resend Exception caught:', resendException);
+      emailErrorMessage = resendException.message || 'فشل الاتصال بـ Resend API';
+    }
+
+    // Strict Failure Check: If email was NOT sent, return success: false and report exact error
+    if (!emailSent) {
       return {
         success: false,
-        error: `تم إنشاء الحساب، ولكن تعذر إرسال بريد التفعيل من Resend: ${resendErr.message}`
+        error: `فشل إرسال بريد التفعيل عبر Resend: ${emailErrorMessage}`
       };
     }
 
     return {
       success: true,
+      emailSent: true,
       message: 'تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩'
     };
   } catch (err) {
-    console.error('customSignupAction error:', err);
+    console.error('customSignupAction main error:', err);
     return {
       success: false,
-      error: err.message || 'حدث خطأ في عملية إنشاء الحساب'
+      error: err.message || 'حدث خطأ أثناء الاتصال بالخادم'
     };
   }
 }
@@ -113,8 +130,6 @@ export async function customSignupAction({ email, password, fullName, phone = ''
 export async function customPasswordResetAction(email) {
   try {
     const supabaseAdmin = getAdminSupabase();
-    const resend = getResendClient();
-
     const cleanEmail = email.trim().toLowerCase();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
     const redirectUrl = `${siteUrl}/auth/callback?type=recovery`;
@@ -132,6 +147,7 @@ export async function customPasswordResetAction(email) {
     const resetUrl = linkData.properties?.action_link || `${siteUrl}/login`;
     const emailHtml = getPasswordResetEmailHtml({ resetUrl });
 
+    const resend = getResendClient();
     const { error: resendErr } = await resend.emails.send({
       from: SENDER_EMAIL,
       to: [cleanEmail],
