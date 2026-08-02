@@ -5,10 +5,29 @@ import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
 import { getConfirmationEmailHtml, getPasswordResetEmailHtml } from '../../lib/email-templates.js';
 
 /**
- * Standard Signup Server Action with Strict Email Verification Error Reporting
- * 1. Creates account in Supabase Auth & generates activation link
- * 2. Upserts customer record into `profiles` table
- * 3. Sends confirmation email via Resend and returns explicit error if sending fails
+ * Clean Error Formatter strictly complying with KEMET Digital Brand Guidelines
+ * Translates technical error messages into calm, concise Arabic text without leaking stack traces or technical details.
+ */
+function formatKemetError(err, defaultMsg = 'تعذر تنفيذ العملية. يرجى المحاولة مرة أخرى.') {
+  if (!err) return defaultMsg;
+  const msg = typeof err === 'string' ? err : err.message || '';
+
+  if (msg.includes('already been registered') || msg.includes('email_exists')) {
+    return 'البريد الإلكتروني مسجل بالفعل.';
+  }
+  if (msg.includes('invalid') || msg.includes('expired') || msg.includes('Token')) {
+    return 'رمز التحقق غير صحيح أو انتهت صلاحيته.';
+  }
+  if (msg.includes('rate limit') || msg.includes('Rate limit exceeded')) {
+    return 'تم تجاوز عدد المحاولات المسموح بها. يرجى المحاولة بعد قليل.';
+  }
+  return defaultMsg;
+}
+
+/**
+ * 1. customSignupAction: Generates 6-Digit Email OTP via Supabase Auth & Sends via Resend
+ * - Standard Supabase Auth API: auth.admin.generateLink({ type: 'signup' })
+ * - Security-Neutral handling for existing emails (no email enumeration leakage)
  */
 export async function customSignupAction({ email, password, fullName, phone = '', governorate = 'القاهرة' }) {
   try {
@@ -17,10 +36,8 @@ export async function customSignupAction({ email, password, fullName, phone = ''
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
     const cleanPhone = phone.trim() ? phone.trim() : null;
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
-    const redirectUrl = `${siteUrl}/auth/callback`;
 
-    // 1. Generate Supabase Signup Confirmation Link
+    // 1. Generate Supabase Signup Link & 6-Digit OTP
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: cleanEmail,
@@ -30,36 +47,44 @@ export async function customSignupAction({ email, password, fullName, phone = ''
           full_name: cleanName,
           phone: cleanPhone,
           governorate: governorate
-        },
-        redirectTo: redirectUrl
+        }
       }
     });
 
+    let otpCode = linkData?.properties?.email_otp;
+    let userId = linkData?.user?.id;
+
+    // Security-Neutral Existing Email Handling
     if (linkErr) {
-      console.error('Supabase generateLink error:', linkErr);
-      return {
-        success: false,
-        error: `فشل إنشاء الحساب في Supabase: ${linkErr.message || 'خطأ في خادم الهوية'}`
-      };
+      if (linkErr.code === 'email_exists' || linkErr.message?.includes('already been registered')) {
+        console.log('User exists. Generating fresh OTP for email verification...');
+        const { data: magicData, error: magicErr } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: cleanEmail
+        });
+
+        if (!magicErr && magicData?.properties?.email_otp) {
+          otpCode = magicData.properties.email_otp;
+        } else {
+          // Return security neutral response
+          return {
+            success: true,
+            emailSent: true,
+            message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.'
+          };
+        }
+      } else {
+        return {
+          success: false,
+          error: formatKemetError(linkErr)
+        };
+      }
     }
 
-    const user = linkData.user;
-    const properties = linkData.properties;
-    
-    // Construct confirmation URL using action_link or token_hash fallback
-    let confirmationUrl = properties?.action_link;
-    if (!confirmationUrl && properties?.hashed_token) {
-      confirmationUrl = `${redirectUrl}?token_hash=${properties.hashed_token}&type=signup&next=/my-orders`;
-    }
-
-    if (!confirmationUrl) {
-      confirmationUrl = `${siteUrl}/login?confirmed=true`;
-    }
-
-    // 2. Create/Upsert Customer Profile in Supabase profiles table
-    if (user?.id) {
+    // 2. Upsert Customer Profile in Supabase profiles table
+    if (userId) {
       const { error: profileErr } = await supabaseAdmin.from('profiles').upsert({
-        id: user.id,
+        id: userId,
         email: cleanEmail,
         full_name: cleanName,
         phone: cleanPhone,
@@ -69,97 +94,260 @@ export async function customSignupAction({ email, password, fullName, phone = ''
 
       if (profileErr) {
         console.warn('Profile upsert warning:', profileErr.message);
+        if (profileErr.message?.includes('profiles_phone_key') || profileErr.message?.includes('phone')) {
+          return {
+            success: false,
+            error: 'رقم الهاتف مستخدم بالفعل.'
+          };
+        }
       }
     }
 
-    // 3. Send KEMET Email via Resend - Strict Error reporting
-    let emailSent = false;
-    let emailErrorMessage = null;
-
-    try {
+    // 3. Send 6-Digit OTP Email via Resend using KEMET Template
+    if (otpCode) {
       const resend = getResendClient();
-      const emailHtml = getConfirmationEmailHtml({
-        confirmationUrl: confirmationUrl,
-        fullName: cleanName
-      });
+      const emailHtml = getConfirmationEmailHtml({ otpCode });
 
-      const { data: resendData, error: resendErr } = await resend.emails.send({
+      const { error: resendErr } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: [cleanEmail],
-        subject: 'تأكيد وتفعيل حسابك في KEMET 🚀',
+        subject: 'رمز تفعيل حساب KEMET',
         html: emailHtml
       });
 
       if (resendErr) {
         console.error('Resend API error:', resendErr);
-        emailErrorMessage = resendErr.message || 'خطأ في خدمة Resend';
-      } else {
-        console.log('Resend email sent successfully:', resendData);
-        emailSent = true;
+        return {
+          success: false,
+          error: 'تعذر إرسال بريد التحقق. يرجى المحاولة مرة أخرى.'
+        };
       }
-    } catch (resendException) {
-      console.error('Resend Exception caught:', resendException);
-      emailErrorMessage = resendException.message || 'فشل الاتصال بـ Resend API';
-    }
-
-    // Strict Failure Check: If email was NOT sent, return success: false and report exact error
-    if (!emailSent) {
-      return {
-        success: false,
-        error: `فشل إرسال بريد التفعيل عبر Resend: ${emailErrorMessage}`
-      };
     }
 
     return {
       success: true,
       emailSent: true,
-      message: 'تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩'
+      message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.'
     };
   } catch (err) {
     console.error('customSignupAction main error:', err);
     return {
       success: false,
-      error: err.message || 'حدث خطأ أثناء الاتصال بالخادم'
+      error: formatKemetError(err)
     };
   }
 }
 
 /**
- * Standard Password Reset Action via Resend & Supabase
+ * 2. verifySignupOtpAction: Verifies 6-Digit OTP using Official Supabase verifyOtp API
+ * - Standard Supabase Auth API: auth.verifyOtp({ email, token, type: 'signup' })
+ * - Returns session data upon successful verification
  */
-export async function customPasswordResetAction(email) {
+export async function verifySignupOtpAction({ email, otp }) {
   try {
     const supabaseAdmin = getAdminSupabase();
     const cleanEmail = email.trim().toLowerCase();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
-    const redirectUrl = `${siteUrl}/auth/callback?type=recovery`;
+    const cleanOtp = otp.trim();
 
-    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
+    // Verify OTP via Supabase Auth
+    const { data, error } = await supabaseAdmin.auth.verifyOtp({
       email: cleanEmail,
-      options: {
-        redirectTo: redirectUrl
+      token: cleanOtp,
+      type: 'signup'
+    });
+
+    if (error) {
+      // Fallback try with type 'email'
+      const { data: retryData, error: retryErr } = await supabaseAdmin.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanOtp,
+        type: 'email'
+      });
+
+      if (retryErr) {
+        return {
+          success: false,
+          error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
+        };
       }
-    });
 
-    if (linkErr) throw linkErr;
+      return {
+        success: true,
+        session: retryData.session,
+        user: retryData.user,
+        message: 'تم التحقق من البريد الإلكتروني بنجاح.'
+      };
+    }
 
-    const resetUrl = linkData.properties?.action_link || `${siteUrl}/login`;
-    const emailHtml = getPasswordResetEmailHtml({ resetUrl });
-
-    const resend = getResendClient();
-    const { error: resendErr } = await resend.emails.send({
-      from: SENDER_EMAIL,
-      to: [cleanEmail],
-      subject: 'إعادة تعيين كلمة المرور - KEMET 🔑',
-      html: emailHtml
-    });
-
-    if (resendErr) throw resendErr;
-
-    return { success: true, message: 'تم إرسال رابط إعادة تعيين كلمة المرور بنجاح 📩' };
+    return {
+      success: true,
+      session: data.session,
+      user: data.user,
+      message: 'تم التحقق من البريد الإلكتروني بنجاح.'
+    };
   } catch (err) {
-    console.error('customPasswordResetAction error:', err);
-    return { success: false, error: err.message || 'فشل إرسال بريد استعادة كلمة المرور' };
+    console.error('verifySignupOtpAction error:', err);
+    return {
+      success: false,
+      error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
+    };
+  }
+}
+
+/**
+ * 3. resendOtpAction: Generates a Fresh 6-Digit OTP and Resends Email via Resend
+ * - Standard Supabase Auth API: auth.admin.generateLink({ type: 'magiclink' })
+ */
+export async function resendOtpAction({ email }) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanEmail = email.trim().toLowerCase();
+
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: cleanEmail
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error: formatKemetError(error)
+      };
+    }
+
+    const otpCode = data?.properties?.email_otp;
+    if (otpCode) {
+      const resend = getResendClient();
+      const emailHtml = getConfirmationEmailHtml({ otpCode });
+
+      const { error: resendErr } = await resend.emails.send({
+        from: SENDER_EMAIL,
+        to: [cleanEmail],
+        subject: 'رمز تفعيل حساب KEMET الجديد',
+        html: emailHtml
+      });
+
+      if (resendErr) {
+        return {
+          success: false,
+          error: 'تعذر إرسال البريد الإلكتروني. يرجى المحاولة مرة أخرى.'
+        };
+      }
+    }
+
+    return {
+      success: true,
+      message: 'تم إرسال رمز تحقق جديد إلى بريدك الإلكتروني.'
+    };
+  } catch (err) {
+    console.error('resendOtpAction error:', err);
+    return {
+      success: false,
+      error: formatKemetError(err)
+    };
+  }
+}
+
+/**
+ * 4. forgotPasswordOtpAction: Generates Password Recovery 6-Digit OTP via Supabase Auth & Resend
+ * - Standard Supabase Auth API: auth.admin.generateLink({ type: 'recovery' })
+ */
+export async function forgotPasswordOtpAction(email) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanEmail = email.trim().toLowerCase();
+
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: cleanEmail
+    });
+
+    if (error) {
+      // Security-Neutral Handling
+      return {
+        success: true,
+        message: 'تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني.'
+      };
+    }
+
+    const otpCode = data?.properties?.email_otp;
+    if (otpCode) {
+      const resend = getResendClient();
+      const emailHtml = getPasswordResetEmailHtml({ otpCode });
+
+      const { error: resendErr } = await resend.emails.send({
+        from: SENDER_EMAIL,
+        to: [cleanEmail],
+        subject: 'رمز استعادة كلمة المرور - KEMET',
+        html: emailHtml
+      });
+
+      if (resendErr) {
+        console.error('Resend recovery error:', resendErr);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني.'
+    };
+  } catch (err) {
+    console.error('forgotPasswordOtpAction error:', err);
+    return {
+      success: true,
+      message: 'تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني.'
+    };
+  }
+}
+
+/**
+ * 5. verifyPasswordResetOtpAction: Verifies Recovery OTP & Updates User Password
+ * - Standard Supabase Auth API: auth.verifyOtp({ email, token, type: 'recovery' })
+ * - Standard Supabase Auth API: auth.admin.updateUserById(userId, { password })
+ */
+export async function verifyPasswordResetOtpAction({ email, otp, newPassword }) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.trim();
+
+    // 1. Verify Recovery OTP
+    const { data, error } = await supabaseAdmin.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanOtp,
+      type: 'recovery'
+    });
+
+    if (error || !data?.user?.id) {
+      return {
+        success: false,
+        error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
+      };
+    }
+
+    // 2. Update User Password in Supabase Auth
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+      password: newPassword
+    });
+
+    if (updateErr) {
+      return {
+        success: false,
+        error: formatKemetError(updateErr, 'تعذر تحديث كلمة المرور.')
+      };
+    }
+
+    return {
+      success: true,
+      session: data.session,
+      user: data.user,
+      message: 'تم تحديث كلمة المرور بنجاح.'
+    };
+  } catch (err) {
+    console.error('verifyPasswordResetOtpAction error:', err);
+    return {
+      success: false,
+      error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
+    };
   }
 }
