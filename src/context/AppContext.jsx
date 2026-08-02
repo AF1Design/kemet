@@ -35,35 +35,7 @@ export const AppProvider = ({ children }) => {
       if (savedOrders) {
         setOrders(JSON.parse(savedOrders));
       } else {
-        setOrders([
-          {
-            id: 'KM-2027-8941',
-            date: '2026-07-28',
-            time: '02:30 م',
-            status: 'قيد التجهيز 📦',
-            isShipped: false,
-            items: [
-              {
-                id: 'kit-real-madrid-navy-2027',
-                nameAr: 'طقم ريال مدريد الاحتياطي التيل والزمردي 2027 (بلاير إديشن)',
-                nameEn: 'Real Madrid Away Teal Player Edition Kit 2027',
-                price: 280,
-                size: 'L',
-                quantity: 1,
-                image: '/assets/kit-real-madrid-navy-2027.jpg'
-              }
-            ],
-            subtotal: 280,
-            shipping: 50,
-            total: 330,
-            customer: {
-              fullName: 'أحمد محمود',
-              phone: '01012345678',
-              governorate: 'القاهرة',
-              address: 'مدينة نصر - شارع الطيران'
-            }
-          }
-        ]);
+        setOrders([]);
       }
     } catch (e) {
       console.error('Error loading local state:', e);

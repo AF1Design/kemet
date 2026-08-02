@@ -252,10 +252,12 @@ export const OtpModal = ({
             style={{ 
               display: 'flex', 
               justifyContent: 'center', 
-              gap: otpLength > 6 ? '0.35rem' : '0.5rem', 
+              alignItems: 'center',
+              gap: otpLength > 6 ? '0.4rem' : '0.6rem', 
               direction: 'ltr',
               marginBottom: '2rem',
-              flexWrap: 'nowrap'
+              flexWrap: 'nowrap',
+              width: '100%'
             }}
           >
             {digits.map((digit, idx) => (
@@ -270,19 +272,20 @@ export const OtpModal = ({
                 onKeyDown={e => handleKeyDown(idx, e)}
                 disabled={isLoading}
                 style={{
-                  width: otpLength > 6 ? '38px' : '48px',
-                  height: '52px',
+                  width: 'clamp(36px, 9.5vw, 48px)',
+                  height: '58px',
                   textAlign: 'center',
-                  fontSize: otpLength > 6 ? '1.2rem' : '1.35rem',
+                  fontSize: '1.45rem',
                   fontWeight: '900',
-                  color: '#FFDF73',
+                  color: '#FFFFFF',
                   backgroundColor: '#05070C',
-                  border: digit ? '2px solid var(--border-gold-bright)' : '1px solid var(--border-gold)',
+                  border: digit ? '2px solid #FFDF73' : '1.5px solid var(--border-gold)',
                   borderRadius: 'var(--radius-md)',
                   outline: 'none',
                   caretColor: 'var(--gold-primary)',
-                  boxShadow: digit ? '0 0 10px rgba(212, 175, 55, 0.3)' : 'none',
-                  transition: 'var(--transition)'
+                  boxShadow: digit ? '0 0 12px rgba(212, 175, 55, 0.5)' : 'none',
+                  transition: 'all 0.2s ease',
+                  padding: 0
                 }}
               />
             ))}
