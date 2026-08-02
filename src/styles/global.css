@@ -109,7 +109,20 @@ body::before {
 /* Make Soft Hieroglyphs Watermark Rich & Clearly Visible in Light Mode */
 [data-theme="light"] body::before {
   opacity: 0.34;
-  filter: brightness(0) opacity(0.40);
+  filter: brightness(0) opacity(0.45);
+}
+
+/* Light Mode Automatic Logo & Eye of Horus Inversion to Dark/Black */
+[data-theme="light"] .brand-text-img,
+[data-theme="light"] .brand-emblem,
+[data-theme="light"] .animated-logo-container img {
+  filter: brightness(0) !important;
+}
+
+[data-theme="light"] .eye-horus-watermark,
+[data-theme="light"] [class*="eye-horus"],
+[data-theme="light"] .svg-watermark {
+  filter: brightness(0) opacity(0.85) !important;
 }
 
 #root, main, .app-shell {

@@ -10,21 +10,21 @@ import { customSignupAction, customPasswordResetAction } from '../actions/auth-a
 
 // Eye of Horus (عين حورس المفتوحة) - SVG Icon
 const EyeOfHorusOpen = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 6c3-2.2 8-2.2 13 0c2 0.8 3 1.5 3 1.5" stroke="#D4AF37" strokeWidth="2" />
+  <svg className="eye-horus-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 6c3-2.2 8-2.2 13 0c2 0.8 3 1.5 3 1.5" stroke="var(--gold-primary)" strokeWidth="2" />
     <path d="M3 11c4-4.5 12-4.5 17 0" />
     <path d="M3 11c4 4.5 12 4.5 17 0" />
-    <circle cx="12" cy="11" r="2.8" fill="#D4AF37" stroke="none" />
-    <path d="M11.5 15.5v5c0 1.5-1 2.5-2.5 2.5" stroke="#D4AF37" />
+    <circle cx="12" cy="11" r="2.8" fill="var(--gold-primary)" stroke="none" />
+    <path d="M11.5 15.5v5c0 1.5-1 2.5-2.5 2.5" stroke="var(--gold-primary)" />
     <path d="M14.5 15.5c1 1.5 2.5 2 3.5 1" />
   </svg>
 );
 
 // Eye of Horus Closed / Sleeping (عين حورس المغلقة/النائمة) - SVG Icon
 const EyeOfHorusClosed = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 6c3-2.2 8-2.2 13 0c2 0.8 3 1.5 3 1.5" stroke="#D4AF37" strokeWidth="1.5" opacity="0.7" />
-    <path d="M3 11c4 4.5 12 4.5 17 0" stroke="#D4AF37" strokeWidth="2.2" />
+  <svg className="eye-horus-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 6c3-2.2 8-2.2 13 0c2 0.8 3 1.5 3 1.5" stroke="var(--gold-primary)" strokeWidth="1.5" opacity="0.7" />
+    <path d="M3 11c4 4.5 12 4.5 17 0" stroke="var(--gold-primary)" strokeWidth="2.2" />
     <path d="M7 13.5l-1 2.5" />
     <path d="M11.5 14.5v2.8" />
     <path d="M16 13.5l1 2.5" />
@@ -470,8 +470,8 @@ export default function LoginPage() {
                           paddingLeft: '3.2rem', 
                           paddingRight: '1.2rem', 
                           fontSize: '1rem', 
-                          background: '#0D111A', 
-                          color: '#FFFFFF', 
+                          background: 'var(--bg-card)', 
+                          color: 'var(--text-primary)', 
                           border: '1px solid var(--border-gold)',
                           borderRadius: 'var(--radius-md)',
                           boxSizing: 'border-box'
