@@ -250,7 +250,8 @@ export const OtpModal = ({
           background: '#0D111A',
           border: '1px solid var(--border-gold-bright)',
           borderRadius: 'var(--radius-lg)',
-          padding: '2.5rem 2rem',
+          padding: '2.2rem clamp(1rem, 3.5vw, 2rem)',
+          boxSizing: 'border-box',
           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.7)',
           textAlign: 'center',
           direction: 'rtl',
@@ -313,13 +314,14 @@ export const OtpModal = ({
           <div 
             style={{ 
               display: 'flex', 
-              justify: 'center', 
+              justifyContent: 'center', 
               alignItems: 'center',
-              gap: otpLength > 6 ? '0.4rem' : '0.6rem', 
+              gap: otpLength > 6 ? 'clamp(0.2rem, 1.2vw, 0.4rem)' : '0.6rem', 
               direction: 'ltr',
               marginBottom: mode === 'recovery' ? '1.25rem' : '2rem',
               flexWrap: 'nowrap',
-              width: '100%'
+              width: '100%',
+              boxSizing: 'border-box'
             }}
           >
             {digits.map((digit, idx) => (
@@ -334,10 +336,12 @@ export const OtpModal = ({
                 onKeyDown={e => handleKeyDown(idx, e)}
                 disabled={isLoading}
                 style={{
-                  width: 'clamp(36px, 9.5vw, 48px)',
-                  height: '58px',
+                  flex: '1 1 0px',
+                  minWidth: 0,
+                  maxWidth: '48px',
+                  height: '56px',
                   textAlign: 'center',
-                  fontSize: '1.45rem',
+                  fontSize: otpLength > 6 ? 'clamp(1.1rem, 4vw, 1.45rem)' : '1.45rem',
                   fontWeight: '900',
                   color: '#FFFFFF',
                   backgroundColor: '#05070C',
@@ -347,7 +351,8 @@ export const OtpModal = ({
                   caretColor: 'var(--gold-primary)',
                   boxShadow: digit ? '0 0 12px rgba(212, 175, 55, 0.5)' : 'none',
                   transition: 'all 0.2s ease',
-                  padding: 0
+                  padding: 0,
+                  boxSizing: 'border-box'
                 }}
               />
             ))}
