@@ -1,7 +1,8 @@
 /**
  * KEMET Digital Brand - Luxury HTML Email Templates for Resend & Supabase OTP
+ * Design based 100% on KEMET Official Illustrator Master Template
  * Domain: kemetmisr.com | Sender: KEMET Sportswear <noreply@kemetmisr.com>
- * Rules: Zero Emojis, Zero External Links, Premium Design & Typography
+ * Rules: Zero Emojis, Zero External Links, Premium Luxury Dark Theme & Gold Accents
  */
 
 export function getConfirmationEmailHtml({ otpCode }) {
@@ -11,131 +12,129 @@ export function getConfirmationEmailHtml({ otpCode }) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>رمز تفعيل حساب KEMET</title>
+  <title>تأكيد البريد الإلكتروني - KEMET</title>
   <style>
     body {
       margin: 0;
       padding: 0;
-      background-color: #05070C;
+      background-color: #0A0D14;
       font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #FFFFFF;
       direction: rtl;
-      text-align: right;
-    }
-    .container {
-      max-width: 560px;
-      margin: 40px auto;
-      background-color: #0D111A;
-      border: 1px solid rgba(212, 175, 55, 0.4);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    }
-    .header {
-      background: #111622;
-      padding: 30px 20px;
       text-align: center;
-      border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+      -webkit-font-smoothing: antialiased;
     }
-    .brand-title {
-      color: #D4AF37;
-      font-size: 28px;
-      margin: 0;
+    .email-wrapper {
+      width: 100%;
+      background-color: #0A0D14;
+      padding: 40px 10px;
+    }
+    .email-card {
+      max-width: 580px;
+      margin: 0 auto;
+      background-color: #000000;
+      border: 3px solid #D4AF37;
+      border-radius: 4px;
+      padding: 40px 30px 30px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(212, 175, 55, 0.15);
+      position: relative;
+      box-sizing: border-box;
+    }
+    .top-bar {
+      text-align: right;
+      margin-bottom: 25px;
+    }
+    .brand-logo-text {
+      font-family: 'Montserrat', 'Arial Black', sans-serif;
+      font-size: 26px;
       font-weight: 900;
-      letter-spacing: 4px;
+      font-style: italic;
+      color: #FFFFFF;
+      letter-spacing: 3px;
       text-transform: uppercase;
+      display: inline-block;
     }
-    .brand-subtitle {
-      color: #94A3B8;
-      font-size: 12px;
-      font-weight: 700;
-      margin-top: 6px;
+    .main-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: #FFFFFF;
+      margin: 20px 0 10px;
       letter-spacing: 1px;
     }
-    .content {
-      padding: 40px 30px;
-      line-height: 1.8;
-      font-size: 15px;
-      color: #E2E8F0;
-      text-align: center;
-    }
-    .title-text {
-      font-size: 20px;
-      font-weight: 800;
-      color: #FFFFFF;
-      margin-bottom: 12px;
-    }
-    .info-text {
-      color: #94A3B8;
+    .subtitle {
       font-size: 14px;
-      margin-bottom: 30px;
+      color: #94A3B8;
+      margin-bottom: 35px;
+      font-weight: 600;
     }
-    .otp-box {
+    .otp-pill-box {
       background: #05070C;
-      border: 1px solid #D4AF37;
-      border-radius: 10px;
-      padding: 20px;
+      border: 2px solid #D4AF37;
+      border-radius: 50px;
+      padding: 16px 30px;
       display: inline-block;
-      margin: 10px 0 25px 0;
+      margin: 10px auto 35px;
+      box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
     }
     .otp-code {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 36px;
+      font-size: 40px;
       font-weight: 900;
       color: #D4AF37;
-      letter-spacing: 12px;
-      margin-right: 12px;
+      letter-spacing: 14px;
+      margin-right: 14px;
+      line-height: 1.2;
     }
-    .expiry-text {
-      font-size: 13px;
-      color: #64748B;
-      margin-top: 15px;
+    .expiry-info {
+      font-size: 15px;
+      font-weight: 800;
+      color: #E2E8F0;
+      margin-bottom: 8px;
     }
-    .divider {
-      height: 1px;
-      background: rgba(255, 255, 255, 0.08);
-      margin: 30px 0;
-    }
-    .footer {
-      background-color: #07090E;
-      padding: 24px;
-      text-align: center;
+    .ignore-notice {
       font-size: 12px;
       color: #64748B;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 45px;
+      font-weight: 500;
     }
-    .footer p {
-      margin: 4px 0;
+    .footer-line {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 20px;
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="brand-title">KEMET</div>
-      <div class="brand-subtitle">PREMIUM ATHLETICWEAR</div>
-    </div>
-    
-    <div class="content">
-      <div class="title-text">تأكيد البريد الإلكتروني</div>
-      <div class="info-text">استخدم رمز التحقق التالي لإتمام تفعيل حسابك بمتجر KEMET:</div>
+  <div class="email-wrapper">
+    <div class="email-card">
       
-      <div class="otp-box">
-        <div class="otp-code">${otpCode}</div>
+      <!-- Top Brand Logo -->
+      <div class="top-bar">
+        <span class="brand-logo-text">KEMET</span>
       </div>
+
+      <!-- Main Heading -->
+      <div class="main-title">تأكيد البريد الإلكتروني</div>
       
-      <div class="expiry-text">صلاحية الرمز: 15 دقيقة</div>
-      
-      <div class="divider"></div>
-      
-      <div style="font-size: 13px; color: #64748B;">
-        إذا لم تطلب إنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة وأمان حسابك في أمان تام.
+      <!-- Subtitle -->
+      <div class="subtitle">استخدم رمز التحقق التالي لإتمام تفعيل حسابك</div>
+
+      <!-- Pill OTP Box -->
+      <div class="otp-pill-box">
+        <span class="otp-code">${otpCode}</span>
       </div>
-    </div>
-    
-    <div class="footer">
-      <p>خدمة العملاء والاستفسارات: support@kemetmisr.com</p>
-      <p>© ${new Date().getFullYear()} KEMET Sportswear. All rights reserved.</p>
+
+      <!-- Expiry & Ignore Notice -->
+      <div class="expiry-info">صلاحية الرمز 15 دقيقة</div>
+      <div class="ignore-notice">إذا لم تطلب إنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة</div>
+
+      <!-- Footer Copyright -->
+      <div class="footer-line">
+        Copyright &copy; 2026 kemetmisr.com
+      </div>
+
     </div>
   </div>
 </body>
@@ -150,131 +149,129 @@ export function getPasswordResetEmailHtml({ otpCode }) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>استعادة كلمة المرور - KEMET</title>
+  <title>إعادة ضبط كلمة المرور - KEMET</title>
   <style>
     body {
       margin: 0;
       padding: 0;
-      background-color: #05070C;
+      background-color: #0A0D14;
       font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #FFFFFF;
       direction: rtl;
-      text-align: right;
-    }
-    .container {
-      max-width: 560px;
-      margin: 40px auto;
-      background-color: #0D111A;
-      border: 1px solid rgba(212, 175, 55, 0.4);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    }
-    .header {
-      background: #111622;
-      padding: 30px 20px;
       text-align: center;
-      border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+      -webkit-font-smoothing: antialiased;
     }
-    .brand-title {
-      color: #D4AF37;
-      font-size: 28px;
-      margin: 0;
+    .email-wrapper {
+      width: 100%;
+      background-color: #0A0D14;
+      padding: 40px 10px;
+    }
+    .email-card {
+      max-width: 580px;
+      margin: 0 auto;
+      background-color: #000000;
+      border: 3px solid #D4AF37;
+      border-radius: 4px;
+      padding: 40px 30px 30px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(212, 175, 55, 0.15);
+      position: relative;
+      box-sizing: border-box;
+    }
+    .top-bar {
+      text-align: right;
+      margin-bottom: 25px;
+    }
+    .brand-logo-text {
+      font-family: 'Montserrat', 'Arial Black', sans-serif;
+      font-size: 26px;
       font-weight: 900;
-      letter-spacing: 4px;
+      font-style: italic;
+      color: #FFFFFF;
+      letter-spacing: 3px;
       text-transform: uppercase;
+      display: inline-block;
     }
-    .brand-subtitle {
-      color: #94A3B8;
-      font-size: 12px;
-      font-weight: 700;
-      margin-top: 6px;
+    .main-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: #FFFFFF;
+      margin: 20px 0 10px;
       letter-spacing: 1px;
     }
-    .content {
-      padding: 40px 30px;
-      line-height: 1.8;
-      font-size: 15px;
-      color: #E2E8F0;
-      text-align: center;
-    }
-    .title-text {
-      font-size: 20px;
-      font-weight: 800;
-      color: #FFFFFF;
-      margin-bottom: 12px;
-    }
-    .info-text {
-      color: #94A3B8;
+    .subtitle {
       font-size: 14px;
-      margin-bottom: 30px;
+      color: #94A3B8;
+      margin-bottom: 35px;
+      font-weight: 600;
     }
-    .otp-box {
+    .otp-pill-box {
       background: #05070C;
-      border: 1px solid #D4AF37;
-      border-radius: 10px;
-      padding: 20px;
+      border: 2px solid #D4AF37;
+      border-radius: 50px;
+      padding: 16px 30px;
       display: inline-block;
-      margin: 10px 0 25px 0;
+      margin: 10px auto 35px;
+      box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
     }
     .otp-code {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 36px;
+      font-size: 40px;
       font-weight: 900;
       color: #D4AF37;
-      letter-spacing: 12px;
-      margin-right: 12px;
+      letter-spacing: 14px;
+      margin-right: 14px;
+      line-height: 1.2;
     }
-    .expiry-text {
-      font-size: 13px;
-      color: #64748B;
-      margin-top: 15px;
+    .expiry-info {
+      font-size: 15px;
+      font-weight: 800;
+      color: #E2E8F0;
+      margin-bottom: 8px;
     }
-    .divider {
-      height: 1px;
-      background: rgba(255, 255, 255, 0.08);
-      margin: 30px 0;
-    }
-    .footer {
-      background-color: #07090E;
-      padding: 24px;
-      text-align: center;
+    .ignore-notice {
       font-size: 12px;
       color: #64748B;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 45px;
+      font-weight: 500;
     }
-    .footer p {
-      margin: 4px 0;
+    .footer-line {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 20px;
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="brand-title">KEMET</div>
-      <div class="brand-subtitle">PREMIUM ATHLETICWEAR</div>
-    </div>
-    
-    <div class="content">
-      <div class="title-text">استعادة كلمة المرور</div>
-      <div class="info-text">استخدم رمز التحقق التالي لإعادة تعيين كلمة المرور لحسابك:</div>
+  <div class="email-wrapper">
+    <div class="email-card">
       
-      <div class="otp-box">
-        <div class="otp-code">${otpCode}</div>
+      <!-- Top Brand Logo -->
+      <div class="top-bar">
+        <span class="brand-logo-text">KEMET</span>
       </div>
+
+      <!-- Main Heading -->
+      <div class="main-title">إعادة ضبط كلمة المرور</div>
       
-      <div class="expiry-text">صلاحية الرمز: 15 دقيقة</div>
-      
-      <div class="divider"></div>
-      
-      <div style="font-size: 13px; color: #64748B;">
-        إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة وأمان حسابك في أمان تام.
+      <!-- Subtitle -->
+      <div class="subtitle">استخدم رمز التحقق التالي لإعادة ضبط كلمة المرور الخاصة بحسابك</div>
+
+      <!-- Pill OTP Box -->
+      <div class="otp-pill-box">
+        <span class="otp-code">${otpCode}</span>
       </div>
-    </div>
-    
-    <div class="footer">
-      <p>خدمة العملاء والاستفسارات: support@kemetmisr.com</p>
-      <p>© ${new Date().getFullYear()} KEMET Sportswear. All rights reserved.</p>
+
+      <!-- Expiry & Ignore Notice -->
+      <div class="expiry-info">صلاحية الرمز 15 دقيقة</div>
+      <div class="ignore-notice">إذا لم تطلب إعادة ضبط كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان</div>
+
+      <!-- Footer Copyright -->
+      <div class="footer-line">
+        Copyright &copy; 2026 kemetmisr.com
+      </div>
+
     </div>
   </div>
 </body>
