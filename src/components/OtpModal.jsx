@@ -4,10 +4,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { verifySignupOtpAction, resendOtpAction } from '../app/actions/auth-actions.js';
 
 /**
- * KEMET 6-Digit Email OTP Component & Modal
+ * Normalizes Eastern Arabic digits (٠-٩) to standard ASCII digits (0-9)
+ */
+function normalizeDigits(val) {
+  if (!val) return '';
+  const arabicMap = { '٠':'0', '١':'1', '٢':'2', '٣':'3', '٤':'4', '٥':'5', '٦':'6', '٧':'7', '٨':'8', '٩':'9' };
+  const replaced = val.replace(/[٠-٩]/g, d => arabicMap[d] || d);
+  return replaced.replace(/[^0-9]/g, '');
+}
+
+/**
+ * KEMET 8-Digit Email OTP Component & Modal (Phase 3 Integrated)
  * - Built 100% with KEMET UI System & Brand Guidelines
- * - Zero Emojis, Zero Third-Party Exposure
- * - Includes 60s Countdown Timer, Auto-Focus, Resend Protection & Error Handling
+ * - High-Contrast Inputs for Dark & Light Modes
+ * - Dynamic Slogan: BUILD YOUR LEGACY
+ * - Includes 60s Countdown Timer, Auto-Focus, Resend Protection & Session Return
  */
 export const OtpModal = ({
   isOpen,
@@ -61,9 +72,9 @@ export const OtpModal = ({
 
   if (!isOpen) return null;
 
-  // Handle Digit Change & Auto Focus Next
+  // Handle Digit Change with Arabic Transliteration & Auto Focus Next
   const handleChange = (index, value) => {
-    const cleanVal = value.replace(/[^0-9]/g, '');
+    const cleanVal = normalizeDigits(value);
     if (!cleanVal) {
       const newDigits = [...digits];
       newDigits[index] = '';
@@ -97,7 +108,7 @@ export const OtpModal = ({
     }
   };
 
-  // Handle Confirm Verification
+  // Handle Confirm Verification & Pass Session (Phase 3)
   const handleVerify = async (e) => {
     if (e) e.preventDefault();
     setErrorMessage(null);
@@ -161,8 +172,8 @@ export const OtpModal = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(5, 7, 12, 0.85)',
-        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(5, 7, 12, 0.88)',
+        backdropFilter: 'blur(10px)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
@@ -178,19 +189,19 @@ export const OtpModal = ({
           border: '1px solid var(--border-gold-bright)',
           borderRadius: 'var(--radius-lg)',
           padding: '2.5rem 2rem',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.7)',
           textAlign: 'center',
           direction: 'rtl',
           position: 'relative'
         }}
       >
-        {/* Header Logo */}
+        {/* Header Logo & Brand Slogan */}
         <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '2px', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '3px', textTransform: 'uppercase' }}>
             KEMET
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px', marginTop: '0.2rem' }}>
-            PREMIUM ATHLETICWEAR
+          <div style={{ fontSize: '0.78rem', color: '#94A3B8', fontWeight: 800, letterSpacing: '1.5px', marginTop: '0.2rem', textTransform: 'uppercase' }}>
+            BUILD YOUR LEGACY
           </div>
         </div>
 
@@ -198,9 +209,9 @@ export const OtpModal = ({
         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '0.5rem' }}>
           إدخال رمز التحقق
         </h2>
-        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: '0.88rem', color: '#94A3B8', lineHeight: 1.6, marginBottom: '1.5rem' }}>
           أدخل الرمز الرقمي المكون من {otpLength} أرقام الذي تم إرساله إلى:<br />
-          <strong style={{ color: 'var(--gold-primary)', direction: 'ltr', display: 'inline-block' }}>{email}</strong>
+          <strong style={{ color: 'var(--gold-primary)', direction: 'ltr', display: 'inline-block', fontWeight: 800 }}>{email}</strong>
         </p>
 
         {/* Success Message Banner */}
@@ -208,11 +219,11 @@ export const OtpModal = ({
           <div style={{
             background: 'rgba(212, 175, 55, 0.12)',
             border: '1px solid var(--border-gold-bright)',
-            color: 'var(--gold-primary)',
+            color: '#FFDF73',
             padding: '0.8rem 1rem',
             borderRadius: 'var(--radius-md)',
             fontSize: '0.88rem',
-            fontWeight: 700,
+            fontWeight: 800,
             marginBottom: '1.5rem'
           }}>
             {successMessage}
@@ -262,13 +273,15 @@ export const OtpModal = ({
                   width: otpLength > 6 ? '38px' : '48px',
                   height: '52px',
                   textAlign: 'center',
-                  fontSize: otpLength > 6 ? '1.15rem' : '1.3rem',
-                  fontWeight: '800',
-                  color: '#FFFFFF',
-                  background: '#05070C',
-                  border: digit ? '1px solid var(--gold-primary)' : '1px solid var(--border-color)',
+                  fontSize: otpLength > 6 ? '1.2rem' : '1.35rem',
+                  fontWeight: '900',
+                  color: '#FFDF73',
+                  backgroundColor: '#05070C',
+                  border: digit ? '2px solid var(--border-gold-bright)' : '1px solid var(--border-gold)',
                   borderRadius: 'var(--radius-md)',
                   outline: 'none',
+                  caretColor: 'var(--gold-primary)',
+                  boxShadow: digit ? '0 0 10px rgba(212, 175, 55, 0.3)' : 'none',
                   transition: 'var(--transition)'
                 }}
               />
@@ -307,7 +320,7 @@ export const OtpModal = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: isResendDisabled ? 'var(--text-muted)' : 'var(--gold-primary)',
+              color: isResendDisabled ? '#64748B' : 'var(--gold-primary)',
               fontWeight: 800,
               cursor: isResendDisabled || isLoading ? 'not-allowed' : 'pointer',
               textDecoration: isResendDisabled ? 'none' : 'underline'
@@ -316,7 +329,7 @@ export const OtpModal = ({
             إعادة إرسال الرمز
           </button>
 
-          <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
+          <span style={{ color: '#94A3B8', fontWeight: 700 }}>
             {isResendDisabled ? `إعادة الإرسال بعد (${String(timer).padStart(2, '0')} ثانية)` : 'جاهز للإعادة'}
           </span>
         </div>
@@ -332,7 +345,7 @@ export const OtpModal = ({
               left: '1rem',
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-muted)',
+              color: '#64748B',
               fontSize: '1.4rem',
               cursor: 'pointer'
             }}

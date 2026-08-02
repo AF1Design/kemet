@@ -557,6 +557,25 @@ export default function LoginPage() {
         isOpen={showOtpModal} 
         email={email} 
         onClose={() => setShowOtpModal(false)} 
+        onVerifySuccess={(res) => {
+          setShowOtpModal(false);
+          if (res?.session) {
+            document.cookie = `sb-access-token=${res.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+            document.cookie = `supabase-auth-token=${res.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+          }
+          loginUser({
+            id: res?.user?.id || 'customer',
+            email: email.trim(),
+            fullName: fullName.trim() || res?.user?.user_metadata?.full_name || email.split('@')[0],
+            phone: phone.trim() || '',
+            governorate: governorate || 'القاهرة',
+            role: 'customer'
+          });
+          showToast('تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.');
+          setTimeout(() => {
+            window.location.href = '/my-orders';
+          }, 800);
+        }}
       />
 
       <Footer />
