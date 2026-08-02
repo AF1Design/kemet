@@ -14,7 +14,7 @@ export const OtpModal = ({
   email,
   onClose,
   onVerifySuccess,
-  otpLength = 6
+  otpLength = 8
 }) => {
   const [digits, setDigits] = useState(Array(otpLength).fill(''));
   const [isLoading, setIsLoading] = useState(false);
@@ -240,10 +240,11 @@ export const OtpModal = ({
           <div 
             style={{ 
               display: 'flex', 
-              justify: 'center', 
-              gap: '0.5rem', 
+              justifyContent: 'center', 
+              gap: otpLength > 6 ? '0.35rem' : '0.5rem', 
               direction: 'ltr',
-              marginBottom: '2rem'
+              marginBottom: '2rem',
+              flexWrap: 'nowrap'
             }}
           >
             {digits.map((digit, idx) => (
@@ -258,10 +259,10 @@ export const OtpModal = ({
                 onKeyDown={e => handleKeyDown(idx, e)}
                 disabled={isLoading}
                 style={{
-                  width: otpLength > 6 ? '42px' : '50px',
-                  height: '56px',
+                  width: otpLength > 6 ? '38px' : '48px',
+                  height: '52px',
                   textAlign: 'center',
-                  fontSize: '1.3rem',
+                  fontSize: otpLength > 6 ? '1.15rem' : '1.3rem',
                   fontWeight: '800',
                   color: '#FFFFFF',
                   background: '#05070C',
