@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
 import { OtpModal } from '../../components/OtpModal';
 import { supabase } from '../../lib/supabase/client';
-import { customSignupAction, customPasswordResetAction } from '../actions/auth-actions';
+import { customSignupAction, customPasswordResetAction, forgotPasswordOtpAction } from '../actions/auth-actions';
 
 // Eye of Horus (عين حورس المفتوحة) - SVG Icon
 const EyeOfHorusOpen = () => (
@@ -52,6 +52,7 @@ export default function LoginPage() {
   const [signupSuccessMsg, setSignupSuccessMsg] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpModalMode, setOtpModalMode] = useState('signup');
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -502,6 +503,46 @@ export default function LoginPage() {
                     </div>
                   </div>
 
+                  {mode === 'login' && (
+                    <div style={{ textAlign: 'left', marginTop: '-0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!email.trim() || !email.includes('@')) {
+                            setAuthError('يرجى كتابة البريد الإلكتروني أولاً لاستعادة كلمة المرور.');
+                            return;
+                          }
+                          setIsLoading(true);
+                          setAuthError(null);
+                          try {
+                            const res = await forgotPasswordOtpAction(email.trim());
+                            if (res.success) {
+                              setOtpModalMode('recovery');
+                              setShowOtpModal(true);
+                            } else {
+                              setAuthError(res.error || 'تعذر إرسال رمز الاستعادة.');
+                            }
+                          } catch (err) {
+                            setAuthError('تعذر إرسال رمز الاستعادة.');
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--gold-primary)',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        نسيت كلمة المرور؟
+                      </button>
+                    </div>
+                  )}
+
                   {mode === 'register' && (
                     <>
                       <div>
@@ -556,6 +597,7 @@ export default function LoginPage() {
       <OtpModal 
         isOpen={showOtpModal} 
         email={email} 
+        mode={otpModalMode}
         onClose={() => setShowOtpModal(false)} 
         onVerifySuccess={async (res) => {
           setShowOtpModal(false);
@@ -584,7 +626,11 @@ export default function LoginPage() {
             role: profileData?.role || 'customer'
           });
 
-          showToast('تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.');
+          showToast(
+            otpModalMode === 'recovery'
+              ? 'تم إعادة ضبط كلمة المرور وتسجيل الدخول بنجاح.'
+              : 'تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.'
+          );
           setTimeout(() => {
             window.location.href = '/my-orders';
           }, 800);

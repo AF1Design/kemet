@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { verifySignupOtpAction, resendOtpAction } from '../app/actions/auth-actions.js';
+import { 
+  verifySignupOtpAction, 
+  resendOtpAction, 
+  forgotPasswordOtpAction, 
+  verifyPasswordResetOtpAction 
+} from '../app/actions/auth-actions.js';
 
 /**
  * Normalizes Eastern Arabic digits (٠-٩) to standard ASCII digits (0-9)
@@ -14,20 +19,23 @@ function normalizeDigits(val) {
 }
 
 /**
- * KEMET 8-Digit Email OTP Component & Modal (Phase 3 Integrated)
+ * KEMET 8-Digit Email OTP Component & Modal (Phase 4 Recovery Supported)
+ * - Supports Mode: 'signup' (Email Activation) & 'recovery' (Password Recovery)
  * - Built 100% with KEMET UI System & Brand Guidelines
  * - High-Contrast Inputs for Dark & Light Modes
  * - Dynamic Slogan: BUILD YOUR LEGACY
- * - Includes 60s Countdown Timer, Auto-Focus, Resend Protection & Session Return
+ * - Includes 60s Countdown Timer, Auto-Focus, Resend Protection & Auto Session Return
  */
 export const OtpModal = ({
   isOpen,
   email,
+  mode = 'signup', // 'signup' or 'recovery'
   onClose,
   onVerifySuccess,
   otpLength = 8
 }) => {
   const [digits, setDigits] = useState(Array(otpLength).fill(''));
+  const [newPassword, setNewPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -59,8 +67,13 @@ export const OtpModal = ({
   useEffect(() => {
     if (isOpen) {
       setDigits(Array(otpLength).fill(''));
+      setNewPassword('');
       setErrorMessage(null);
-      setSuccessMessage('تم إرسال رمز التحقق إلى بريدك الإلكتروني.');
+      setSuccessMessage(
+        mode === 'recovery' 
+          ? 'تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني.'
+          : 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.'
+      );
       setTimer(60);
       setIsResendDisabled(true);
       // Auto focus first input
@@ -68,7 +81,7 @@ export const OtpModal = ({
         if (inputRefs.current[0]) inputRefs.current[0].focus();
       }, 150);
     }
-  }, [isOpen, otpLength]);
+  }, [isOpen, otpLength, mode]);
 
   if (!isOpen) return null;
 
@@ -108,7 +121,7 @@ export const OtpModal = ({
     }
   };
 
-  // Handle Confirm Verification & Pass Session (Phase 3)
+  // Handle Confirm Verification & Pass Session
   const handleVerify = async (e) => {
     if (e) e.preventDefault();
     setErrorMessage(null);
@@ -120,12 +133,27 @@ export const OtpModal = ({
       return;
     }
 
+    if (mode === 'recovery' && (!newPassword || newPassword.length < 6)) {
+      setErrorMessage('يرجى كتابة كلمة المرور الجديدة (6 أحرف على الأقل).');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const res = await verifySignupOtpAction({ email, otp: fullOtp });
+      let res;
+      if (mode === 'recovery') {
+        res = await verifyPasswordResetOtpAction({ email, otp: fullOtp, newPassword });
+      } else {
+        res = await verifySignupOtpAction({ email, otp: fullOtp });
+      }
+
       if (res.success) {
-        setSuccessMessage('تم التحقق من البريد الإلكتروني بنجاح.');
+        setSuccessMessage(
+          mode === 'recovery' 
+            ? 'تم إعادة ضبط كلمة المرور وتفعيل الحساب بنجاح.'
+            : 'تم التحقق من البريد الإلكتروني بنجاح.'
+        );
         if (onVerifySuccess) {
           onVerifySuccess(res);
         }
@@ -149,7 +177,13 @@ export const OtpModal = ({
     setIsLoading(true);
 
     try {
-      const res = await resendOtpAction({ email });
+      let res;
+      if (mode === 'recovery') {
+        res = await forgotPasswordOtpAction(email);
+      } else {
+        res = await resendOtpAction({ email });
+      }
+
       if (res.success) {
         setSuccessMessage('تم إرسال رمز تحقق جديد إلى بريدك الإلكتروني.');
         setTimer(60);
@@ -184,7 +218,7 @@ export const OtpModal = ({
       <div 
         style={{
           width: '100%',
-          maxWidth: '480px',
+          maxWidth: '500px',
           background: '#0D111A',
           border: '1px solid var(--border-gold-bright)',
           borderRadius: 'var(--radius-lg)',
@@ -207,7 +241,7 @@ export const OtpModal = ({
 
         {/* Title */}
         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '0.5rem' }}>
-          إدخال رمز التحقق
+          {mode === 'recovery' ? 'استعادة كلمة المرور' : 'إدخال رمز التحقق'}
         </h2>
         <p style={{ fontSize: '0.88rem', color: '#94A3B8', lineHeight: 1.6, marginBottom: '1.5rem' }}>
           أدخل الرمز الرقمي المكون من {otpLength} أرقام الذي تم إرساله إلى:<br />
@@ -251,11 +285,11 @@ export const OtpModal = ({
           <div 
             style={{ 
               display: 'flex', 
-              justifyContent: 'center', 
+              justify: 'center', 
               alignItems: 'center',
               gap: otpLength > 6 ? '0.4rem' : '0.6rem', 
               direction: 'ltr',
-              marginBottom: '2rem',
+              marginBottom: mode === 'recovery' ? '1.25rem' : '2rem',
               flexWrap: 'nowrap',
               width: '100%'
             }}
@@ -291,6 +325,34 @@ export const OtpModal = ({
             ))}
           </div>
 
+          {/* New Password Input for Recovery Mode */}
+          {mode === 'recovery' && (
+            <div style={{ marginBottom: '1.5rem', textAlign: 'right' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#E2E8F0', marginBottom: '0.4rem' }}>
+                كلمة السر الجديدة
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  padding: '0 1rem',
+                  fontSize: '1rem',
+                  color: '#FFFFFF',
+                  background: '#05070C',
+                  border: '1px solid var(--border-gold)',
+                  borderRadius: 'var(--radius-md)',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          )}
+
           {/* Confirm Button */}
           <button
             type="submit"
@@ -310,7 +372,7 @@ export const OtpModal = ({
               transition: 'var(--transition)'
             }}
           >
-            {isLoading ? 'جاري التحقق...' : 'تأكيد الرمز'}
+            {isLoading ? 'جاري التحقق...' : (mode === 'recovery' ? 'حفظ كلمة السر وتأكيد الدخول' : 'تأكيد الرمز')}
           </button>
         </form>
 
