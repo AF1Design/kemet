@@ -1,11 +1,14 @@
 /**
  * KEMET Digital Brand - Luxury HTML Email Templates for Resend & Supabase OTP
- * Design based 100% on KEMET Official Illustrator Master Template
+ * 100% Pixel-Perfect Match with KEMET Official Master Design (JPEG + CSS Spec)
  * Domain: kemetmisr.com | Sender: KEMET Sportswear <noreply@kemetmisr.com>
- * Rules: Zero Emojis, Zero External Links, Premium Luxury Dark Theme & Gold Accents
+ * Rules: Zero Emojis, Zero Third-Party Branding, Real Working Domain Link
  */
 
 export function getConfirmationEmailHtml({ otpCode }) {
+  // Format OTP code digits with clean letter spacing
+  const formattedOtp = String(otpCode || '00000000').trim();
+
   return `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -17,8 +20,8 @@ export function getConfirmationEmailHtml({ otpCode }) {
     body {
       margin: 0;
       padding: 0;
-      background-color: #0A0D14;
-      font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #000000;
+      font-family: 'Cairo', 'GE Snd Book', 'Adobe Arabic', Tahoma, sans-serif;
       color: #FFFFFF;
       direction: rtl;
       text-align: center;
@@ -26,26 +29,27 @@ export function getConfirmationEmailHtml({ otpCode }) {
     }
     .email-wrapper {
       width: 100%;
-      background-color: #0A0D14;
-      padding: 40px 10px;
+      background-color: #000000;
+      padding: 30px 10px;
+      box-sizing: border-box;
     }
     .email-card {
       max-width: 580px;
       margin: 0 auto;
       background-color: #000000;
       border: 3px solid #D4AF37;
-      border-radius: 4px;
-      padding: 40px 30px 30px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(212, 175, 55, 0.15);
+      padding: 35px 25px 30px;
+      box-shadow: 0 0 30px rgba(212, 175, 55, 0.25);
       position: relative;
       box-sizing: border-box;
+      background-image: radial-gradient(circle at center, rgba(30, 30, 30, 0.4) 0%, rgba(0, 0, 0, 0.95) 75%);
     }
     .top-bar {
       text-align: right;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
     .brand-logo-text {
-      font-family: 'Montserrat', 'Arial Black', sans-serif;
+      font-family: 'Eras Demi ITC', 'Montserrat', 'Arial Black', sans-serif;
       font-size: 26px;
       font-weight: 900;
       font-style: italic;
@@ -53,56 +57,75 @@ export function getConfirmationEmailHtml({ otpCode }) {
       letter-spacing: 3px;
       text-transform: uppercase;
       display: inline-block;
+      text-decoration: none;
     }
     .main-title {
+      font-family: 'GE Snd Book', 'Cairo', sans-serif;
       font-size: 32px;
       font-weight: 900;
       color: #FFFFFF;
-      margin: 20px 0 10px;
+      margin: 15px 0 8px;
       letter-spacing: 1px;
     }
     .subtitle {
-      font-size: 14px;
-      color: #94A3B8;
-      margin-bottom: 35px;
-      font-weight: 600;
+      font-family: 'Adobe Arabic', 'Cairo', sans-serif;
+      font-size: 15px;
+      color: #CCCCCC;
+      margin-bottom: 30px;
+    }
+    .otp-box-container {
+      margin: 10px auto 30px;
+      display: inline-block;
+      width: 90%;
+      max-width: 440px;
     }
     .otp-pill-box {
-      background: #05070C;
-      border: 2px solid #D4AF37;
-      border-radius: 50px;
-      padding: 16px 30px;
-      display: inline-block;
-      margin: 10px auto 35px;
-      box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
+      background: #0D0D0D;
+      border: 1.5px solid #C59B27;
+      border-radius: 20px;
+      padding: 20px 15px;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 0 20px rgba(197, 155, 39, 0.2);
     }
     .otp-code {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 40px;
+      font-family: 'GE Snd Book', 'Courier New', Courier, monospace;
+      font-size: 48px;
       font-weight: 900;
-      color: #D4AF37;
+      color: #E5C158;
       letter-spacing: 14px;
       margin-right: 14px;
+      display: inline-block;
       line-height: 1.2;
     }
     .expiry-info {
-      font-size: 15px;
-      font-weight: 800;
-      color: #E2E8F0;
+      font-family: 'GE Snd Book', 'Cairo', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFFFFF;
       margin-bottom: 8px;
     }
     .ignore-notice {
-      font-size: 12px;
-      color: #64748B;
-      margin-bottom: 45px;
-      font-weight: 500;
+      font-family: 'GE Snd Book', 'Cairo', sans-serif;
+      font-size: 13px;
+      color: #CCCCCC;
+      margin-bottom: 35px;
     }
     .footer-line {
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
       padding-top: 20px;
-      font-size: 12px;
-      color: #94A3B8;
+      font-family: 'Eras Demi ITC', 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #FFFFFF;
       font-weight: 600;
+    }
+    .footer-link {
+      color: #FFFFFF;
+      text-decoration: none;
+      font-weight: 800;
+      transition: color 0.2s ease;
+    }
+    .footer-link:hover {
+      color: #E5C158;
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -110,9 +133,9 @@ export function getConfirmationEmailHtml({ otpCode }) {
   <div class="email-wrapper">
     <div class="email-card">
       
-      <!-- Top Brand Logo -->
+      <!-- Top Left Brand Logo -->
       <div class="top-bar">
-        <span class="brand-logo-text">KEMET</span>
+        <a href="https://kemetmisr.com" target="_blank" class="brand-logo-text">KEMET</a>
       </div>
 
       <!-- Main Heading -->
@@ -122,17 +145,19 @@ export function getConfirmationEmailHtml({ otpCode }) {
       <div class="subtitle">استخدم رمز التحقق التالي لإتمام تفعيل حسابك</div>
 
       <!-- Pill OTP Box -->
-      <div class="otp-pill-box">
-        <span class="otp-code">${otpCode}</span>
+      <div class="otp-box-container">
+        <div class="otp-pill-box">
+          <span class="otp-code">${formattedOtp}</span>
+        </div>
       </div>
 
       <!-- Expiry & Ignore Notice -->
       <div class="expiry-info">صلاحية الرمز 15 دقيقة</div>
       <div class="ignore-notice">إذا لم تطلب إنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة</div>
 
-      <!-- Footer Copyright -->
+      <!-- Footer Copyright with Active Domain Link -->
       <div class="footer-line">
-        Copyright &copy; 2026 kemetmisr.com
+        Copyright &copy; 2026 <a href="https://kemetmisr.com" target="_blank" class="footer-link">kemetmisr.com</a>
       </div>
 
     </div>
@@ -143,6 +168,8 @@ export function getConfirmationEmailHtml({ otpCode }) {
 }
 
 export function getPasswordResetEmailHtml({ otpCode }) {
+  const formattedOtp = String(otpCode || '00000000').trim();
+
   return `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -154,8 +181,8 @@ export function getPasswordResetEmailHtml({ otpCode }) {
     body {
       margin: 0;
       padding: 0;
-      background-color: #0A0D14;
-      font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #000000;
+      font-family: 'Cairo', 'GE Snd Book', 'Adobe Arabic', Tahoma, sans-serif;
       color: #FFFFFF;
       direction: rtl;
       text-align: center;
@@ -163,26 +190,27 @@ export function getPasswordResetEmailHtml({ otpCode }) {
     }
     .email-wrapper {
       width: 100%;
-      background-color: #0A0D14;
-      padding: 40px 10px;
+      background-color: #000000;
+      padding: 30px 10px;
+      box-sizing: border-box;
     }
     .email-card {
       max-width: 580px;
       margin: 0 auto;
       background-color: #000000;
       border: 3px solid #D4AF37;
-      border-radius: 4px;
-      padding: 40px 30px 30px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(212, 175, 55, 0.15);
+      padding: 35px 25px 30px;
+      box-shadow: 0 0 30px rgba(212, 175, 55, 0.25);
       position: relative;
       box-sizing: border-box;
+      background-image: radial-gradient(circle at center, rgba(30, 30, 30, 0.4) 0%, rgba(0, 0, 0, 0.95) 75%);
     }
     .top-bar {
       text-align: right;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
     .brand-logo-text {
-      font-family: 'Montserrat', 'Arial Black', sans-serif;
+      font-family: 'Eras Demi ITC', 'Montserrat', 'Arial Black', sans-serif;
       font-size: 26px;
       font-weight: 900;
       font-style: italic;
@@ -190,56 +218,75 @@ export function getPasswordResetEmailHtml({ otpCode }) {
       letter-spacing: 3px;
       text-transform: uppercase;
       display: inline-block;
+      text-decoration: none;
     }
     .main-title {
+      font-family: 'GE Snd Book', 'Cairo', sans-serif;
       font-size: 32px;
       font-weight: 900;
       color: #FFFFFF;
-      margin: 20px 0 10px;
+      margin: 15px 0 8px;
       letter-spacing: 1px;
     }
     .subtitle {
-      font-size: 14px;
-      color: #94A3B8;
-      margin-bottom: 35px;
-      font-weight: 600;
+      font-family: 'Adobe Arabic', 'Cairo', sans-serif;
+      font-size: 15px;
+      color: #CCCCCC;
+      margin-bottom: 30px;
+    }
+    .otp-box-container {
+      margin: 10px auto 30px;
+      display: inline-block;
+      width: 90%;
+      max-width: 440px;
     }
     .otp-pill-box {
-      background: #05070C;
-      border: 2px solid #D4AF37;
-      border-radius: 50px;
-      padding: 16px 30px;
-      display: inline-block;
-      margin: 10px auto 35px;
-      box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
+      background: #0D0D0D;
+      border: 1.5px solid #C59B27;
+      border-radius: 20px;
+      padding: 20px 15px;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 0 20px rgba(197, 155, 39, 0.2);
     }
     .otp-code {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 40px;
+      font-family: 'GE Snd Book', 'Courier New', Courier, monospace;
+      font-size: 48px;
       font-weight: 900;
-      color: #D4AF37;
+      color: #E5C158;
       letter-spacing: 14px;
       margin-right: 14px;
+      display: inline-block;
       line-height: 1.2;
     }
     .expiry-info {
-      font-size: 15px;
-      font-weight: 800;
-      color: #E2E8F0;
+      font-family: 'GE Snd Book', 'Cairo', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFFFFF;
       margin-bottom: 8px;
     }
     .ignore-notice {
-      font-size: 12px;
-      color: #64748B;
-      margin-bottom: 45px;
-      font-weight: 500;
+      font-family: 'GE Snd Book', 'Cairo', sans-serif;
+      font-size: 13px;
+      color: #CCCCCC;
+      margin-bottom: 35px;
     }
     .footer-line {
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
       padding-top: 20px;
-      font-size: 12px;
-      color: #94A3B8;
+      font-family: 'Eras Demi ITC', 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #FFFFFF;
       font-weight: 600;
+    }
+    .footer-link {
+      color: #FFFFFF;
+      text-decoration: none;
+      font-weight: 800;
+      transition: color 0.2s ease;
+    }
+    .footer-link:hover {
+      color: #E5C158;
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -247,9 +294,9 @@ export function getPasswordResetEmailHtml({ otpCode }) {
   <div class="email-wrapper">
     <div class="email-card">
       
-      <!-- Top Brand Logo -->
+      <!-- Top Left Brand Logo -->
       <div class="top-bar">
-        <span class="brand-logo-text">KEMET</span>
+        <a href="https://kemetmisr.com" target="_blank" class="brand-logo-text">KEMET</a>
       </div>
 
       <!-- Main Heading -->
@@ -259,17 +306,19 @@ export function getPasswordResetEmailHtml({ otpCode }) {
       <div class="subtitle">استخدم رمز التحقق التالي لإعادة ضبط كلمة المرور الخاصة بحسابك</div>
 
       <!-- Pill OTP Box -->
-      <div class="otp-pill-box">
-        <span class="otp-code">${otpCode}</span>
+      <div class="otp-box-container">
+        <div class="otp-pill-box">
+          <span class="otp-code">${formattedOtp}</span>
+        </div>
       </div>
 
       <!-- Expiry & Ignore Notice -->
       <div class="expiry-info">صلاحية الرمز 15 دقيقة</div>
       <div class="ignore-notice">إذا لم تطلب إعادة ضبط كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان</div>
 
-      <!-- Footer Copyright -->
+      <!-- Footer Copyright with Active Domain Link -->
       <div class="footer-line">
-        Copyright &copy; 2026 kemetmisr.com
+        Copyright &copy; 2026 <a href="https://kemetmisr.com" target="_blank" class="footer-link">kemetmisr.com</a>
       </div>
 
     </div>
