@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
+import { OtpModal } from '../../components/OtpModal';
 import { supabase } from '../../lib/supabase/client';
 import { customSignupAction, customPasswordResetAction } from '../actions/auth-actions';
 
@@ -50,12 +51,13 @@ export default function LoginPage() {
   const [authError, setAuthError] = useState(null);
   const [signupSuccessMsg, setSignupSuccessMsg] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('confirmed') === 'true') {
-        showToast('تم تفعيل بريدك الإلكتروني بنجاح! يمكنك الآن تسجيل الدخول 🚀');
+        showToast('تم تفعيل البريد الإلكتروني بنجاح.');
       }
     }
   }, []);
@@ -169,7 +171,7 @@ export default function LoginPage() {
             role: userRole
           });
 
-          showToast(userRole === 'admin' ? 'مرحباً بك يا أدمن 👑' : 'تم تسجيل الدخول بنجاح 🎉');
+          showToast(userRole === 'admin' ? 'تم تسجيل دخول المسؤول الإداري.' : 'تم تسجيل الدخول بنجاح.');
 
           // Explicit redirect check: if role === 'admin', redirect directly to /admin
           if (userRole === 'admin') {
@@ -203,11 +205,10 @@ export default function LoginPage() {
         });
 
         if (res.success) {
-          setSignupSuccessMsg(`🎉 تم إنشاء الحساب بنجاح! تم إرسال رسالة التفعيل الرسمية من KEMET إلى بريدك الإلكتروني (${email.trim()}). يرجى تفقد صندوق الوارد أو البريد العشوائي (Spam) والتأكيد.`);
           setAuthError(null);
-          showToast('تم إنشاء الحساب وإرسال بريد التفعيل من KEMET بنجاح 📩');
+          setShowOtpModal(true);
         } else {
-          setAuthError(res.error || 'حدث خطأ في عملية إنشاء الحساب');
+          setAuthError(res.error || 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.');
         }
       } catch (err) {
         console.error('Signup error:', err);
@@ -551,6 +552,12 @@ export default function LoginPage() {
 
         </div>
       </section>
+
+      <OtpModal 
+        isOpen={showOtpModal} 
+        email={email} 
+        onClose={() => setShowOtpModal(false)} 
+      />
 
       <Footer />
     </div>
