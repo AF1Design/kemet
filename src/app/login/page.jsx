@@ -557,20 +557,33 @@ export default function LoginPage() {
         isOpen={showOtpModal} 
         email={email} 
         onClose={() => setShowOtpModal(false)} 
-        onVerifySuccess={(res) => {
+        onVerifySuccess={async (res) => {
           setShowOtpModal(false);
           if (res?.session) {
             document.cookie = `sb-access-token=${res.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
             document.cookie = `supabase-auth-token=${res.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
           }
+
+          // Fetch authoritative profile from Supabase DB to prevent local state divergence across devices
+          let profileData = null;
+          if (res?.user?.id) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('full_name, phone, governorate, role')
+              .eq('id', res.user.id)
+              .single();
+            if (prof) profileData = prof;
+          }
+
           loginUser({
             id: res?.user?.id || 'customer',
-            email: email.trim(),
-            fullName: fullName.trim() || res?.user?.user_metadata?.full_name || email.split('@')[0],
-            phone: phone.trim() || '',
-            governorate: governorate || 'القاهرة',
-            role: 'customer'
+            email: res?.user?.email || email.trim(),
+            fullName: profileData?.full_name || res?.user?.user_metadata?.full_name || fullName.trim() || email.split('@')[0],
+            phone: profileData?.phone || res?.user?.user_metadata?.phone || phone.trim() || '',
+            governorate: profileData?.governorate || governorate || 'القاهرة',
+            role: profileData?.role || 'customer'
           });
+
           showToast('تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.');
           setTimeout(() => {
             window.location.href = '/my-orders';
