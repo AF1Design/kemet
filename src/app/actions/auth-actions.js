@@ -2,7 +2,7 @@
 
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
 import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
-import { getConfirmationEmailHtml, getPasswordResetEmailHtml } from '../../lib/email-templates.js';
+import { OtpVerificationEmail, PasswordResetEmail } from '../../emails/index.js';
 
 /**
  * Clean Error Formatter strictly complying with KEMET Digital Brand Guidelines
@@ -103,23 +103,22 @@ export async function customSignupAction({ email, password, fullName, phone = ''
       }
     }
 
-    // 3. Send 6-Digit OTP Email via Resend using KEMET Template
+    // 3. Send 6-Digit OTP Email via Resend using React Email Template
     if (otpCode) {
       const resend = getResendClient();
-      const emailHtml = getConfirmationEmailHtml({ otpCode });
 
-      const { error: resendErr } = await resend.emails.send({
+      const { data: resendData, error: resendErr } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: [cleanEmail],
         subject: 'رمز تفعيل حساب KEMET',
-        html: emailHtml
+        react: OtpVerificationEmail({ otpCode })
       });
 
       if (resendErr) {
         console.error('Resend API error:', resendErr);
         return {
           success: false,
-          error: 'تعذر إرسال بريد التحقق. يرجى المحاولة مرة أخرى.'
+          error: 'تعذر إرسال البريد الإلكتروني. يرجى المحاولة مرة أخرى.'
         };
       }
     }
@@ -218,13 +217,12 @@ export async function resendOtpAction({ email }) {
     const otpCode = data?.properties?.email_otp;
     if (otpCode) {
       const resend = getResendClient();
-      const emailHtml = getConfirmationEmailHtml({ otpCode });
 
       const { error: resendErr } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: [cleanEmail],
         subject: 'رمز تفعيل حساب KEMET الجديد',
-        html: emailHtml
+        react: OtpVerificationEmail({ otpCode })
       });
 
       if (resendErr) {
@@ -273,13 +271,12 @@ export async function forgotPasswordOtpAction(email) {
     const otpCode = data?.properties?.email_otp;
     if (otpCode) {
       const resend = getResendClient();
-      const emailHtml = getPasswordResetEmailHtml({ otpCode });
 
       const { error: resendErr } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: [cleanEmail],
         subject: 'رمز استعادة كلمة المرور - KEMET',
-        html: emailHtml
+        react: PasswordResetEmail({ otpCode })
       });
 
       if (resendErr) {
