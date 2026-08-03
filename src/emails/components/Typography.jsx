@@ -1,46 +1,49 @@
 import React from 'react';
-import { Text } from '@react-email/components';
+import { Heading, Text } from '@react-email/components';
 import { emailTheme } from '../styles/theme.js';
 
 export const EmailHeading = ({ children }) => (
-  <Text style={headingStyle}>{children}</Text>
+  <Heading as="h1" style={headingStyle}>
+    {children}
+  </Heading>
 );
 
 export const EmailSubheading = ({ children }) => (
-  <Text style={subheadingStyle}>{children}</Text>
+  <Text style={subheadingStyle}>
+    {children}
+  </Text>
 );
 
-export const EmailNotice = ({ children, bold = false }) => (
-  <Text style={bold ? noticeBoldStyle : noticeStyle}>{children}</Text>
+export const EmailNotice = ({ bold = false, children }) => (
+  <Text style={{ ...noticeStyle, fontWeight: bold ? '700' : '400' }}>
+    {children}
+  </Text>
 );
 
 const headingStyle = {
   color: emailTheme.colors.textPrimary,
-  fontSize: '28px',
-  fontWeight: 900,
-  lineHeight: '1.2',
+  fontFamily: emailTheme.fonts.fontFamily,
+  fontSize: '22px',
+  fontWeight: '700',
+  lineHeight: '30px',
   margin: '0 0 8px 0',
-  textAlign: 'center',
+  textAlign: 'right',
 };
 
 const subheadingStyle = {
   color: emailTheme.colors.textSecondary,
+  fontFamily: emailTheme.fonts.fontFamily,
   fontSize: '15px',
-  margin: '0 0 22px 0',
-  textAlign: 'center',
-};
-
-const noticeBoldStyle = {
-  color: emailTheme.colors.textPrimary,
-  fontSize: '15px',
-  fontWeight: 800,
-  margin: '0 0 6px 0',
-  textAlign: 'center',
+  lineHeight: '22px',
+  margin: '0 0 24px 0',
+  textAlign: 'right',
 };
 
 const noticeStyle = {
-  color: emailTheme.colors.textMuted,
+  color: emailTheme.colors.textSecondary,
+  fontFamily: emailTheme.fonts.fontFamily,
   fontSize: '13px',
-  margin: '0 0 10px 0',
-  textAlign: 'center',
+  lineHeight: '20px',
+  margin: '0 0 6px 0',
+  textAlign: 'right',
 };

@@ -1,41 +1,51 @@
 import React from 'react';
-import { Section, Text, Link, Hr } from '@react-email/components';
+import { Text, Link } from '@react-email/components';
 import { emailTheme } from '../styles/theme.js';
 
 export const Footer = () => {
   return (
-    <Section style={footerSection}>
-      <Hr style={hrStyle} />
-      <Text style={footerText}>
-        Copyright &copy; 2026{' '}
-        <Link href="https://kemetmisr.com" target="_blank" style={linkStyle}>
-          kemetmisr.com
-        </Link>
-      </Text>
-    </Section>
+    <table border="0" cellPadding="0" cellSpacing="0" width="100%" style={tableStyle}>
+      <tr>
+        <td style={tdStyle}>
+          <div style={dividerStyle} />
+          <Text style={copyrightStyle}>
+            &copy; {new Date().getFullYear()} KEMET. جميع الحقوق محفوظة.{' '}
+            <Link href="https://kemetmisr.com" target="_blank" style={linkStyle}>
+              kemetmisr.com
+            </Link>
+          </Text>
+        </td>
+      </tr>
+    </table>
   );
 };
 
-const footerSection = {
-  marginTop: '25px',
-  textAlign: 'center',
+const tableStyle = {
+  marginTop: '32px',
   width: '100%',
 };
 
-const hrStyle = {
-  borderColor: 'rgba(212, 175, 55, 0.25)',
-  margin: '0 0 16px 0',
+const tdStyle = {
+  padding: '0',
 };
 
-const footerText = {
-  color: emailTheme.colors.textPrimary,
-  fontSize: '13px',
-  fontWeight: 600,
+const dividerStyle = {
+  borderTop: '1px solid #E2E8F0',
+  marginBottom: '20px',
+  width: '100%',
+};
+
+const copyrightStyle = {
+  color: emailTheme.colors.textMuted,
+  fontFamily: emailTheme.fonts.fontFamily,
+  fontSize: '12px',
+  lineHeight: '18px',
   margin: 0,
+  textAlign: 'center',
 };
 
 const linkStyle = {
-  color: emailTheme.colors.textPrimary,
+  color: '#2563EB',
   fontWeight: 'bold',
   textDecoration: 'none',
 };

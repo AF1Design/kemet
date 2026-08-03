@@ -1,37 +1,37 @@
 import React from 'react';
-import { Section, Row, Column, Img, Link } from '@react-email/components';
+import { Img } from '@react-email/components';
 
-export const Header = ({ logoUrl = 'https://kemetmisr.com/assets/kemet-text-logo.png' }) => {
+export const Header = () => {
   return (
-    <Section style={headerSection}>
-      <Row>
-        <Column align="left">
-          <Link href="https://kemetmisr.com" target="_blank">
-            <Img
-              src={logoUrl}
-              alt="KEMET"
-              width="115"
-              height="auto"
-              style={logoStyle}
-            />
-          </Link>
-        </Column>
-      </Row>
-    </Section>
+    <table border="0" cellPadding="0" cellSpacing="0" width="100%" dir="ltr" style={tableStyle}>
+      <tr>
+        <td align="left" style={tdStyle}>
+          <Img
+            src="https://kemetmisr.com/assets/kemet-logo-black.png"
+            alt="KEMET"
+            width="130"
+            style={imageStyle}
+          />
+        </td>
+      </tr>
+    </table>
   );
 };
 
-const headerSection = {
-  marginBottom: '20px',
+const tableStyle = {
+  marginBottom: '28px',
   width: '100%',
 };
 
-const logoStyle = {
+const tdStyle = {
+  padding: '0',
+  textAlign: 'left',
+};
+
+const imageStyle = {
   border: 0,
   display: 'block',
   height: 'auto',
-  maxWidth: '115px',
-  outline: 'none',
-  textDecoration: 'none',
-  width: '115px',
+  maxWidth: '140px',
+  width: '100%',
 };

@@ -1,59 +1,28 @@
 import React from 'react';
-import { Html, Head, Body, Container, Section, Preview } from '@react-email/components';
+import { Html, Head, Body, Container, Preview } from '@react-email/components';
 import { emailTheme } from '../styles/theme.js';
 
 export const EmailLayout = ({ previewText = 'KEMET Notification', children }) => {
   return (
     <Html lang="ar" dir="rtl">
       <Head>
-        <meta name="color-scheme" content="only dark" />
-        <meta name="supported-color-schemes" content="only dark" />
         <style dangerouslySetInnerHTML={{
           __html: `
-            :root {
-              color-scheme: only dark !important;
-              supported-color-schemes: only dark !important;
-            }
-            body, table, td, div, p, span, a {
-              background-color: #000000 !important;
-              color: #FFFFFF !important;
-            }
-            /* Target Gmail iOS & Android Auto-Inversion */
-            u + .body, u + .body table, u + .body td, u + .body div {
-              background-color: #000000 !important;
-              color: #FFFFFF !important;
-            }
-            u + .body .email-card-section {
-              background-color: #05070C !important;
-              background-image: url('https://kemetmisr.com/assets/kemet-email-back.png') !important;
-              background-repeat: no-repeat !important;
-              background-position: center center !important;
-              background-size: cover !important;
-            }
-            u + .body .otp-box-card {
-              background-color: #0A0E17 !important;
-              border: 1.5px solid #D4AF37 !important;
-            }
-            u + .body .otp-text-color {
-              color: #FFDF73 !important;
-            }
-            /* Outlook Web App & Apple Mail Anti-Inversion */
-            [data-ogsc] table, [data-ogsc] td, [data-ogsc] div {
-              background-color: #000000 !important;
-              color: #FFFFFF !important;
+            body, table, td, p, a, span {
+              font-family: ${emailTheme.fonts.fontFamily} !important;
             }
           `
         }} />
       </Head>
       <Preview>{previewText}</Preview>
-      <Body className="body" style={mainStyle} bgcolor="#000000">
-        <table border="0" cellPadding="0" cellSpacing="0" width="100%" bgcolor="#000000" style={outerTableStyle}>
+      <Body style={mainStyle} bgcolor="#FFFFFF">
+        <table border="0" cellPadding="0" cellSpacing="0" width="100%" bgcolor="#FFFFFF" style={outerTableStyle}>
           <tr>
-            <td align="center" bgcolor="#000000" style={outerTdStyle}>
+            <td align="center" bgcolor="#FFFFFF" style={outerTdStyle}>
               <Container style={containerStyle}>
-                <table border="0" cellPadding="0" cellSpacing="0" width="100%" bgcolor="#05070C" style={cardStyle} className="email-card-section">
+                <table border="0" cellPadding="0" cellSpacing="0" width="100%" bgcolor="#FFFFFF" style={cardStyle}>
                   <tr>
-                    <td align="center" bgcolor="#05070C" style={cardTdStyle}>
+                    <td align="right" bgcolor="#FFFFFF" style={cardTdStyle}>
                       {children}
                     </td>
                   </tr>
@@ -68,7 +37,7 @@ export const EmailLayout = ({ previewText = 'KEMET Notification', children }) =>
 };
 
 const mainStyle = {
-  backgroundColor: '#000000',
+  backgroundColor: '#FFFFFF',
   fontFamily: emailTheme.fonts.fontFamily,
   margin: '0 auto',
   padding: '0',
@@ -76,16 +45,16 @@ const mainStyle = {
 };
 
 const outerTableStyle = {
-  backgroundColor: '#000000',
+  backgroundColor: '#FFFFFF',
   margin: '0 auto',
-  padding: '20px 0',
+  padding: '24px 0',
   tableLayout: 'fixed',
   width: '100%',
 };
 
 const outerTdStyle = {
-  backgroundColor: '#000000',
-  padding: '10px',
+  backgroundColor: '#FFFFFF',
+  padding: '12px',
 };
 
 const containerStyle = {
@@ -95,18 +64,13 @@ const containerStyle = {
 };
 
 const cardStyle = {
-  backgroundColor: '#05070C',
-  backgroundImage: "url('https://kemetmisr.com/assets/kemet-email-back.png')",
-  backgroundPosition: 'center center',
-  backgroundRepeat: 'no-repeat',
-  backgroundSize: 'cover',
-  border: `3px solid ${emailTheme.colors.borderGold}`,
-  boxSizing: 'border-box',
+  backgroundColor: '#FFFFFF',
   width: '100%',
 };
 
 const cardTdStyle = {
-  backgroundColor: '#05070C',
-  padding: '24px 28px',
+  backgroundColor: '#FFFFFF',
+  padding: '0 12px',
+  textAlign: 'right',
   width: '100%',
 };
