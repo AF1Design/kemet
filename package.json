@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@supabase/supabase-js": "^2.45.4",
     "next": "^14.2.15",
     "react": "^18.3.1",
