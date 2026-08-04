@@ -34,9 +34,9 @@ const SHIPPING_RATES = {
 
 // Default registered coupons store
 const INITIAL_COUPONS = [
-  { code: 'KEMET10', type: 'percentage', value: 10, isActive: true, maxUsesPerUser: 1, usedBy: [] },
-  { code: 'OFF50', type: 'fixed', value: 50, isActive: true, maxUsesPerUser: 1, usedBy: [] },
-  { code: 'LEGACY2027', type: 'percentage', value: 15, isActive: true, maxUsesPerUser: 1, usedBy: [] }
+  { code: 'KEMET10', type: 'percentage', value: 10, isActive: true, totalMaxUses: 1000, remainingUses: 1000, maxUsesPerUser: 1, usedBy: [] },
+  { code: 'OFF50', type: 'fixed', value: 50, isActive: true, totalMaxUses: 500, remainingUses: 500, maxUsesPerUser: 1, usedBy: [] },
+  { code: 'LEGACY2027', type: 'percentage', value: 15, isActive: true, totalMaxUses: 100, remainingUses: 100, maxUsesPerUser: 1, usedBy: [] }
 ];
 
 export default function CheckoutPage() {
@@ -100,15 +100,24 @@ export default function CheckoutPage() {
     }
 
     if (!coupon.isActive) {
-      setCouponMsg({ type: 'error', text: '⚠️ انتهت صلاحية هذا الكوبون وغير مفعّل حالياً' });
+      setCouponMsg({ type: 'error', text: '⚠️ تم إيقاف هذا البروموكود وغير مفعّل حالياً' });
       return;
     }
 
-    const userEmail = user?.email || formData.phone || 'guest';
-    const usageCount = (coupon.usedBy || []).filter(email => email === userEmail).length;
+    const userEmail = (user?.email || formData.phone || 'guest').toLowerCase().trim();
+    const usedList = (coupon.usedBy || []).map(e => String(e).toLowerCase().trim());
+    const hasAlreadyUsed = usedList.includes(userEmail);
 
-    if (usageCount >= (coupon.maxUsesPerUser || 1)) {
-      setCouponMsg({ type: 'error', text: '⚠️ تم استخدام هذا الكوبون مسبقاً لهذا الحساب (مسموح مرة واحدة فقط)' });
+    if (hasAlreadyUsed) {
+      setCouponMsg({ type: 'error', text: '⚠️ لقد استخدمت هذا البروموكود من قبل' });
+      return;
+    }
+
+    const totalMax = coupon.totalMaxUses ?? 1000;
+    const remaining = coupon.remainingUses ?? (totalMax - (coupon.usedBy || []).length);
+
+    if (remaining <= 0 || (coupon.usedBy || []).length >= totalMax) {
+      setCouponMsg({ type: 'error', text: '⚠️ تم الوصول الحد الاقصي لعدد استخدامات هذا الكود وتم انتهاء صلاحيته' });
       return;
     }
 
@@ -142,16 +151,24 @@ export default function CheckoutPage() {
       customer: { ...formData }
     };
 
-    // Update coupon usage in storage
+    // Update coupon usage & decrement remaining uses
     if (appliedCoupon) {
       try {
-        const userEmail = user?.email || formData.phone || 'guest';
+        const userEmail = (user?.email || formData.phone || 'guest').toLowerCase().trim();
         const updatedCoupons = availableCoupons.map(c => {
           if (c.code.toUpperCase() === appliedCoupon.code.toUpperCase()) {
-            return { ...c, usedBy: [...(c.usedBy || []), userEmail] };
+            const currentRemaining = c.remainingUses ?? ((c.totalMaxUses || 1000) - (c.usedBy || []).length);
+            const newRemaining = Math.max(0, currentRemaining - 1);
+            return {
+              ...c,
+              remainingUses: newRemaining,
+              isActive: newRemaining > 0 ? c.isActive : false,
+              usedBy: [...(c.usedBy || []), userEmail]
+            };
           }
           return c;
         });
+        setAvailableCoupons(updatedCoupons);
         localStorage.setItem('kemet_coupons', JSON.stringify(updatedCoupons));
       } catch (err) {
         console.warn('Coupon usage save note:', err);
