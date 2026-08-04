@@ -40,7 +40,10 @@ const INITIAL_COUPONS = [
 ];
 
 export default function CheckoutPage() {
-  const { cart, clearCart, addOrder, user, t } = useApp();
+  const { cart, clearCart, addOrder, user, cmsSettings, t } = useApp();
+
+  const rates = cmsSettings?.shippingRates || SHIPPING_RATES;
+  const isFreeShippingPromo = cmsSettings?.isFreeShippingPromo ?? false;
 
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
@@ -72,7 +75,8 @@ export default function CheckoutPage() {
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
-  const shippingFee = SHIPPING_RATES[formData.governorate] || 50;
+  const rawShippingFee = rates[formData.governorate] ?? 50;
+  const shippingFee = isFreeShippingPromo ? 0 : rawShippingFee;
 
   // Calculate discount amount
   const discountAmount = appliedCoupon 

@@ -570,3 +570,87 @@ export async function deleteOrderAction(orderId) {
   }
 }
 
+/**
+ * Server Action: Sends mass promo email campaign to all registered customer emails
+ */
+export async function sendMassPromoEmailAction(promoTextAr) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    // Fetch distinct customer emails from orders
+    const { data: ordersData } = await supabaseAdmin
+      .from('orders')
+      .select('customer_email')
+      .not('customer_email', 'is', null);
+
+    const emailSet = new Set();
+    if (ordersData) {
+      ordersData.forEach(o => {
+        if (o.customer_email && o.customer_email.includes('@')) {
+          emailSet.add(o.customer_email.trim().toLowerCase());
+        }
+      });
+    }
+
+    // Fallback emails if no orders exist yet
+    if (emailSet.size === 0) {
+      emailSet.add('support@kemetmisr.com');
+    }
+
+    const recipients = Array.from(emailSet);
+    const promoContent = promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
+
+    const emailHtml = `
+      <div dir="rtl" style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0A0A0C; color: #FFFFFF; border: 1px solid #D4AF37; border-radius: 12px; padding: 24px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #D4AF37; font-size: 28px; margin: 0; letter-spacing: 2px;">KEMET — كيميت</h1>
+          <p style="color: #94A3B8; font-size: 14px; margin-top: 4px;">عروض وخصومات الأطقم الرياضية 🏆</p>
+        </div>
+
+        <div style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(0,0,0,0.5)); border: 1px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #FFDF73; font-size: 20px; margin-top: 0;">🔥 عرض ترويجي حصري من KEMET</h2>
+          <p style="font-size: 16px; color: #E2E8F0; line-height: 1.6; margin: 16px 0;">
+            ${promoContent}
+          </p>
+
+          <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: linear-gradient(90deg, #D4AF37, #FFDF73); color: #000000; font-weight: bold; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 16px; margin-top: 10px;">
+            🛒 تصفّح المتجر واستفد بالعرض الآن
+          </a>
+        </div>
+
+        <p style="color: #64748B; font-size: 13px; text-align: center;">
+          وصلك هذا البريد لأنك مسجّل في متجر KEMET الرسمي.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #27272A; margin: 20px 0;" />
+
+        <p style="color: #94A3B8; font-size: 12px; text-align: center; margin: 0;">
+          KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
+        </p>
+      </div>
+    `;
+
+    // Batch send via Resend
+    let sentCount = 0;
+    for (const email of recipients) {
+      try {
+        await resend.emails.send({
+          from: SENDER_SUPPORT,
+          to: [email],
+          subject: '🔥 عرض خاص وحصري من KEMET!',
+          html: emailHtml
+        });
+        sentCount++;
+      } catch (e) {
+        console.warn(`Promo email send warning for ${email}:`, e);
+      }
+    }
+
+    return { success: true, count: sentCount };
+  } catch (err) {
+    console.error('sendMassPromoEmailAction error:', err);
+    return { success: false, error: err.message || 'فشل إرسال البريد الجماعي' };
+  }
+}
+
+

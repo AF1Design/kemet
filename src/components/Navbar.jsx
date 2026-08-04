@@ -20,7 +20,7 @@ const normalizeText = (text = '') => {
 };
 
 export const Navbar = ({ onOpenMobileMenu }) => {
-  const { lang, theme, cart, user, toggleLang, toggleTheme, setIsCartOpen, t } = useApp();
+  const { lang, theme, cart, user, toggleLang, toggleTheme, setIsCartOpen, cmsSettings, t } = useApp();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -119,9 +119,9 @@ export const Navbar = ({ onOpenMobileMenu }) => {
 
   const isActive = (path) => pathname === path;
 
-  const isPromoActive = true;
-  const promoTextAr = '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية';
-  const promoTextEn = '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!';
+  const isPromoActive = cmsSettings?.isPromoActive ?? true;
+  const promoTextAr = cmsSettings?.promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية';
+  const promoTextEn = cmsSettings?.promoTextEn || '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!';
 
   return (
     <header className="header">

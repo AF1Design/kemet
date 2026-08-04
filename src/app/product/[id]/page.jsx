@@ -20,7 +20,7 @@ const fetchProduct = cache(async (id) => {
 
     const variants = (varData && varData.length > 0)
       ? varData.map(v => ({ size: v.size, stock: Number(v.stock_quantity ?? 50) }))
-      : ['S', 'M', 'L', 'XL', 'XXL'].map(s => ({ size: s, stock: 50 }));
+      : ['M', 'L', 'XL', 'XXL'].map(s => ({ size: s, stock: 50 }));
 
     return {
       product: {

@@ -23,9 +23,11 @@ export const ProductCard = ({ product }) => {
       size: v.size,
       stock: Number(v.stock_quantity ?? 50)
     }));
+  } else if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+    sizesList = product.sizes.map(s => ({ size: s, stock: 50 }));
   } else {
-    // Fallback standard sizes
-    sizesList = ['S', 'M', 'L', 'XL', 'XXL'].map(s => ({ size: s, stock: 50 }));
+    // Standard adult sizes default (M, L, XL, XXL) without forced S
+    sizesList = ['M', 'L', 'XL', 'XXL'].map(s => ({ size: s, stock: 50 }));
   }
 
   // Initial selected size: Pick first available in-stock size or first size

@@ -15,6 +15,39 @@ export const AppProvider = ({ children }) => {
   const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
 
+  const DEFAULT_CMS_SETTINGS = {
+    isPromoActive: true,
+    promoTextAr: '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية',
+    promoTextEn: '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!',
+    isFreeShippingPromo: false,
+    shippingRates: {
+      'القاهرة': 40,
+      'الجيزة': 40,
+      'الإسكندرية': 50,
+      'القليوبية': 45,
+      'الشرقية': 50,
+      'الدقهلية': 50,
+      'الغربية': 50,
+      'المنوفية': 50,
+      'البحيرة': 55,
+      'كفر الشيخ': 55,
+      'دمياط': 55,
+      'الإسماعيلية': 55,
+      'السويس': 55,
+      'بورسعيد': 55,
+      'بني سويف': 60,
+      'المنيا': 60,
+      'أسيوط': 65,
+      'سوهاج': 65,
+      'قنا': 70,
+      'الأقصر': 70,
+      'أسوان': 75,
+      'محافظة أخرى': 60
+    }
+  };
+
+  const [cmsSettings, setCmsSettings] = useState(DEFAULT_CMS_SETTINGS);
+
   // Initialize client state safely from localStorage after mount
   useEffect(() => {
     setMounted(true);
@@ -31,6 +64,11 @@ export const AppProvider = ({ children }) => {
       const savedUser = localStorage.getItem('kemet_user');
       if (savedUser) setUser(JSON.parse(savedUser));
 
+      const savedCms = localStorage.getItem('kemet_cms_settings');
+      if (savedCms) {
+        setCmsSettings(JSON.parse(savedCms));
+      }
+
       const savedOrders = localStorage.getItem('kemet_orders');
       if (savedOrders) {
         setOrders(JSON.parse(savedOrders));
@@ -41,6 +79,16 @@ export const AppProvider = ({ children }) => {
       console.error('Error loading local state:', e);
     }
   }, []);
+
+  const updateCmsSettings = (updated) => {
+    const newSettings = { ...cmsSettings, ...updated };
+    setCmsSettings(newSettings);
+    try {
+      localStorage.setItem('kemet_cms_settings', JSON.stringify(newSettings));
+    } catch (err) {
+      console.warn('CMS settings save error:', err);
+    }
+  };
 
   // Sync lang & dir
   useEffect(() => {
@@ -184,6 +232,8 @@ export const AppProvider = ({ children }) => {
         isCartOpen,
         toast,
         mounted,
+        cmsSettings,
+        updateCmsSettings,
         toggleLang,
         toggleTheme,
         loginUser,

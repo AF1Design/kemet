@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useApp } from '../../../context/AppContext';
+import { sendMassPromoEmailAction } from '../actions';
 import { translations } from '../../../data/translations';
 
 const INITIAL_COUPONS = [
@@ -10,26 +12,58 @@ const INITIAL_COUPONS = [
 ];
 
 export default function AdminContentCMSPage() {
+  const { cmsSettings, updateCmsSettings } = useApp();
   const [activeTab, setActiveTab] = useState('general');
   const [isSaved, setIsSaved] = useState(false);
   const [emailCampaignSending, setEmailCampaignSending] = useState(false);
   const [emailCampaignSentMsg, setEmailCampaignSentMsg] = useState('');
 
   const [settings, setSettings] = useState({
-    isPromoActive: true,
-    promoTextAr: '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية',
-    promoTextEn: '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!',
-    whatsappPhone: '01114687759',
-    instagramLink: 'https://instagram.com/kemet',
-    facebookLink: 'https://facebook.com/kemet',
-    tiktokLink: 'https://www.tiktok.com/@kemet.ya?_r=1&_t=ZS-98bdUO43owB',
-    heroTitleAr: translations.ar.heroTitle,
-    heroSubtitleAr: translations.ar.heroSubtitle,
-    heroTitleEn: translations.en.heroTitle,
-    heroSubtitleEn: translations.en.heroSubtitle,
-    returnPolicyDescAr: translations.ar.returnPolicySubtitle,
-    returnPolicyDescEn: translations.en.returnPolicySubtitle,
+    isPromoActive: cmsSettings?.isPromoActive ?? true,
+    promoTextAr: cmsSettings?.promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية',
+    promoTextEn: cmsSettings?.promoTextEn || '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!',
+    isFreeShippingPromo: cmsSettings?.isFreeShippingPromo ?? false,
+    whatsappPhone: cmsSettings?.whatsappPhone || '01114687759',
+    instagramLink: cmsSettings?.instagramLink || 'https://instagram.com/kemet',
+    facebookLink: cmsSettings?.facebookLink || 'https://facebook.com/kemet',
+    tiktokLink: cmsSettings?.tiktokLink || 'https://www.tiktok.com/@kemet.ya?_r=1&_t=ZS-98bdUO43owB',
+    heroTitleAr: cmsSettings?.heroTitleAr || translations.ar.heroTitle,
+    heroSubtitleAr: cmsSettings?.heroSubtitleAr || translations.ar.heroSubtitle,
+    heroTitleEn: cmsSettings?.heroTitleEn || translations.en.heroTitle,
+    heroSubtitleEn: cmsSettings?.heroSubtitleEn || translations.en.heroSubtitle,
+    returnPolicyDescAr: cmsSettings?.returnPolicyDescAr || translations.ar.returnPolicySubtitle,
+    returnPolicyDescEn: cmsSettings?.returnPolicyDescEn || translations.en.returnPolicySubtitle,
   });
+
+  // Shipping Rates State
+  const [shippingRates, setShippingRates] = useState(cmsSettings?.shippingRates || {
+    'القاهرة': 40,
+    'الجيزة': 40,
+    'الإسكندرية': 50,
+    'القليوبية': 45,
+    'الشرقية': 50,
+    'الدقهلية': 50,
+    'الغربية': 50,
+    'المنوفية': 50,
+    'البحيرة': 55,
+    'كفر الشيخ': 55,
+    'دمياط': 55,
+    'الإسماعيلية': 55,
+    'السويس': 55,
+    'بورسعيد': 55,
+    'بني سويف': 60,
+    'المنيا': 60,
+    'أسيوط': 65,
+    'سوهاج': 65,
+    'قنا': 70,
+    'الأقصر': 70,
+    'أسوان': 75,
+    'محافظة أخرى': 60
+  });
+
+  const [massRateInput, setMassRateInput] = useState('');
+  const [newGovName, setNewGovName] = useState('');
+  const [newGovFee, setNewGovFee] = useState(50);
 
   // Coupons state
   const [coupons, setCoupons] = useState(INITIAL_COUPONS);
@@ -91,6 +125,49 @@ export default function AdminContentCMSPage() {
     alert(`✅ تم إضافة كود الخصم (${codeUpper}) بنجاح!`);
   };
 
+  // Shipping Rate Actions
+  const handleMassUpdateRates = () => {
+    if (massRateInput === '' || isNaN(Number(massRateInput))) {
+      alert('⚠️ يرجى إدخال قيمة رقمية صحيحة لرسوم الشحن');
+      return;
+    }
+    const val = Number(massRateInput);
+    const updated = {};
+    Object.keys(shippingRates).forEach(g => {
+      updated[g] = val;
+    });
+    setShippingRates(updated);
+    alert(`✅ تم تحديث رسوم الشحن لجميع المحافظات دفعة واحدة إلى (${val} ج.م) بنجاح!`);
+  };
+
+  const handleSingleRateChange = (gov, fee) => {
+    setShippingRates(prev => ({
+      ...prev,
+      [gov]: Number(fee)
+    }));
+  };
+
+  const handleDeleteGov = (gov) => {
+    if (Object.keys(shippingRates).length <= 1) {
+      alert('⚠️ لا يمكن حذف المحافظة الأخيرة');
+      return;
+    }
+    const copy = { ...shippingRates };
+    delete copy[gov];
+    setShippingRates(copy);
+  };
+
+  const handleAddGov = (e) => {
+    e.preventDefault();
+    if (!newGovName.trim()) return;
+    setShippingRates(prev => ({
+      ...prev,
+      [newGovName.trim()]: Number(newGovFee)
+    }));
+    setNewGovName('');
+    setNewGovFee(50);
+  };
+
   const handleSendMassEmailCampaign = async () => {
     if (!window.confirm('هل أنت متأكد من رغبتك في إرسال هذا العرض الترويجي كـ إيميل رسمي لجميع العملاء المسجلين؟')) {
       return;
@@ -99,15 +176,27 @@ export default function AdminContentCMSPage() {
     setEmailCampaignSending(true);
     setEmailCampaignSentMsg('');
 
-    setTimeout(() => {
+    try {
+      const res = await sendMassPromoEmailAction(settings.promoTextAr);
+      if (res.success) {
+        setEmailCampaignSentMsg(`🚀 تم إرسال البريد الترويجي إلى (${res.count}) عميل مسجل بالنظام بنجاح!`);
+      } else {
+        alert('⚠️ فشل إرسال البريد الترويجي: ' + (res.error || 'خطأ بالسيرفر'));
+      }
+    } catch (err) {
+      alert('⚠️ خطأ في الإرسال: ' + err.message);
+    } finally {
       setEmailCampaignSending(false);
-      setEmailCampaignSentMsg('🚀 تم بدء إرسال حملة البريد الترويجي للعملاء المسجلين في الخلفية بنجاح!');
       setTimeout(() => setEmailCampaignSentMsg(''), 6000);
-    }, 1500);
+    }
   };
 
   const handleSave = (e) => {
     e.preventDefault();
+    updateCmsSettings({
+      ...settings,
+      shippingRates
+    });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
@@ -118,10 +207,10 @@ export default function AdminContentCMSPage() {
       {/* Header */}
       <div style={{ marginBottom: '2.5rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span>⚙️ لوحة إدارة المحتوى، البانر، والكوبونات</span>
+          <span>⚙️ لوحة إدارة المحتوى، البانر، الكوبونات، والشحن</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-          التحكم الكامل بالإعلانات العليا، الكوبونات والخصومات، روابط التواصل، وعناوين الموقع.
+          التحكم المباشر بالإعلانات العليا، الكوبونات والخصومات، رسوم الشحن لكل المحافظات، وعناوين الموقع.
         </p>
       </div>
 
@@ -135,7 +224,7 @@ export default function AdminContentCMSPage() {
           marginBottom: '2rem',
           fontWeight: 800
         }}>
-          ✅ تم حفظ وتحديث كافة الإعدادات والكوبونات في النظام بنجاح!
+          ✅ تم حفظ وتحديث كافة الإعدادات والبانر ورسوم الشحن والكوبونات في النظام بنجاح!
         </div>
       )}
 
@@ -165,6 +254,14 @@ export default function AdminContentCMSPage() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab('shipping')}
+          className={activeTab === 'shipping' ? 'btn-primary' : 'btn-secondary'}
+          style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
+        >
+          🚚 رسوم الشحن بالمحافظات
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('coupons')}
           className={activeTab === 'coupons' ? 'btn-primary' : 'btn-secondary'}
           style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
@@ -178,14 +275,6 @@ export default function AdminContentCMSPage() {
           style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
         >
           🏆 الواجهة الرئيسية
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('social')}
-          className={activeTab === 'social' ? 'btn-primary' : 'btn-secondary'}
-          style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
-        >
-          🔗 السوشيال ميديا
         </button>
       </div>
 
@@ -250,6 +339,114 @@ export default function AdminContentCMSPage() {
               >
                 {emailCampaignSending ? 'جاري إرسال الحملة...' : '🚀 إرسال هذا العرض الترويجي كـ إيميل لكل العملاء'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Shipping Rates Tab */}
+        {activeTab === 'shipping' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gold-primary)' }}>
+              🚚 إدارة وتحكم رسوم الشحن لكافة المحافظات
+            </h3>
+
+            {/* Free Shipping Toggle Rule */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'rgba(16, 185, 129, 0.1)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #10B981' }}>
+              <input 
+                type="checkbox"
+                checked={settings.isFreeShippingPromo}
+                onChange={e => setSettings({ ...settings, isFreeShippingPromo: e.target.checked })}
+                style={{ width: '20px', height: '20px', accentColor: '#10B981' }}
+              />
+              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#10B981' }}>
+                🎉 تفعيل عرض الشحن المجاني (0 ج.م) لجميع المحافظات تلقائياً في صفحة الشيك أوت!
+              </span>
+            </label>
+
+            {/* Mass Update All Rates */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-gold)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.75rem' }}>
+                ⚡ تعديل رسوم الشحن لكل المحافظات دفعة واحدة (أوبشن السعر الموحد):
+              </h4>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input 
+                  type="number" 
+                  placeholder="أدخل رسوم الشحن (مثال: 0 أو 50)"
+                  value={massRateInput}
+                  onChange={e => setMassRateInput(e.target.value)}
+                  style={{ width: '240px', padding: '0.65rem 0.85rem' }}
+                />
+                <button type="button" onClick={handleMassUpdateRates} className="btn-primary" style={{ padding: '0.65rem 1.5rem' }}>
+                  تطبيق السعر على كل المحافظات ⚡
+                </button>
+              </div>
+            </div>
+
+            {/* Add New Governorate Form */}
+            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', padding: '1.25rem', borderRadius: 'var(--radius-md)' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#FFF', marginBottom: '0.75rem' }}>
+                ➕ إضافة محافظة جديدة:
+              </h4>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  placeholder="اسم المحافظة (مثال: الوادي الجديد)"
+                  value={newGovName}
+                  onChange={e => setNewGovName(e.target.value)}
+                  style={{ flexGrow: 1, padding: '0.6rem 0.85rem' }}
+                />
+                <input 
+                  type="number" 
+                  placeholder="رسوم الشحن (ج.م)"
+                  value={newGovFee}
+                  onChange={e => setNewGovFee(e.target.value)}
+                  style={{ width: '130px', padding: '0.6rem 0.85rem' }}
+                />
+                <button type="button" onClick={handleAddGov} className="btn-secondary" style={{ padding: '0.6rem 1.25rem' }}>
+                  إضافة المحافظة
+                </button>
+              </div>
+            </div>
+
+            {/* Governorates Table */}
+            <div>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#FFF', marginBottom: '1rem' }}>
+                📋 قائمة المحافظات ورسوم شحن كل منها:
+              </h4>
+
+              <table border="0" cellPadding="0" cellSpacing="0" width="100%" style={{ borderCollapse: 'collapse', textAlign: 'right' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--gold-primary)', fontSize: '0.85rem' }}>
+                    <th style={{ padding: '10px' }}>المحافظة</th>
+                    <th style={{ padding: '10px' }}>رسوم الشحن (ج.م)</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(shippingRates).map((gov) => (
+                    <tr key={gov} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
+                      <td style={{ padding: '10px', fontWeight: 800, color: '#FFF' }}>{gov}</td>
+                      <td style={{ padding: '10px' }}>
+                        <input 
+                          type="number"
+                          value={shippingRates[gov]}
+                          onChange={e => handleSingleRateChange(gov, e.target.value)}
+                          style={{ width: '110px', padding: '0.4rem 0.6rem', fontWeight: 900, color: 'var(--gold-primary)' }}
+                        /> ج.م
+                      </td>
+                      <td style={{ padding: '10px', textAlign: 'center' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => handleDeleteGov(gov)}
+                          style={{ background: 'rgba(244,63,94,0.15)', border: '1px solid #F43F5E', color: '#F43F5E', padding: '0.35rem 0.75rem', borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer' }}
+                        >
+                          حذف المحافظة 🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -379,26 +576,6 @@ export default function AdminContentCMSPage() {
                 type="text"
                 value={settings.heroTitleAr}
                 onChange={e => setSettings({ ...settings, heroTitleAr: e.target.value })}
-                style={{ width: '100%', padding: '0.85rem', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', color: '#FFF', fontSize: '0.95rem' }}
-              />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'social' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.5rem' }}>
-              🔗 روابط التواصل والتواجد الرقمي
-            </h3>
-
-            <div>
-              <label style={{ display: 'block', fontWeight: 800, fontSize: '0.88rem', marginBottom: '0.5rem' }}>
-                رقم الواتساب الرسمي:
-              </label>
-              <input
-                type="text"
-                value={settings.whatsappPhone}
-                onChange={e => setSettings({ ...settings, whatsappPhone: e.target.value })}
                 style={{ width: '100%', padding: '0.85rem', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', color: '#FFF', fontSize: '0.95rem' }}
               />
             </div>
