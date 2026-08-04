@@ -1,5 +1,7 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+export const dynamic = 'force-dynamic';
+
 import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
