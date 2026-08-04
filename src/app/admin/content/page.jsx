@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
-import { sendMassPromoEmailAction } from '../actions';
+import { sendMassPromoEmailAction, getRegisteredUsersStatsAction } from '../actions';
 import { translations } from '../../../data/translations';
 
 const INITIAL_COUPONS = [
-  { code: 'KEMET10', type: 'percentage', value: 10, isActive: true, maxUsesPerUser: 1, usedBy: [] },
-  { code: 'OFF50', type: 'fixed', value: 50, isActive: true, maxUsesPerUser: 1, usedBy: [] },
-  { code: 'LEGACY2027', type: 'percentage', value: 15, isActive: true, maxUsesPerUser: 1, usedBy: [] }
+  { code: 'KEMET10', type: 'percentage', value: 10, isActive: true, totalMaxUses: 1000, remainingUses: 1000, maxUsesPerUser: 1, usedBy: [] },
+  { code: 'OFF50', type: 'fixed', value: 50, isActive: true, totalMaxUses: 500, remainingUses: 500, maxUsesPerUser: 1, usedBy: [] },
+  { code: 'LEGACY2027', type: 'percentage', value: 15, isActive: true, totalMaxUses: 100, remainingUses: 100, maxUsesPerUser: 1, usedBy: [] }
 ];
 
 export default function AdminContentCMSPage() {
@@ -17,6 +17,22 @@ export default function AdminContentCMSPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [emailCampaignSending, setEmailCampaignSending] = useState(false);
   const [emailCampaignSentMsg, setEmailCampaignSentMsg] = useState('');
+  const [registeredUsersCount, setRegisteredUsersCount] = useState(0);
+  const [lastDeliveryStats, setLastDeliveryStats] = useState(null);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await getRegisteredUsersStatsAction();
+        if (res.success) {
+          setRegisteredUsersCount(res.count);
+        }
+      } catch (e) {
+        console.warn('Users count load warning:', e);
+      }
+    }
+    loadStats();
+  }, []);
 
   const [settings, setSettings] = useState({
     isPromoActive: cmsSettings?.isPromoActive ?? true,
@@ -96,6 +112,7 @@ export default function AdminContentCMSPage() {
     code: '',
     type: 'percentage',
     value: 10,
+    totalMaxUses: 1000,
     maxUsesPerUser: 1
   });
 
@@ -133,6 +150,8 @@ export default function AdminContentCMSPage() {
       return;
     }
 
+    const maxUses = Number(newCoupon.totalMaxUses || 1000);
+
     const updated = [
       ...coupons,
       {
@@ -140,14 +159,16 @@ export default function AdminContentCMSPage() {
         type: newCoupon.type,
         value: Number(newCoupon.value),
         isActive: true,
-        maxUsesPerUser: Number(newCoupon.maxUsesPerUser || 1),
+        totalMaxUses: maxUses,
+        remainingUses: maxUses,
+        maxUsesPerUser: 1,
         usedBy: []
       }
     ];
 
     saveCouponsToStorage(updated);
-    setNewCoupon({ code: '', type: 'percentage', value: 10, maxUsesPerUser: 1 });
-    alert(`✅ تم إضافة كود الخصم (${codeUpper}) بنجاح!`);
+    setNewCoupon({ code: '', type: 'percentage', value: 10, totalMaxUses: 1000, maxUsesPerUser: 1 });
+    alert(`✅ تم إضافة كود الخصم (${codeUpper}) بإجمالي (${maxUses}) استخدام بنجاح!`);
   };
 
   // Shipping Rate Actions
@@ -194,17 +215,27 @@ export default function AdminContentCMSPage() {
   };
 
   const handleSendMassEmailCampaign = async () => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في إرسال هذا العرض الترويجي كـ إيميل رسمي لجميع العملاء المسجلين؟')) {
+    if (!window.confirm(`هل أنت متأكد من رغبتك في إرسال هذا العرض الترويجي كـ إيميل رسمي لجميع العملاء المسجلين (${registeredUsersCount} عميل)؟`)) {
       return;
     }
 
     setEmailCampaignSending(true);
     setEmailCampaignSentMsg('');
+    setLastDeliveryStats(null);
 
     try {
       const res = await sendMassPromoEmailAction(settings.promoTextAr);
       if (res.success) {
-        setEmailCampaignSentMsg(`🚀 تم إرسال البريد الترويجي إلى (${res.count}) عميل مسجل بالنظام بنجاح!`);
+        setLastDeliveryStats({
+          sentCount: res.sentCount,
+          failedCount: res.failedCount,
+          total: res.totalRecipients
+        });
+        setEmailCampaignSentMsg(`🚀 تم إرسال البريد! (وصل لـ ${res.sentCount} عميل | لم يصل لـ ${res.failedCount} عميل من أصل ${res.totalRecipients})`);
+        
+        // Refresh registered count from Supabase
+        const stats = await getRegisteredUsersStatsAction();
+        if (stats.success) setRegisteredUsersCount(stats.count);
       } else {
         alert('⚠️ فشل إرسال البريد الترويجي: ' + (res.error || 'خطأ بالسيرفر'));
       }
@@ -212,7 +243,6 @@ export default function AdminContentCMSPage() {
       alert('⚠️ خطأ في الإرسال: ' + err.message);
     } finally {
       setEmailCampaignSending(false);
-      setTimeout(() => setEmailCampaignSentMsg(''), 6000);
     }
   };
 
@@ -348,22 +378,51 @@ export default function AdminContentCMSPage() {
               />
             </div>
 
-            {/* Mass Email Trigger Button */}
-            <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid #25D366', borderRadius: 'var(--radius-md)', padding: '1.25rem', marginTop: '1rem' }}>
-              <div style={{ fontWeight: 800, color: '#25D366', fontSize: '0.95rem', marginBottom: '0.4rem' }}>
-                📧 إرسال حملة البريد الترويجي للمستخدمين:
+            {/* Mass Email Trigger Button & Real Live Users Counter */}
+            <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid #25D366', borderRadius: 'var(--radius-md)', padding: '1.5rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.85rem' }}>
+                <div style={{ fontWeight: 900, color: '#25D366', fontSize: '1rem' }}>
+                  📧 إرسال حملة البريد الترويجي للعملاء
+                </div>
+
+                {/* Real-time Registered Users Counter Badge from Supabase Auth */}
+                <div style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border-gold)', color: 'var(--gold-primary)', padding: '0.45rem 0.95rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>👥 إجمالي العملاء المسجلين بالداتا بيس:</span>
+                  <strong style={{ fontSize: '1.05rem', color: '#FFF' }}>{registeredUsersCount} عميل</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#10B981' }} title="محدث حي ومباشر من Supabase Database">(حقيقي مفعّل ⚡)</span>
+                </div>
               </div>
+
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                انقر على الزر أدناه لإرسال رسالة هذا العرض كـ إيميل رسمي في الخلفية لكافة العملاء المسجلين.
+                انقر على الزر أدناه لإرسال رسالة هذا العرض كـ إيميل رسمي لجميع العملاء المسجلين بالموقع ({registeredUsersCount} عميل). في حال حذف أي حساب من داتا بيس Supabase يتحدث هذا الرقم تلقائياً.
               </p>
-              <button 
-                type="button" 
-                onClick={handleSendMassEmailCampaign}
-                disabled={emailCampaignSending}
-                style={{ background: '#25D366', color: '#FFF', border: 'none', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 900, cursor: 'pointer', fontSize: '0.9rem' }}
-              >
-                {emailCampaignSending ? 'جاري إرسال الحملة...' : '🚀 إرسال هذا العرض الترويجي كـ إيميل لكل العملاء'}
-              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <button 
+                  type="button" 
+                  onClick={handleSendMassEmailCampaign}
+                  disabled={emailCampaignSending}
+                  style={{ background: '#25D366', color: '#FFF', border: 'none', padding: '0.8rem 1.6rem', borderRadius: 'var(--radius-md)', fontWeight: 900, cursor: 'pointer', fontSize: '0.95rem' }}
+                >
+                  {emailCampaignSending ? 'جاري الإرسال والمتابعة...' : '🚀 إرسال هذا العرض الترويجي لكل العملاء المسجلين'}
+                </button>
+
+                {/* Detailed delivery status notification */}
+                {emailCampaignSentMsg && (
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#10B981' }}>
+                    {emailCampaignSentMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery analytics badge */}
+              {lastDeliveryStats && (
+                <div style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', fontSize: '0.88rem', fontWeight: 800, display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ color: '#10B981' }}>✅ الإيميلات التي وصلت بنجاح: <strong>{lastDeliveryStats.sentCount}</strong> عميل</span>
+                  <span style={{ color: '#F43F5E' }}>⚠️ الإيميلات التي لم تصل / تعذر إرسالها: <strong>{lastDeliveryStats.failedCount}</strong> عميل</span>
+                  <span style={{ color: 'var(--gold-primary)' }}>📊 إجمالي المستهدفين: <strong>{lastDeliveryStats.total}</strong> عميل</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -525,6 +584,18 @@ export default function AdminContentCMSPage() {
                 </div>
 
                 <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>أقصى عدد استخدامات (لجميع العملاء):</label>
+                  <input 
+                    type="number"
+                    min="1"
+                    placeholder="مثال: 1000"
+                    value={newCoupon.totalMaxUses}
+                    onChange={e => setNewCoupon({ ...newCoupon, totalMaxUses: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem' }}
+                  />
+                </div>
+
+                <div>
                   <button type="button" onClick={handleAddCoupon} className="btn-primary" style={{ width: '100%', padding: '0.7rem' }}>
                     إضافة الكوبون ✨
                   </button>
@@ -544,43 +615,57 @@ export default function AdminContentCMSPage() {
                     <th style={{ padding: '10px' }}>كود الكوبون</th>
                     <th style={{ padding: '10px' }}>نوع الخصم</th>
                     <th style={{ padding: '10px' }}>القيمة</th>
-                    <th style={{ padding: '10px' }}>الاستخدامات</th>
+                    <th style={{ padding: '10px' }}>عدد الاستخدامات المتبقية</th>
                     <th style={{ padding: '10px' }}>الحالة الحالية</th>
                     <th style={{ padding: '10px', textAlign: 'center' }}>التحكم بالصلاحية</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {coupons.map((c, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
-                      <td style={{ padding: '10px', fontWeight: 900, fontFamily: 'monospace', color: 'var(--gold-primary)' }}>{c.code}</td>
-                      <td style={{ padding: '10px' }}>{c.type === 'percentage' ? 'نسبة مئوية (%)' : 'مبلغ ثابت (ج.م)'}</td>
-                      <td style={{ padding: '10px', fontWeight: 800 }}>{c.value} {c.type === 'percentage' ? '%' : 'ج.م'}</td>
-                      <td style={{ padding: '10px' }}>{(c.usedBy || []).length} عملاء</td>
-                      <td style={{ padding: '10px' }}>
-                        <span style={{ color: c.isActive ? '#10B981' : '#F43F5E', fontWeight: 800 }}>
-                          {c.isActive ? 'نشط ومسجل ✅' : 'انتهت الصلاحية / معطل 🚫'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px', textAlign: 'center' }}>
-                        <button 
-                          type="button" 
-                          onClick={() => handleToggleCoupon(c.code)}
-                          style={{
-                            background: c.isActive ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)',
-                            border: c.isActive ? '1px solid #F43F5E' : '1px solid #10B981',
-                            color: c.isActive ? '#F43F5E' : '#10B981',
-                            padding: '0.4rem 0.85rem',
-                            borderRadius: 'var(--radius-sm)',
-                            fontWeight: 800,
-                            fontSize: '0.8rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {c.isActive ? 'إنهاء الصلاحية 🚫' : 'تفعيل الكوبون ✅'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {coupons.map((c, idx) => {
+                    const totalMax = c.totalMaxUses ?? 1000;
+                    const usedCount = (c.usedBy || []).length;
+                    const remaining = c.remainingUses ?? Math.max(0, totalMax - usedCount);
+                    const isExpiredByUses = remaining <= 0 || usedCount >= totalMax;
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
+                        <td style={{ padding: '10px', fontWeight: 900, fontFamily: 'monospace', color: 'var(--gold-primary)' }}>{c.code}</td>
+                        <td style={{ padding: '10px' }}>{c.type === 'percentage' ? 'نسبة مئوية (%)' : 'مبلغ ثابت (ج.م)'}</td>
+                        <td style={{ padding: '10px', fontWeight: 800 }}>{c.value} {c.type === 'percentage' ? '%' : 'ج.م'}</td>
+                        <td style={{ padding: '10px', fontWeight: 800 }}>
+                          <span style={{ color: isExpiredByUses ? '#F43F5E' : '#10B981' }}>
+                            {remaining} متبقي من {totalMax} (استخدمه {usedCount} عميل)
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <span style={{ color: (c.isActive && !isExpiredByUses) ? '#10B981' : '#F43F5E', fontWeight: 800 }}>
+                            {isExpiredByUses 
+                              ? 'انتهت الصلاحية (وصل للحد الأقصى) 🚫' 
+                              : (c.isActive ? 'نشط ومسجل ✅' : 'معطل يدويًا 🚫')
+                            }
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <button 
+                            type="button" 
+                            onClick={() => handleToggleCoupon(c.code)}
+                            style={{
+                              background: c.isActive ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)',
+                              border: c.isActive ? '1px solid #F43F5E' : '1px solid #10B981',
+                              color: c.isActive ? '#F43F5E' : '#10B981',
+                              padding: '0.4rem 0.85rem',
+                              borderRadius: 'var(--radius-sm)',
+                              fontWeight: 800,
+                              fontSize: '0.8rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {c.isActive ? 'إنهاء الصلاحية 🚫' : 'تفعيل الكوبون ✅'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
