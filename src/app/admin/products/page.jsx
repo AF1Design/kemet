@@ -2,6 +2,8 @@ import React from 'react';
 import { getAdminSupabase } from '../../../lib/supabase/admin';
 import { ProductTable } from '../../../components/admin/ProductTable';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminProductsPage() {
   let products = [];
   let categories = [];
