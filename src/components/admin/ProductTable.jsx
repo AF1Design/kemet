@@ -78,9 +78,8 @@ export function ProductTable({ initialProducts, categories: initialCategories })
 
   // Extract variants array for display
   const getProductVariants = (prod) => {
-    if (!prod || !prod.product_variants || !Array.isArray(prod.product_variants) || prod.product_variants.length === 0) {
+    if (!prod || !Array.isArray(prod.product_variants)) {
       return [
-        { size: 'S', stock_quantity: 50 },
         { size: 'M', stock_quantity: 50 },
         { size: 'L', stock_quantity: 50 },
         { size: 'XL', stock_quantity: 50 },
@@ -122,7 +121,6 @@ export function ProductTable({ initialProducts, categories: initialCategories })
       isNew: true,
       isActive: true,
       sizeVariants: [
-        { size: 'S', stockQuantity: 50 },
         { size: 'M', stockQuantity: 50 },
         { size: 'L', stockQuantity: 50 },
         { size: 'XL', stockQuantity: 50 },
