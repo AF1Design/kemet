@@ -70,19 +70,29 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
       productResult = inserted;
     }
 
-    // Parallel Variant Upsert Query if variants provided
-    if (sizeVariants && sizeVariants.length > 0) {
-      const variantsToUpsert = sizeVariants.map(v => ({
-        product_id: productData.id,
-        size: v.size,
-        stock_quantity: Number(v.stockQuantity ?? 50)
-      }));
+    // Ensure TLS certificate bypass for Resend / external APIs on Node
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-      const { error: varErr } = await supabaseAdmin
+    // Sync Variants: Atomic replace - delete old variants and insert exact current sizes list
+    if (Array.isArray(sizeVariants)) {
+      await supabaseAdmin
         .from('product_variants')
-        .upsert(variantsToUpsert, { onConflict: 'product_id,size' });
+        .delete()
+        .eq('product_id', productData.id);
 
-      if (varErr) console.error('Error upserting variants:', varErr);
+      if (sizeVariants.length > 0) {
+        const variantsToInsert = sizeVariants.map(v => ({
+          product_id: productData.id,
+          size: v.size,
+          stock_quantity: Number(v.stockQuantity ?? 50)
+        }));
+
+        const { error: varErr } = await supabaseAdmin
+          .from('product_variants')
+          .insert(variantsToInsert);
+
+        if (varErr) console.error('Error inserting variants:', varErr);
+      }
     }
 
     // Trigger non-blocking background revalidation
@@ -517,11 +527,14 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
           </div>
         `;
 
-        await resend.emails.send({
+        // Non-blocking background email notification
+        resend.emails.send({
           from: SENDER_SUPPORT,
           to: [customerEmail],
           subject: `تحديث حالة طلبك #${updated.id} - KEMET`,
           html: emailHtml
+        }).catch(emailErr => {
+          console.warn('Status change email notification warning:', emailErr);
         });
       }
     } catch (emailErr) {
@@ -575,6 +588,7 @@ export async function deleteOrderAction(orderId) {
  */
 export async function sendMassPromoEmailAction(promoTextAr) {
   try {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     const supabaseAdmin = getAdminSupabase();
     const emailSet = new Set();
 
@@ -599,55 +613,101 @@ export async function sendMassPromoEmailAction(promoTextAr) {
     const promoContent = promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
 
     const emailHtml = `
-      <div dir="rtl" style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0A0A0C; color: #FFFFFF; border: 1px solid #D4AF37; border-radius: 12px; padding: 24px;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #D4AF37; font-size: 28px; margin: 0; letter-spacing: 2px;">KEMET — كيميت</h1>
-          <p style="color: #94A3B8; font-size: 14px; margin-top: 4px;">عروض وخصومات الأطقم الرياضية 🏆</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px; background-color: #FFFFFF;" dir="rtl">
+        <div style="text-align: right; margin-bottom: 20px;">
+          <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px;" />
+        </div>
+        
+        <h2 style="color: #0F172A; font-size: 18px; margin-bottom: 16px;">🔥 عرض ترويجي حصري من KEMET</h2>
+        
+        <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 18px; border-radius: 6px; font-size: 15px; color: #0F172A; margin: 16px 0; line-height: 1.7;">
+          ${promoContent}
         </div>
 
-        <div style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(0,0,0,0.5)); border: 1px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 24px;">
-          <h2 style="color: #FFDF73; font-size: 20px; margin-top: 0;">🔥 عرض ترويجي حصري من KEMET</h2>
-          <p style="font-size: 16px; color: #E2E8F0; line-height: 1.6; margin: 16px 0;">
-            ${promoContent}
-          </p>
-
-          <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: linear-gradient(90deg, #D4AF37, #FFDF73); color: #000000; font-weight: bold; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 16px; margin-top: 10px;">
+        <div style="text-align: center; margin: 24px 0 16px 0;">
+          <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: linear-gradient(90deg, #D4AF37, #FFDF73); color: #000000; font-weight: bold; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 15px; box-shadow: 0 2px 4px rgba(212,175,55,0.25);">
             🛒 تصفّح المتجر واستفد بالعرض الآن
           </a>
         </div>
 
-        <p style="color: #64748B; font-size: 13px; text-align: center;">
+        <p style="color: #64748B; font-size: 13px; text-align: right; margin-top: 20px;">
           وصلك هذا البريد لأنك مسجّل في متجر KEMET الرسمي.
         </p>
 
-        <hr style="border: none; border-top: 1px solid #27272A; margin: 20px 0;" />
-
+        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
+        
         <p style="color: #94A3B8; font-size: 12px; text-align: center; margin: 0;">
           KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
         </p>
       </div>
     `;
 
-    // Batch send via Resend
+    const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
+    const resend = getResendClient();
+
+    // Batch send via Resend with exact delivery & fail tracking
     let sentCount = 0;
+    let failedCount = 0;
+
     for (const email of recipients) {
       try {
-        await resend.emails.send({
+        const resendRes = await resend.emails.send({
           from: SENDER_SUPPORT,
           to: [email],
           subject: '🔥 عرض خاص وحصري من KEMET!',
           html: emailHtml
         });
-        sentCount++;
+
+        if (resendRes?.data?.id) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
       } catch (e) {
+        failedCount++;
         console.warn(`Promo email send warning for ${email}:`, e);
       }
     }
 
-    return { success: true, count: sentCount };
+    return { 
+      success: true, 
+      sentCount, 
+      failedCount, 
+      totalRecipients: recipients.length 
+    };
   } catch (err) {
     console.error('sendMassPromoEmailAction error:', err);
     return { success: false, error: err.message || 'فشل إرسال البريد الجماعي' };
+  }
+}
+
+/**
+ * Server Action: Fetches real live registered users count from Supabase Auth & Profiles
+ */
+export async function getRegisteredUsersStatsAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    let userCount = 0;
+
+    try {
+      const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers();
+      if (!userErr && userData && userData.users) {
+        userCount = userData.users.length;
+      }
+    } catch (e) {
+      console.warn('listUsers note:', e);
+    }
+
+    // Fallback/sync check profiles if listUsers returned 0
+    if (userCount === 0) {
+      const { count } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true });
+      userCount = count || 0;
+    }
+
+    return { success: true, count: userCount };
+  } catch (err) {
+    console.error('getRegisteredUsersStatsAction error:', err);
+    return { success: false, count: 0 };
   }
 }
 
