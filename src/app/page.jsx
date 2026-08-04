@@ -27,7 +27,7 @@ export default function Home() {
         const [{ data: productsData, error: prodErr }, { data: categoriesData, error: catErr }] = await Promise.all([
           supabase
             .from('products')
-            .select('*')
+            .select('*, product_variants(*)')
             .eq('is_active', true)
             .eq('is_best_seller', true)
             .order('created_at', { ascending: false }),
@@ -53,7 +53,8 @@ export default function Home() {
             images: p.gallery_images,
             isBestSeller: p.is_best_seller,
             isNew: p.is_new,
-            keywords: p.keywords
+            keywords: p.keywords,
+            product_variants: p.product_variants || []
           }));
           setBestSellerProducts(mapped);
         }

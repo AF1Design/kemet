@@ -61,6 +61,31 @@ export default function AdminContentCMSPage() {
     'محافظة أخرى': 60
   });
 
+  // Sync form state when cmsSettings loads from localStorage
+  useEffect(() => {
+    if (cmsSettings) {
+      setSettings({
+        isPromoActive: cmsSettings.isPromoActive ?? true,
+        promoTextAr: cmsSettings.promoTextAr || '',
+        promoTextEn: cmsSettings.promoTextEn || '',
+        isFreeShippingPromo: cmsSettings.isFreeShippingPromo ?? false,
+        whatsappPhone: cmsSettings.whatsappPhone || '01114687759',
+        instagramLink: cmsSettings.instagramLink || '',
+        facebookLink: cmsSettings.facebookLink || '',
+        tiktokLink: cmsSettings.tiktokLink || '',
+        heroTitleAr: cmsSettings.heroTitleAr || '',
+        heroSubtitleAr: cmsSettings.heroSubtitleAr || '',
+        heroTitleEn: cmsSettings.heroTitleEn || '',
+        heroSubtitleEn: cmsSettings.heroSubtitleEn || '',
+        returnPolicyDescAr: cmsSettings.returnPolicyDescAr || '',
+        returnPolicyDescEn: cmsSettings.returnPolicyDescEn || ''
+      });
+      if (cmsSettings.shippingRates) {
+        setShippingRates(cmsSettings.shippingRates);
+      }
+    }
+  }, [cmsSettings]);
+
   const [massRateInput, setMassRateInput] = useState('');
   const [newGovName, setNewGovName] = useState('');
   const [newGovFee, setNewGovFee] = useState(50);

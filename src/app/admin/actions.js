@@ -576,26 +576,24 @@ export async function deleteOrderAction(orderId) {
 export async function sendMassPromoEmailAction(promoTextAr) {
   try {
     const supabaseAdmin = getAdminSupabase();
-
-    // Fetch distinct customer emails from orders
-    const { data: ordersData } = await supabaseAdmin
-      .from('orders')
-      .select('customer_email')
-      .not('customer_email', 'is', null);
-
     const emailSet = new Set();
-    if (ordersData) {
-      ordersData.forEach(o => {
-        if (o.customer_email && o.customer_email.includes('@')) {
-          emailSet.add(o.customer_email.trim().toLowerCase());
-        }
-      });
+
+    // 1. Safe fetch registered users from Supabase Auth
+    try {
+      const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers();
+      if (!userErr && userData && userData.users) {
+        userData.users.forEach(u => {
+          if (u.email && u.email.includes('@')) {
+            emailSet.add(u.email.trim().toLowerCase());
+          }
+        });
+      }
+    } catch (authErr) {
+      console.warn('Auth users fetch note:', authErr);
     }
 
-    // Fallback emails if no orders exist yet
-    if (emailSet.size === 0) {
-      emailSet.add('support@kemetmisr.com');
-    }
+    // Default system support email
+    emailSet.add('support@kemetmisr.com');
 
     const recipients = Array.from(emailSet);
     const promoContent = promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';

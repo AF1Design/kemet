@@ -36,7 +36,7 @@ export default function CategoryPage({ params }) {
       setFetchError(null);
 
       try {
-        let query = supabase.from('products').select('*').eq('is_active', true);
+        let query = supabase.from('products').select('*, product_variants(*)').eq('is_active', true);
 
         // 1. Category Filter - Filter by category_id if not 'all'
         if (id && id !== 'all') {
@@ -65,7 +65,8 @@ export default function CategoryPage({ params }) {
             images: p.gallery_images,
             isBestSeller: p.is_best_seller,
             isNew: p.is_new,
-            keywords: p.keywords || []
+            keywords: p.keywords || [],
+            product_variants: p.product_variants || []
           }));
 
           let list = mappedProducts;
