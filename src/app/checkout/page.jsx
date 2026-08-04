@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
@@ -32,14 +32,21 @@ const SHIPPING_RATES = {
   'محافظة أخرى': 60
 };
 
+// Default registered coupons store
+const INITIAL_COUPONS = [
+  { code: 'KEMET10', type: 'percentage', value: 10, isActive: true, maxUsesPerUser: 1, usedBy: [] },
+  { code: 'OFF50', type: 'fixed', value: 50, isActive: true, maxUsesPerUser: 1, usedBy: [] },
+  { code: 'LEGACY2027', type: 'percentage', value: 15, isActive: true, maxUsesPerUser: 1, usedBy: [] }
+];
+
 export default function CheckoutPage() {
-  const { cart, clearCart, addOrder, t } = useApp();
+  const { cart, clearCart, addOrder, user, t } = useApp();
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
-    governorate: 'القاهرة',
-    address: '',
+    fullName: user?.fullName || '',
+    phone: user?.phone || '',
+    governorate: user?.governorate || 'القاهرة',
+    address: user?.address || '',
     notes: ''
   });
 
@@ -47,9 +54,69 @@ export default function CheckoutPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
 
+  // Coupon States
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponMsg, setCouponMsg] = useState(null);
+  const [availableCoupons, setAvailableCoupons] = useState(INITIAL_COUPONS);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('kemet_coupons');
+      if (saved) {
+        setAvailableCoupons(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('Coupon load warning:', e);
+    }
+  }, []);
+
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
   const shippingFee = SHIPPING_RATES[formData.governorate] || 50;
-  const totalAmount = subtotal + shippingFee;
+
+  // Calculate discount amount
+  const discountAmount = appliedCoupon 
+    ? (appliedCoupon.type === 'percentage' 
+        ? Math.round((subtotal * Number(appliedCoupon.value)) / 100) 
+        : Math.min(subtotal, Number(appliedCoupon.value)))
+    : 0;
+
+  const totalAmount = Math.max(0, subtotal - discountAmount) + shippingFee;
+
+  // Handle Apply Coupon
+  const handleApplyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+
+    const coupon = availableCoupons.find(c => c.code.toUpperCase() === code);
+
+    if (!coupon) {
+      setCouponMsg({ type: 'error', text: '⚠️ كود الخصم غير صحيح أو غير موجود' });
+      return;
+    }
+
+    if (!coupon.isActive) {
+      setCouponMsg({ type: 'error', text: '⚠️ انتهت صلاحية هذا الكوبون وغير مفعّل حالياً' });
+      return;
+    }
+
+    const userEmail = user?.email || formData.phone || 'guest';
+    const usageCount = (coupon.usedBy || []).filter(email => email === userEmail).length;
+
+    if (usageCount >= (coupon.maxUsesPerUser || 1)) {
+      setCouponMsg({ type: 'error', text: '⚠️ تم استخدام هذا الكوبون مسبقاً لهذا الحساب (مسموح مرة واحدة فقط)' });
+      return;
+    }
+
+    setAppliedCoupon(coupon);
+    setCouponMsg({ type: 'success', text: `✅ تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`}!` });
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponMsg(null);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -65,10 +132,27 @@ export default function CheckoutPage() {
       status: 'جديد 📦',
       items: [...cart],
       subtotal: subtotal,
+      discount: discountAmount,
       shipping: shippingFee,
       total: totalAmount,
       customer: { ...formData }
     };
+
+    // Update coupon usage in storage
+    if (appliedCoupon) {
+      try {
+        const userEmail = user?.email || formData.phone || 'guest';
+        const updatedCoupons = availableCoupons.map(c => {
+          if (c.code.toUpperCase() === appliedCoupon.code.toUpperCase()) {
+            return { ...c, usedBy: [...(c.usedBy || []), userEmail] };
+          }
+          return c;
+        });
+        localStorage.setItem('kemet_coupons', JSON.stringify(updatedCoupons));
+      } catch (err) {
+        console.warn('Coupon usage save note:', err);
+      }
+    }
 
     // Instant Non-blocking Server Save (Zero Delay UX)
     createOrderAction(newOrder).catch(err => {
@@ -79,38 +163,43 @@ export default function CheckoutPage() {
     setCreatedOrder(newOrder);
     setIsSubmitted(true);
     clearCart();
+    setIsSubmitting(false);
   };
 
   if (isSubmitted && createdOrder) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <section className="section" style={{ flexGrow: 1 }}>
+        <section className="section" style={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
           <div className="container" style={{ maxWidth: '650px', textAlign: 'center' }}>
             <div style={{ 
               background: 'var(--bg-card)', 
               border: '1px solid var(--border-gold-bright)', 
               borderRadius: 'var(--radius-lg)', 
-              padding: '3.5rem 2rem',
+              padding: '3rem 2rem',
               boxShadow: 'var(--shadow-glow)'
             }}>
-              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
-              <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem', color: 'var(--gold-primary)' }}>
-                {t('orderSuccessTitle')}
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '1.75rem' }}>
-                رقم طلبك الكلي المعتمد هو: <strong style={{ color: 'var(--text-primary)', fontSize: '1.2rem' }}>#{createdOrder.id}</strong>
-                <br />
-                الإجمالي المستحق شامل الشحن: <strong style={{ color: 'var(--gold-primary)', fontSize: '1.2rem' }}>{createdOrder.total} ج.م</strong>
-                <br />
-                {t('orderSuccessDesc')}
+              <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🎉</div>
+              <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '0.75rem' }}>
+                تم تأكيد طلبك بنجاح!
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                شكراً لثقتك بـ KEMET. تم استلام طلبك برقم <strong style="color: #FFF;">#{createdOrder.id}</strong> وجاري تجهيزه للشحن فوراً.
               </p>
+              
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', textAlign: 'right', fontSize: '0.9rem' }}>
+                <div><strong>اسم العميل:</strong> {createdOrder.customer.fullName}</div>
+                <div><strong>رقم الموبايل:</strong> {createdOrder.customer.phone}</div>
+                <div><strong>العنوان:</strong> {createdOrder.customer.governorate} ({createdOrder.customer.address})</div>
+                {createdOrder.discount > 0 && <div style={{ color: '#10B981', fontWeight: 800 }}><strong>مبلغ الخصم:</strong> - {createdOrder.discount} ج.م</div>}
+                <div><strong>المبلغ الإجمالي المطلوب عند الاستلام:</strong> <strong style={{ color: 'var(--gold-primary)', fontSize: '1.1rem' }}>{createdOrder.total} ج.م</strong></div>
+              </div>
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/my-orders" className="btn-primary" style={{ padding: '0.85rem 2rem' }}>
-                  مشاهدة الطلب في قسم طلباتي 🛍️
+                  📋 متابعة طلباتي
                 </Link>
                 <Link href="/" className="btn-secondary" style={{ padding: '0.85rem 2rem' }}>
-                  {t('backHomeBtn')}
+                  🏠 العودة للمتجر
                 </Link>
               </div>
             </div>
@@ -124,32 +213,23 @@ export default function CheckoutPage() {
   return (
     <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
       <section className="section" style={{ flexGrow: 1 }}>
-        <div className="container" style={{ maxWidth: '900px' }}>
+        <div className="container">
           
-          {/* Page Title */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <h1 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-              <span className="brand-glow">💳 {t('checkoutTitle')}</span>
+          <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '0.5rem' }}>
+              <span className="brand-glow">🛍️ {t('checkoutTitle')}</span>
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto' }}>
-              {t('checkoutSubtitle')}
+            <p style={{ color: 'var(--text-secondary)' }}>
+              أدخل بيانات الشحن والتسليم لتأكيد الطلب والدفع عند الاستلام
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
             
             {/* Customer Form */}
-            <form onSubmit={handleSubmit} style={{ 
-              background: 'var(--bg-card)', 
-              border: '1px solid var(--border-gold)', 
-              borderRadius: 'var(--radius-lg)', 
-              padding: '2rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem'
-            }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.5rem' }}>
-                بيانات الشحن والتوصيل
+            <form onSubmit={handleSubmit} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-lg)', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gold-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                📋 بيانات الشحن والتسليم
               </h3>
 
               <div>
@@ -159,7 +239,7 @@ export default function CheckoutPage() {
                 <input 
                   type="text" 
                   required
-                  placeholder="أدخل اسمك بالكامل"
+                  placeholder="الاسم الأول والعائلة"
                   value={formData.fullName}
                   onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                 />
@@ -172,7 +252,7 @@ export default function CheckoutPage() {
                 <input 
                   type="tel" 
                   required
-                  placeholder="01xxxxxxxx"
+                  placeholder="01XXXXXXXXX"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                 />
@@ -230,7 +310,7 @@ export default function CheckoutPage() {
                 <span>{t('smsMarketingLabel')}</span>
               </label>
 
-              <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
+              <button type="submit" disabled={isSubmitting || cart.length === 0} className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
                 {isSubmitting ? 'جاري تأكيد الطلب فورياً...' : `تأكيد الطلب بدفع ${totalAmount} ج.م 🛍️`}
               </button>
             </form>
@@ -238,7 +318,7 @@ export default function CheckoutPage() {
             {/* Order Summary */}
             <div style={{ 
               background: 'var(--bg-card)', 
-              border: '1px solid var(--border-gold-bright)', 
+              border: '1px solid var(--border-gold)', 
               borderRadius: 'var(--radius-lg)', 
               padding: '2rem',
               boxShadow: 'var(--shadow-glow)'
@@ -262,15 +342,65 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Coupon Code Input Area */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
+                  🎟️ هل لديك كود خصم / كوبون؟
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    type="text"
+                    placeholder="أدخل كود الخصم (مثال: KEMET10)"
+                    value={couponInput}
+                    onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                    disabled={appliedCoupon !== null}
+                    style={{ flexGrow: 1, padding: '0.65rem 0.85rem', fontSize: '0.88rem', textTransform: 'uppercase' }}
+                  />
+                  {appliedCoupon ? (
+                    <button 
+                      type="button" 
+                      onClick={handleRemoveCoupon}
+                      style={{ background: '#F43F5E', color: '#FFF', border: 'none', padding: '0.65rem 1rem', borderRadius: 'var(--radius-md)', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}
+                    >
+                      إلغاء ✕
+                    </button>
+                  ) : (
+                    <button 
+                      type="button" 
+                      onClick={handleApplyCoupon}
+                      className="btn-secondary"
+                      style={{ padding: '0.65rem 1rem', fontSize: '0.85rem', fontWeight: 800 }}
+                    >
+                      تطبيق الخصم ✨
+                    </button>
+                  )}
+                </div>
+
+                {couponMsg && (
+                  <div style={{ fontSize: '0.82rem', marginTop: '0.4rem', fontWeight: 800, color: couponMsg.type === 'error' ? '#F43F5E' : '#10B981' }}>
+                    {couponMsg.text}
+                  </div>
+                )}
+              </div>
+
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                   <span>المجموع الفرعي للمنتجات:</span>
                   <span>{subtotal} ج.م</span>
                 </div>
+
+                {appliedCoupon && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#10B981', fontWeight: 800 }}>
+                    <span>خصم الكوبون ({appliedCoupon.code}):</span>
+                    <span>- {discountAmount} ج.م</span>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                   <span>مصاريف الشحن ({formData.governorate}):</span>
                   <span>+ {shippingFee} ج.م</span>
                 </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.35rem', fontWeight: 900, color: 'var(--gold-primary)', paddingTop: '0.75rem', borderTop: '1px solid var(--border-gold)' }}>
                   <span>الإجمالي الكلي المطلوب:</span>
                   <span>{totalAmount} ج.م</span>

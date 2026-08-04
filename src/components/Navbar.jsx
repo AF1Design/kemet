@@ -119,8 +119,27 @@ export const Navbar = ({ onOpenMobileMenu }) => {
 
   const isActive = (path) => pathname === path;
 
+  const isPromoActive = true;
+  const promoTextAr = '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية';
+  const promoTextEn = '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!';
+
   return (
     <header className="header">
+      {/* Top Promo Announcement Bar */}
+      {isPromoActive && (
+        <div style={{
+          background: 'linear-gradient(90deg, #D4AF37 0%, #FFDF73 50%, #D4AF37 100%)',
+          color: '#000000',
+          textAlign: 'center',
+          padding: '0.45rem 1rem',
+          fontSize: '0.85rem',
+          fontWeight: 900,
+          boxShadow: '0 2px 10px rgba(212,175,55,0.2)'
+        }}>
+          {lang === 'ar' ? promoTextAr : promoTextEn}
+        </div>
+      )}
+
       <div className="header-container container">
         
         {/* Right (in RTL): Brand Animated Logo */}

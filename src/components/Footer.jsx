@@ -134,19 +134,16 @@ export const Footer = () => {
                   width: '44px', 
                   height: '44px', 
                   borderRadius: '50%', 
-                  background: '#000000', 
-                  border: '1px solid rgba(254, 44, 85, 0.6)', 
-                  color: '#FFFFFF',
+                  overflow: 'hidden',
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
                   transition: 'var(--transition)',
-                  boxShadow: '0 4px 12px rgba(254, 44, 85, 0.25)'
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.1)'
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.525 2.25c.002.378.006.757.006 1.135 0 2.298 1.488 4.25 3.567 4.965.733.252 1.52.386 2.336.387v3.254a9.14 9.14 0 0 1-4.733-1.309v5.992a6.974 6.974 0 0 1-6.972 6.973 6.974 6.974 0 0 1-6.973-6.973 6.974 6.974 0 0 1 6.973-6.972c.408 0 .807.039 1.194.114v3.376a3.593 3.593 0 0 0-1.194-.204 3.597 3.597 0 0 0-3.597 3.597 3.597 3.597 0 0 0 3.597 3.597 3.597 3.597 0 0 0 3.597-3.597V2.25h2.709z"/>
-                </svg>
+                <img src="/assets/tiktok-icon.png" alt="KEMET TikTok" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </a>
 
             </div>

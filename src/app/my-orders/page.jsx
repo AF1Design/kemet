@@ -9,8 +9,36 @@ import { supabase } from '../../lib/supabase/client';
 import { updateOrderStatusAction } from '../admin/actions';
 
 export default function MyOrdersPage() {
-  const { lang, user, orders, cancelOrder, updateFullOrder, t } = useApp();
+  const { lang, user, orders, cancelOrder, updateFullOrder, logout, updateProfile, showToast, t } = useApp();
   const [dbOrders, setDbOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'profile'
+
+  const [profileName, setProfileName] = useState(user?.fullName || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
+  const [profileGov, setProfileGov] = useState(user?.governorate || 'القاهرة');
+  const [profileAddress, setProfileAddress] = useState(user?.address || '');
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.fullName || '');
+      setProfilePhone(user.phone || '');
+      setProfileGov(user.governorate || 'القاهرة');
+      setProfileAddress(user.address || '');
+    }
+  }, [user]);
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (updateProfile) {
+      await updateProfile({
+        fullName: profileName,
+        phone: profilePhone,
+        governorate: profileGov,
+        address: profileAddress
+      });
+    }
+    showToast(lang === 'ar' ? 'تم حفظ وتحديث بيانات حسابك بنجاح ✅' : 'Account updated successfully ✅');
+  };
 
   useEffect(() => {
     async function fetchDbOrders() {
@@ -247,7 +275,7 @@ export default function MyOrdersPage() {
             /* Orders List */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
-              {/* Profile Header Bar */}
+              {/* Profile Header Bar & Controls */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -265,12 +293,129 @@ export default function MyOrdersPage() {
                     {t('welcomeBackUser')} <strong style={{ color: 'var(--gold-primary)' }}>{user.fullName || user.email}</strong>
                   </span>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                  {lang === 'ar' ? 'إجمالي الطلبات:' : 'Total Orders:'} <strong style={{ color: 'var(--gold-primary)' }}>{displayOrders.length}</strong>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                    {lang === 'ar' ? 'إجمالي الطلبات:' : 'Total Orders:'} <strong style={{ color: 'var(--gold-primary)' }}>{displayOrders.length}</strong>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => logout()} 
+                    style={{ background: 'rgba(244,63,94,0.15)', border: '1px solid #F43F5E', color: '#F43F5E', padding: '0.35rem 0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                  >
+                    🚪 {lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}
+                  </button>
                 </div>
               </div>
 
-              {displayOrders.map(order => {
+              {/* Navigation Tabs */}
+              <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('orders')}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: 800,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    border: activeTab === 'orders' ? '2px solid var(--gold-primary)' : '1px solid var(--border-color)',
+                    background: activeTab === 'orders' ? 'rgba(212, 175, 55, 0.15)' : 'transparent',
+                    color: activeTab === 'orders' ? 'var(--gold-primary)' : 'var(--text-secondary)'
+                  }}
+                >
+                  📋 {lang === 'ar' ? `طلباتي (${displayOrders.length})` : `My Orders (${displayOrders.length})`}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: 800,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    border: activeTab === 'profile' ? '2px solid var(--gold-primary)' : '1px solid var(--border-color)',
+                    background: activeTab === 'profile' ? 'rgba(212, 175, 55, 0.15)' : 'transparent',
+                    color: activeTab === 'profile' ? 'var(--gold-primary)' : 'var(--text-secondary)'
+                  }}
+                >
+                  ⚙️ {lang === 'ar' ? 'تعديل بيانات الحساب' : 'Edit Account Details'}
+                </button>
+              </div>
+
+              {/* Profile Details Tab Content */}
+              {activeTab === 'profile' && (
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-lg)', padding: '2rem' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '1.5rem' }}>
+                    ⚙️ {lang === 'ar' ? 'تحديث وتعديل بيانات حسابك:' : 'Update Account Profile:'}
+                  </h3>
+
+                  <form onSubmit={handleSaveProfile} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        الاسم بالكامل:
+                      </label>
+                      <input 
+                        type="text" 
+                        value={profileName} 
+                        onChange={e => setProfileName(e.target.value)} 
+                        style={{ width: '100%', padding: '0.75rem 1rem', fontSize: '0.95rem' }} 
+                        required 
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        رقم الهاتف:
+                      </label>
+                      <input 
+                        type="tel" 
+                        value={profilePhone} 
+                        onChange={e => setProfilePhone(e.target.value)} 
+                        style={{ width: '100%', padding: '0.75rem 1rem', fontSize: '0.95rem' }} 
+                        required 
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        المحافظة:
+                      </label>
+                      <input 
+                        type="text" 
+                        value={profileGov} 
+                        onChange={e => setProfileGov(e.target.value)} 
+                        style={{ width: '100%', padding: '0.75rem 1rem', fontSize: '0.95rem' }} 
+                        required 
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                        العنوان التفصيلي للتسليم:
+                      </label>
+                      <textarea 
+                        value={profileAddress} 
+                        onChange={e => setProfileAddress(e.target.value)} 
+                        rows={3} 
+                        style={{ width: '100%', padding: '0.75rem 1rem', fontSize: '0.95rem' }} 
+                        required 
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                      <button type="submit" className="btn-primary" style={{ padding: '0.85rem 2rem' }}>
+                        💾 {lang === 'ar' ? 'حفظ البيانات المعدلة' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Orders Tab Content */}
+              {activeTab === 'orders' && displayOrders.map(order => {
                 const statusStr = String(order.status || '').toLowerCase();
                 const isShippedOrDelivered = statusStr.includes('شحن') || statusStr.includes('shipped') || statusStr.includes('تسليم') || statusStr.includes('delivered');
                 const isCancelled = statusStr.includes('ملغي') || statusStr.includes('cancelled');

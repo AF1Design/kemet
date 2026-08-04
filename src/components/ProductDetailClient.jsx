@@ -129,16 +129,22 @@ export const ProductDetailClient = ({ product, initialVariants }) => {
                       <button
                         key={item.size}
                         type="button"
-                        onClick={() => setSelectedSizeObj(item)}
+                        onClick={() => {
+                          if (isOut) {
+                            showToast(lang === 'ar' ? `⚠️ مقاس (${item.size}) نفد من المخزن وغير متاح للطلب` : `⚠️ Size (${item.size}) is out of stock!`);
+                            return;
+                          }
+                          setSelectedSizeObj(item);
+                        }}
                         style={{
                           padding: '0.55rem 1.1rem',
                           borderRadius: 'var(--radius-md)',
                           border: isSelected ? '2px solid var(--gold-primary)' : '1px solid var(--border-color)',
-                          background: isSelected ? 'rgba(212, 175, 55, 0.15)' : 'var(--bg-card)',
+                          background: isSelected ? 'rgba(212, 175, 55, 0.15)' : (isOut ? 'rgba(244, 63, 94, 0.05)' : 'var(--bg-card)'),
                           color: isOut ? '#F43F5E' : (isSelected ? 'var(--gold-primary)' : 'var(--text-primary)'),
                           fontWeight: 800,
                           fontSize: '0.95rem',
-                          cursor: 'pointer',
+                          cursor: isOut ? 'not-allowed' : 'pointer',
                           opacity: isOut ? 0.45 : 1,
                           textDecoration: isOut ? 'line-through' : 'none',
                           transition: 'all 0.2s ease'
