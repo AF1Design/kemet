@@ -87,6 +87,7 @@ export default function RootLayout({ children }) {
     sameAs: [
       'https://www.facebook.com/share/18tVb5nvWy/?mibextid=wwXIfr',
       'https://www.instagram.com/kemetbrand.eg?igsh=bmxka2pzcGxyMDdy',
+      'https://www.tiktok.com/@kemet.ya?_r=1&_t=ZS-98bdUO43owB',
       'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q'
     ],
     contactPoint: {

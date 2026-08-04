@@ -124,6 +124,30 @@ export const Footer = () => {
                 </svg>
               </a>
 
+              {/* TikTok Official Link */}
+              <a 
+                href="https://www.tiktok.com/@kemet.ya?_r=1&_t=ZS-98bdUO43owB" 
+                target="_blank" 
+                rel="noreferrer"
+                title="KEMET TikTok"
+                style={{ 
+                  width: '44px', 
+                  height: '44px', 
+                  borderRadius: '50%', 
+                  background: 'rgba(254, 44, 85, 0.15)', 
+                  border: '1px solid rgba(254, 44, 85, 0.4)', 
+                  color: '#FE2C55',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  transition: 'var(--transition)'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .56.04.82.11V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.86 4.46v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.15z"/>
+                </svg>
+              </a>
+
             </div>
           </div>
 
