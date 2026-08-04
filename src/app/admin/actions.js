@@ -408,6 +408,12 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
           </div>
         ` : '';
 
+        const courierNoticeSection = dbStatus === 'out_for_delivery' ? `
+          <div style="background: #FEF9C3; border: 1px solid #FDE047; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; color: #854D0E; font-size: 15px; font-weight: bold; line-height: 1.6;">
+            🛵 أوردرك اليوم مع المندوب وفي الطريق إليك خلال ساعات! يرجى التواجد في العنوان وتوافر الهاتف لتسهيل استلام الشحنة.
+          </div>
+        ` : '';
+
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px; background-color: #FFFFFF;">
             <div style="text-align: left; margin-bottom: 20px;">
@@ -428,6 +434,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
               ${displayStatus}
             </div>
 
+            ${courierNoticeSection}
             ${trackingSection}
 
             <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">📋 تفاصيل المنتجات والطلب:</h3>
