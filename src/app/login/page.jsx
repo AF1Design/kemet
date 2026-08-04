@@ -7,9 +7,8 @@ import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
 import { OtpModal } from '../../components/OtpModal';
 import { supabase } from '../../lib/supabase/client';
-import { customSignupAction, customPasswordResetAction, forgotPasswordOtpAction } from '../actions/auth-actions';
+import { customSignupAction, forgotPasswordOtpAction } from '../actions/auth-actions';
 
-// Eye of Horus (عين حورس المفتوحة) - SVG Icon
 const EyeOfHorusOpen = () => (
   <svg className="eye-horus-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 6c3-2.2 8-2.2 13 0c2 0.8 3 1.5 3 1.5" stroke="var(--gold-primary)" strokeWidth="2" />
@@ -21,7 +20,6 @@ const EyeOfHorusOpen = () => (
   </svg>
 );
 
-// Eye of Horus Closed / Sleeping (عين حورس المغلقة/النائمة) - SVG Icon
 const EyeOfHorusClosed = () => (
   <svg className="eye-horus-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 6c3-2.2 8-2.2 13 0c2 0.8 3 1.5 3 1.5" stroke="var(--gold-primary)" strokeWidth="1.5" opacity="0.7" />
@@ -35,16 +33,16 @@ const EyeOfHorusClosed = () => (
 );
 
 export default function LoginPage() {
-  const { user, loginUser, logoutUser, showToast, t } = useApp();
+  const { lang, user, loginUser, logoutUser, showToast, t } = useApp();
   const router = useRouter();
 
-  const [mode, setMode] = useState('login'); // 'login' or 'register'
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [governorate, setGovernorate] = useState('القاهرة');
+  const [governorate, setGovernorate] = useState(lang === 'ar' ? 'القاهرة' : 'Cairo');
   const [allowSmsMarketing, setAllowSmsMarketing] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -58,12 +56,11 @@ export default function LoginPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('confirmed') === 'true') {
-        showToast('تم تفعيل البريد الإلكتروني بنجاح.');
+        showToast(lang === 'ar' ? 'تم تفعيل البريد الإلكتروني بنجاح.' : 'Email verified successfully.');
       }
     }
-  }, []);
+  }, [lang]);
 
-  // Handle Logout
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -74,10 +71,9 @@ export default function LoginPage() {
     document.cookie = 'supabase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     
     logoutUser();
-    showToast('تم تسجيل الخروج بنجاح 👋');
+    showToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح 👋' : 'Signed out successfully 👋');
   };
 
-  // Handle Profile Update
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     if (!user?.id) return;
@@ -105,25 +101,24 @@ export default function LoginPage() {
       });
 
       setIsEditingProfile(false);
-      showToast('تم تحديث بيانات البروفايل بنجاح ⚙️');
+      showToast(lang === 'ar' ? 'تم تحديث بيانات البروفايل بنجاح ⚙️' : 'Profile updated successfully ⚙️');
     } catch (err) {
-      alert(err.message || 'فشل في تحديث البيانات');
+      alert(err.message || (lang === 'ar' ? 'فشل في تحديث البيانات' : 'Failed to update profile'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Submit (Login or Register via Supabase Auth)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAuthError(null);
 
     if (!email.trim() || !email.includes('@')) {
-      setAuthError('يرجى إدخال بريد إلكتروني صحيح');
+      setAuthError(lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email address');
       return;
     }
     if (!password || password.length < 6) {
-      setAuthError('كلمة المرور يجب أن لا تقل عن 6 أحرف');
+      setAuthError(lang === 'ar' ? 'كلمة المرور يجب أن لا تقل عن 6 أحرف' : 'Password must be at least 6 characters');
       return;
     }
 
@@ -137,7 +132,7 @@ export default function LoginPage() {
         });
 
         if (error) {
-          setAuthError('خطأ في بيانات الدخول. يرجى التأكد من البريد وكلمة المرور.');
+          setAuthError(lang === 'ar' ? 'خطأ في بيانات الدخول. يرجى التأكد من البريد وكلمة المرور.' : 'Invalid login credentials. Please check your email and password.');
           setIsLoading(false);
           return;
         }
@@ -146,7 +141,6 @@ export default function LoginPage() {
           document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
           document.cookie = `supabase-auth-token=${data.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
 
-          // Query Profile for role and user details
           let userRole = 'customer';
           let profileData = null;
 
@@ -168,13 +162,12 @@ export default function LoginPage() {
             email: data.user.email,
             fullName: profileData?.full_name || data.user.user_metadata?.full_name || email.split('@')[0],
             phone: profileData?.phone || '',
-            governorate: profileData?.governorate || 'القاهرة',
+            governorate: profileData?.governorate || (lang === 'ar' ? 'القاهرة' : 'Cairo'),
             role: userRole
           });
 
-          showToast(userRole === 'admin' ? 'تم تسجيل دخول المسؤول الإداري.' : 'تم تسجيل الدخول بنجاح.');
+          showToast(userRole === 'admin' ? (lang === 'ar' ? 'تم تسجيل دخول المسؤول الإداري.' : 'Admin signed in successfully.') : (lang === 'ar' ? 'تم تسجيل الدخول بنجاح.' : 'Signed in successfully.'));
 
-          // Explicit redirect check: if role === 'admin', redirect directly to /admin
           if (userRole === 'admin') {
             window.location.href = '/admin';
           } else {
@@ -182,15 +175,13 @@ export default function LoginPage() {
           }
         }
       } catch (err) {
-        setAuthError(err.message || 'حدث خطأ في الاتصال بالخادم');
+        setAuthError(err.message || (lang === 'ar' ? 'حدث خطأ في الاتصال بالخادم' : 'Server error occurred'));
       } finally {
         setIsLoading(false);
       }
     } else {
-      // Register Mode
-      // Register Mode via Resend & KEMET Custom Action
       if (!fullName.trim()) {
-        setAuthError('يرجى كتابة اسمك بالكامل لإنشاء الحساب');
+        setAuthError(lang === 'ar' ? 'يرجى كتابة اسمك بالكامل لإنشاء الحساب' : 'Please enter your full name');
         setIsLoading(false);
         return;
       }
@@ -209,11 +200,11 @@ export default function LoginPage() {
           setAuthError(null);
           setShowOtpModal(true);
         } else {
-          setAuthError(res.error || 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+          setAuthError(res.error || (lang === 'ar' ? 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.' : 'Failed to create account. Please try again.'));
         }
       } catch (err) {
         console.error('Signup error:', err);
-        setAuthError(err.message || 'فشل في إنشاء الحساب');
+        setAuthError(err.message || (lang === 'ar' ? 'فشل في إنشاء الحساب' : 'Account creation failed'));
       } finally {
         setIsLoading(false);
       }
@@ -244,60 +235,60 @@ export default function LoginPage() {
           }}>
 
             {user ? (
-              /* Already Logged In Panel */
               <div>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                   <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👑</div>
                   <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                    أهلاً بك، {user.fullName || user.email}
+                    {t('welcomeBackUser')} {user.fullName || user.email}
                   </h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                    {user.role === 'admin' ? 'حساب مسؤول إداري (Admin Account)' : 'عميل مميز في متجر KEMET'}
+                    {user.role === 'admin' 
+                      ? (lang === 'ar' ? 'حساب مسؤول إداري (Admin)' : 'Admin Account') 
+                      : user.email}
                   </p>
                 </div>
 
                 {!isEditingProfile ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.6rem' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>البريد الإلكتروني:</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{t('emailLabel')}</span>
                       <span style={{ fontWeight: 800 }}>{user.email}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.6rem' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>رقم الهاتف:</span>
-                      <span style={{ fontWeight: 800 }}>{user.phone || 'غير مسجل'}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{t('phoneLabel')}</span>
+                      <span style={{ fontWeight: 800 }}>{user.phone || (lang === 'ar' ? 'غير مسجل' : 'Not set')}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>المحافظة:</span>
-                      <span style={{ fontWeight: 800 }}>{user.governorate || 'القاهرة'}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{t('govLabel')}</span>
+                      <span style={{ fontWeight: 800 }}>{user.governorate || (lang === 'ar' ? 'القاهرة' : 'Cairo')}</span>
                     </div>
                   </div>
                 ) : (
                   <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>الاسم بالكامل</label>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>{t('fullNameLabel')}</label>
                       <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} required className="form-input" />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>رقم الهاتف</label>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>{t('phoneLabel')}</label>
                       <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required className="form-input" />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>المحافظة</label>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>{t('govLabel')}</label>
                       <select value={governorate} onChange={e => setGovernorate(e.target.value)} className="form-select">
-                        <option value="القاهرة">القاهرة</option>
-                        <option value="الجيزة">الجيزة</option>
-                        <option value="الإسكندرية">الإسكندرية</option>
-                        <option value="الدقهلية">الدقهلية</option>
-                        <option value="الشرقية">الشرقية</option>
-                        <option value="محافظة أخرى">محافظة أخرى</option>
+                        <option value={lang === 'ar' ? "القاهرة" : "Cairo"}>{lang === 'ar' ? "القاهرة" : "Cairo"}</option>
+                        <option value={lang === 'ar' ? "الجيزة" : "Giza"}>{lang === 'ar' ? "الجيزة" : "Giza"}</option>
+                        <option value={lang === 'ar' ? "الإسكندرية" : "Alexandria"}>{lang === 'ar' ? "الإسكندرية" : "Alexandria"}</option>
+                        <option value={lang === 'ar' ? "الدقهلية" : "Dakahlia"}>{lang === 'ar' ? "الدقهلية" : "Dakahlia"}</option>
+                        <option value={lang === 'ar' ? "الشرقية" : "Sharqia"}>{lang === 'ar' ? "الشرقية" : "Sharqia"}</option>
                       </select>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button type="submit" className="btn-primary" disabled={isLoading} style={{ flex: 1, padding: '0.65rem' }}>
-                        {isLoading ? 'جاري الحفظ...' : 'حفظ التعديلات 💾'}
+                        {isLoading ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التعديلات 💾' : 'Save Changes 💾')}
                       </button>
                       <button type="button" className="btn-secondary" onClick={() => setIsEditingProfile(false)} style={{ padding: '0.65rem' }}>
-                        إلغاء
+                        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                       </button>
                     </div>
                   </form>
@@ -306,12 +297,12 @@ export default function LoginPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   {user.role === 'admin' && (
                     <Link href="/admin" className="btn-primary" style={{ textAlign: 'center', padding: '0.85rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
-                      👑 الدخول للوحة التحكم الإدارية (/admin)
+                      👑 {lang === 'ar' ? 'الدخول للوحة التحكم الإدارية (/admin)' : 'Open Admin Dashboard (/admin)'}
                     </Link>
                   )}
                   
                   <Link href="/my-orders" className="btn-secondary" style={{ textAlign: 'center', padding: '0.85rem' }}>
-                    📦 مشاهدة طلباتي ومتابعة الشحن
+                    📦 {t('viewOrdersBtn')}
                   </Link>
 
                   {!isEditingProfile && (
@@ -320,13 +311,13 @@ export default function LoginPage() {
                       onClick={() => {
                         setFullName(user.fullName || '');
                         setPhone(user.phone || '');
-                        setGovernorate(user.governorate || 'القاهرة');
+                        setGovernorate(user.governorate || (lang === 'ar' ? 'القاهرة' : 'Cairo'));
                         setIsEditingProfile(true);
                       }} 
                       className="btn-secondary" 
                       style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.05)' }}
                     >
-                      ⚙️ تعديل بيانات الحساب
+                      ⚙️ {lang === 'ar' ? 'تعديل بيانات الحساب' : 'Edit Account Details'}
                     </button>
                   )}
 
@@ -336,12 +327,11 @@ export default function LoginPage() {
                     className="btn-secondary" 
                     style={{ padding: '0.85rem', background: 'rgba(244,63,94,0.1)', color: '#F43F5E', border: '1px solid rgba(244,63,94,0.3)' }}
                   >
-                    🚪 تسجيل الخروج من الحساب
+                    🚪 {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
                   </button>
                 </div>
               </div>
             ) : (
-              /* Auth Form (Login or Register) */
               <div>
                 <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '2rem' }}>
                   <button
@@ -496,7 +486,7 @@ export default function LoginPage() {
                           padding: '0.4rem',
                           zIndex: 10
                         }}
-                        title={showPassword ? 'إخفاء كلمة السر' : 'إظهار كلمة السر'}
+                        title={showPassword ? (lang === 'ar' ? 'إخفاء كلمة السر' : 'Hide password') : (lang === 'ar' ? 'إظهار كلمة السر' : 'Show password')}
                       >
                         {showPassword ? <EyeOfHorusOpen /> : <EyeOfHorusClosed />}
                       </button>
@@ -504,12 +494,12 @@ export default function LoginPage() {
                   </div>
 
                   {mode === 'login' && (
-                    <div style={{ textAlign: 'left', marginTop: '-0.5rem' }}>
+                    <div style={{ textAlign: lang === 'ar' ? 'left' : 'right', marginTop: '-0.5rem' }}>
                       <button
                         type="button"
                         onClick={async () => {
                           if (!email.trim() || !email.includes('@')) {
-                            setAuthError('يرجى كتابة البريد الإلكتروني أولاً لاستعادة كلمة المرور.');
+                            setAuthError(lang === 'ar' ? 'يرجى كتابة البريد الإلكتروني أولاً لاستعادة كلمة المرور.' : 'Please enter your email address first.');
                             return;
                           }
                           setIsLoading(true);
@@ -520,10 +510,10 @@ export default function LoginPage() {
                               setOtpModalMode('recovery');
                               setShowOtpModal(true);
                             } else {
-                              setAuthError(res.error || 'تعذر إرسال رمز الاستعادة.');
+                              setAuthError(res.error || (lang === 'ar' ? 'تعذر إرسال رمز الاستعادة.' : 'Failed to send recovery code.'));
                             }
                           } catch (err) {
-                            setAuthError('تعذر إرسال رمز الاستعادة.');
+                            setAuthError(lang === 'ar' ? 'تعذر إرسال رمز الاستعادة.' : 'Failed to send recovery code.');
                           } finally {
                             setIsLoading(false);
                           }
@@ -538,7 +528,7 @@ export default function LoginPage() {
                           textDecoration: 'underline'
                         }}
                       >
-                        نسيت كلمة المرور؟
+                        {lang === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
                       </button>
                     </div>
                   )}
@@ -550,12 +540,11 @@ export default function LoginPage() {
                           {t('govLabel')}
                         </label>
                         <select value={governorate} onChange={e => setGovernorate(e.target.value)}>
-                          <option value="القاهرة">القاهرة</option>
-                          <option value="الجيزة">الجيزة</option>
-                          <option value="الإسكندرية">الإسكندرية</option>
-                          <option value="الدقهلية">الدقهلية</option>
-                          <option value="الشرقية">الشرقية</option>
-                          <option value="محافظة أخرى">محافظة أخرى</option>
+                          <option value={lang === 'ar' ? "القاهرة" : "Cairo"}>{lang === 'ar' ? "القاهرة" : "Cairo"}</option>
+                          <option value={lang === 'ar' ? "الجيزة" : "Giza"}>{lang === 'ar' ? "الجيزة" : "Giza"}</option>
+                          <option value={lang === 'ar' ? "الإسكندرية" : "Alexandria"}>{lang === 'ar' ? "الإسكندرية" : "Alexandria"}</option>
+                          <option value={lang === 'ar' ? "الدقهلية" : "Dakahlia"}>{lang === 'ar' ? "الدقهلية" : "Dakahlia"}</option>
+                          <option value={lang === 'ar' ? "الشرقية" : "Sharqia"}>{lang === 'ar' ? "الشرقية" : "Sharqia"}</option>
                         </select>
                       </div>
 
@@ -572,7 +561,7 @@ export default function LoginPage() {
                   )}
 
                   <button type="submit" className="btn-primary" disabled={isLoading} style={{ padding: '0.95rem', fontSize: '1rem', marginTop: '0.5rem' }}>
-                    {isLoading ? 'جاري التحقق...' : (mode === 'login' ? t('loginBtn') : t('registerBtn'))}
+                    {isLoading ? (lang === 'ar' ? 'جاري التحقق...' : 'Verifying...') : (mode === 'login' ? t('loginBtn') : t('registerBtn'))}
                   </button>
                 </form>
               </div>
@@ -606,7 +595,6 @@ export default function LoginPage() {
             document.cookie = `supabase-auth-token=${res.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
           }
 
-          // Fetch authoritative profile from Supabase DB to prevent local state divergence across devices
           let profileData = null;
           if (res?.user?.id) {
             const { data: prof } = await supabase
@@ -622,14 +610,14 @@ export default function LoginPage() {
             email: res?.user?.email || email.trim(),
             fullName: profileData?.full_name || res?.user?.user_metadata?.full_name || fullName.trim() || email.split('@')[0],
             phone: profileData?.phone || res?.user?.user_metadata?.phone || phone.trim() || '',
-            governorate: profileData?.governorate || governorate || 'القاهرة',
+            governorate: profileData?.governorate || governorate || (lang === 'ar' ? 'القاهرة' : 'Cairo'),
             role: profileData?.role || 'customer'
           });
 
           showToast(
             otpModalMode === 'recovery'
-              ? 'تم إعادة ضبط كلمة المرور وتسجيل الدخول بنجاح.'
-              : 'تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.'
+              ? (lang === 'ar' ? 'تم إعادة ضبط كلمة المرور وتسجيل الدخول بنجاح.' : 'Password reset and signed in successfully.')
+              : (lang === 'ar' ? 'تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.' : 'Email verified and signed in successfully.')
           );
           setTimeout(() => {
             window.location.href = '/my-orders';

@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { products as storeProducts } from '../../data/products';
 import { Footer } from '../../components/Footer';
 import { supabase } from '../../lib/supabase/client';
+import { updateOrderStatusAction } from '../admin/actions';
 
 export default function MyOrdersPage() {
   const { lang, user, orders, cancelOrder, updateFullOrder, t } = useApp();
@@ -16,7 +17,7 @@ export default function MyOrdersPage() {
       try {
         const { data, error } = await supabase
           .from('orders')
-          .select('*')
+          .select('*, order_items(*)')
           .order('created_at', { ascending: false });
 
         if (!error && data) {
@@ -32,17 +33,30 @@ export default function MyOrdersPage() {
   const displayOrders = (dbOrders.length > 0 ? dbOrders : orders).map(o => {
     const matchedDb = dbOrders.find(dbo => dbo.id === o.id);
     if (matchedDb) {
+      const rawItems = matchedDb.order_items || matchedDb.items || o.items || [];
+      const formattedItems = rawItems.map(item => ({
+        id: item.product_id || item.id,
+        nameAr: item.product_name_ar || item.nameAr || item.title || 'منتج KEMET',
+        nameEn: item.product_name_en || item.nameEn || item.title || 'KEMET Product',
+        size: item.size || 'M',
+        quantity: item.quantity || 1,
+        price: item.unit_price || item.price || 0,
+        image: item.image || '/assets/kemet-emblem-icon.png'
+      }));
+
       return {
         id: matchedDb.id,
-        date: matchedDb.created_at ? new Date(matchedDb.created_at).toLocaleDateString('ar-EG') : o.date,
+        date: matchedDb.created_at ? new Date(matchedDb.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') : o.date,
+        time: o.time || '',
         status: matchedDb.status || o.status,
+        isShipped: matchedDb.is_shipped || false,
         customer: {
           fullName: matchedDb.customer_name || o.customer?.fullName,
           phone: matchedDb.customer_phone || o.customer?.phone,
           governorate: matchedDb.governorate || o.customer?.governorate,
           address: matchedDb.address || o.customer?.address
         },
-        items: matchedDb.items || o.items,
+        items: formattedItems.length > 0 ? formattedItems : (o.items || []),
         total: matchedDb.total_amount || o.total
       };
     }
@@ -66,7 +80,6 @@ export default function MyOrdersPage() {
       governorate: order.customer.governorate || '',
       address: order.customer.address || ''
     });
-    // Deep clone order items for editing
     setEditFormItems(order.items.map(item => ({ ...item })));
   };
 
@@ -119,7 +132,7 @@ export default function MyOrdersPage() {
   const handleSaveEdit = (e, orderId) => {
     e.preventDefault();
     if (editFormItems.length === 0) {
-      alert('يجب أن يحتوي الطلب على منتج واحد على الأقل، أو يمكنك إلغاء الطلب بالكامل.');
+      alert(lang === 'ar' ? 'يجب أن يحتوي الطلب على منتج واحد على الأقل.' : 'Order must contain at least one item.');
       return;
     }
     updateFullOrder(orderId, {
@@ -129,9 +142,19 @@ export default function MyOrdersPage() {
     setEditingOrderId(null);
   };
 
-  const handleCancelClick = (orderId) => {
-    if (window.confirm('هل أنت تأكد من رغبتك في إلغاء هذا الطلب؟')) {
+  const handleCancelClick = async (orderId) => {
+    const confirmMsg = lang === 'ar' 
+      ? 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟' 
+      : 'Are you sure you want to cancel this order?';
+    
+    if (window.confirm(confirmMsg)) {
+      try {
+        await updateOrderStatusAction(orderId, 'cancelled');
+      } catch (err) {
+        console.error('Failed to update DB status on cancel:', err);
+      }
       cancelOrder(orderId);
+      setDbOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
     }
   };
 
@@ -143,20 +166,19 @@ export default function MyOrdersPage() {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <h1 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-              <span className="brand-glow">🛍️ {lang === 'ar' ? 'طلباتي ومتابعة الشحنة' : 'My Orders & Status'}</span>
+              <span className="brand-glow">🛍️ {t('navMyOrders')}</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto' }}>
               {lang === 'ar' 
-                ? 'سجل كافة طلباتك ومشترياتك السابقة من متجر KEMET وحالتها المباشرة'
-                : 'Your complete purchase history and live shipment status from KEMET store'}
+                ? 'سجل كافة طلباتك ومشترياتك وحالتها المباشرة'
+                : 'Your complete order history and live shipment status'}
             </p>
           </div>
 
-          {/* Authentication Check: Require login to view orders */}
+          {/* Authentication Check */}
           {!user ? (
             <div style={{
               background: 'var(--bg-card)',
-              backdropFilter: 'blur(16px)',
               border: '1px solid var(--border-gold-bright)',
               borderRadius: 'var(--radius-lg)',
               padding: '4rem 2rem',
@@ -185,8 +207,8 @@ export default function MyOrdersPage() {
               </h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: 1.6 }}>
                 {lang === 'ar' 
-                  ? 'صفحة طلباتي محمية ومخصصة للعملاء المسجلين. قم بتسجيل الدخول برقم تليفونك لاستعراض شحناتك وسجلات الشراء.'
-                  : 'My Orders page is protected for registered customers. Sign in with your phone number to manage your orders.'}
+                  ? 'قم بتسجيل الدخول لاستعراض شحناتك وسجلات الشراء الخاصة بك.'
+                  : 'Sign in to manage and view your purchases and delivery updates.'}
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/login" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
@@ -197,9 +219,9 @@ export default function MyOrdersPage() {
                 </Link>
               </div>
             </div>
-          ) : orders.length === 0 ? (
+          ) : displayOrders.length === 0 ? (
             
-            /* User is logged in but has no orders */
+            /* No Orders State */
             <div style={{ 
               background: 'var(--bg-card)', 
               border: '1px solid var(--border-gold)', 
@@ -210,22 +232,22 @@ export default function MyOrdersPage() {
             }}>
               <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🛍️</div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
-                {lang === 'ar' ? `أهلاً ${user.fullName || user.phone}! لم تقم بإجراء أي طلبات بعد` : `Welcome ${user.fullName || user.phone}! You have no orders yet`}
+                {lang === 'ar' ? `أهلاً ${user.fullName || user.email}! لم تقم بإجراء أي طلبات بعد` : `Welcome ${user.fullName || user.email}! You have no orders yet`}
               </h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                {lang === 'ar' ? 'استعرض كولكشن KEMET الرسمي موديلات 2027 واختر أطقمك المفضلة!' : 'Explore KEMET official 2027 collection and pick your favorite kits!'}
+                {lang === 'ar' ? 'استعرض الكولكشن الرسمي واختر منتجاتك المفضلة!' : 'Explore our collection and pick your favorite activewear!'}
               </p>
               <Link href="/category/all" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-                {lang === 'ar' ? 'استكشف المنتجات والأطقم 🛒' : 'Explore Products & Kits 🛒'}
+                {lang === 'ar' ? 'استكشف المنتجات والأطقم 🛒' : 'Explore Products 🛒'}
               </Link>
             </div>
 
           ) : (
             
-            /* Logged in User Orders List */
+            /* Orders List */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
-              {/* Profile Bar */}
+              {/* Profile Header Bar */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -239,16 +261,34 @@ export default function MyOrdersPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span style={{ fontSize: '1.2rem' }}>👑</span>
-                  <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{t('welcomeBackUser')} <strong style={{ color: 'var(--gold-primary)' }}>{user.fullName || user.phone}</strong></span>
+                  <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>
+                    {t('welcomeBackUser')} <strong style={{ color: 'var(--gold-primary)' }}>{user.fullName || user.email}</strong>
+                  </span>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                  {lang === 'ar' ? 'إجمالي الطلبات:' : 'Total Orders:'} <strong style={{ color: 'var(--gold-primary)' }}>{orders.length}</strong>
+                  {lang === 'ar' ? 'إجمالي الطلبات:' : 'Total Orders:'} <strong style={{ color: 'var(--gold-primary)' }}>{displayOrders.length}</strong>
                 </div>
               </div>
 
-              {orders.map(order => {
-                // Determine if order is in Preparation Stage (active for edit/cancel) or Shipped Stage (WhatsApp only)
-                const isPrepStage = !order.isShipped && (order.status.includes('تجهيز') || order.status.includes('إعداد') || order.status.includes('انتظار'));
+              {displayOrders.map(order => {
+                const statusStr = String(order.status || '').toLowerCase();
+                const isShippedOrDelivered = statusStr.includes('شحن') || statusStr.includes('shipped') || statusStr.includes('تسليم') || statusStr.includes('delivered');
+                const isCancelled = statusStr.includes('ملغي') || statusStr.includes('cancelled');
+                const isPrepStage = !isShippedOrDelivered && !isCancelled;
+
+                // Format status for display
+                let statusLabel = order.status;
+                if (statusStr.includes('pending') || statusStr.includes('جديد')) {
+                  statusLabel = lang === 'ar' ? 'جديد 📦' : 'New 📦';
+                } else if (statusStr.includes('processing') || statusStr.includes('تجهيز')) {
+                  statusLabel = lang === 'ar' ? 'جاري التجهيز ⚙️' : 'Processing ⚙️';
+                } else if (statusStr.includes('shipped') || statusStr.includes('شحن')) {
+                  statusLabel = lang === 'ar' ? 'تم الشحن 🚚' : 'Shipped 🚚';
+                } else if (statusStr.includes('delivered') || statusStr.includes('تسليم')) {
+                  statusLabel = lang === 'ar' ? 'تم التسليم ✅' : 'Delivered ✅';
+                } else if (isCancelled) {
+                  statusLabel = lang === 'ar' ? 'ملغي ❌' : 'Cancelled ❌';
+                }
 
                 return (
                   <div 
@@ -261,7 +301,7 @@ export default function MyOrdersPage() {
                       boxShadow: 'var(--shadow-glow)'
                     }}
                   >
-                    {/* Order Header info */}
+                    {/* Order Header */}
                     <div style={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
@@ -273,33 +313,39 @@ export default function MyOrdersPage() {
                       marginBottom: '1.5rem'
                     }}>
                       <div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>رقم الطلب المرسل:</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {lang === 'ar' ? 'رقم الطلب:' : 'Order ID:'}
+                        </div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
                           #{order.id}
                         </div>
                       </div>
 
-                      <div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>تاريخ الطلب:</div>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {order.date} ({order.time})
+                      {order.date && (
+                        <div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            {lang === 'ar' ? 'تاريخ الطلب:' : 'Order Date:'}
+                          </div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                            {order.date}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div style={{ 
-                        background: isPrepStage ? 'rgba(212, 175, 55, 0.15)' : 'rgba(37, 211, 102, 0.15)', 
-                        border: isPrepStage ? '1px solid var(--border-gold)' : '1px solid rgba(37, 211, 102, 0.4)', 
+                        background: isCancelled ? 'rgba(244, 63, 94, 0.15)' : isPrepStage ? 'rgba(212, 175, 55, 0.15)' : 'rgba(37, 211, 102, 0.15)', 
+                        border: isCancelled ? '1px solid rgba(244, 63, 94, 0.4)' : isPrepStage ? '1px solid var(--border-gold)' : '1px solid rgba(37, 211, 102, 0.4)', 
                         padding: '0.45rem 1.1rem', 
                         borderRadius: 'var(--radius-full)',
-                        color: isPrepStage ? 'var(--gold-primary)' : '#25D366',
+                        color: isCancelled ? '#F43F5E' : isPrepStage ? 'var(--gold-primary)' : '#25D366',
                         fontWeight: 800,
                         fontSize: '0.9rem'
                       }}>
-                        {order.status}
+                        {statusLabel}
                       </div>
                     </div>
 
-                    {/* Order Items List */}
+                    {/* Order Items */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                       {order.items.map((item, idx) => (
                         <div 
@@ -315,26 +361,26 @@ export default function MyOrdersPage() {
                           }}
                         >
                           <img 
-                            src={item.image} 
-                            alt={item.nameAr} 
-                            style={{ width: '64px', height: '64px', objectFit: 'contain', background: '#000', borderRadius: 'var(--radius-sm)', padding: '0.2rem' }} 
+                            src={item.image || '/assets/kemet-emblem-icon.png'} 
+                            alt={lang === 'ar' ? item.nameAr : item.nameEn} 
+                            style={{ width: '56px', height: '56px', objectFit: 'contain', background: '#000', borderRadius: 'var(--radius-sm)', padding: '0.2rem' }} 
                           />
                           <div style={{ flexGrow: 1 }}>
                             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                              {item.nameAr}
+                              {lang === 'ar' ? item.nameAr : item.nameEn}
                             </div>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                              المقاس: <span style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>{item.size}</span> | الكمية: {item.quantity}
+                              {lang === 'ar' ? 'المقاس:' : 'Size:'} <span style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>{item.size}</span> | {lang === 'ar' ? 'الكمية:' : 'Qty:'} {item.quantity}
                             </div>
                           </div>
                           <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--gold-primary)' }}>
-                            {item.price * item.quantity} ج.م
+                            {item.price * item.quantity} {t('currency')}
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Customer Details & Actions */}
+                    {/* Customer Info & Total */}
                     <div style={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
@@ -345,27 +391,29 @@ export default function MyOrdersPage() {
                       borderTop: '1px solid var(--border-color)'
                     }}>
                       <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        📍 عنوان التسليم: <strong style={{ color: 'var(--text-primary)' }}>{order.customer.fullName} - {order.customer.governorate} ({order.customer.address})</strong>
+                        📍 {lang === 'ar' ? 'عنوان التسليم:' : 'Delivery Address:'} <strong style={{ color: 'var(--text-primary)' }}>{order.customer.fullName} - {order.customer.governorate} ({order.customer.address})</strong>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                          📱 رقم التواصل: <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{order.customer.phone}</span>
+                          📱 {lang === 'ar' ? 'رقم التواصل:' : 'Contact Phone:'} <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{order.customer.phone}</span>
                         </div>
                       </div>
 
-                      <div style={{ textAlign: 'end' }}>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>الإجمالي الكلي شامل الشحن:</div>
+                      <div style={{ textAlign: lang === 'ar' ? 'end' : 'start' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          {lang === 'ar' ? 'الإجمالي الكلي شامل الشحن:' : 'Total (incl. shipping):'}
+                        </div>
                         <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
-                          {order.total} ج.م
+                          {order.total} {t('currency')}
                         </div>
                       </div>
                     </div>
 
-                    {/* Order Management Actions (Edit/Cancel in Prep Stage OR WhatsApp if Shipped) */}
+                    {/* Action Buttons (Edit/Cancel for Prep stage, WhatsApp for Shipped stage) */}
                     <div style={{ 
                       display: 'flex', 
                       gap: '0.85rem', 
                       marginTop: '1.25rem', 
                       paddingTop: '1rem', 
-                      borderTop: '1px stroke rgba(255,255,255,0.06)',
+                      borderTop: '1px solid rgba(255,255,255,0.06)',
                       flexWrap: 'wrap',
                       justifyContent: 'flex-end'
                     }}>
@@ -377,7 +425,7 @@ export default function MyOrdersPage() {
                             className="btn-secondary"
                             style={{ padding: '0.55rem 1.25rem', fontSize: '0.88rem' }}
                           >
-                            تعديل محتويات وبيانات الطلب ✏️
+                            {lang === 'ar' ? 'تعديل الطلب ✏️' : 'Edit Order ✏️'}
                           </button>
                           
                           <button
@@ -395,12 +443,12 @@ export default function MyOrdersPage() {
                               transition: 'var(--transition)'
                             }}
                           >
-                            إلغاء الطلب ❌
+                            {lang === 'ar' ? 'إلغاء الطلب ❌' : 'Cancel Order ❌'}
                           </button>
                         </>
-                      ) : (
+                      ) : !isCancelled ? (
                         <a
-                          href={`https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`أهلاً KEMET، أريد إلغاء الطلب رقم #${order.id}`)}`}
+                          href={`https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(lang === 'ar' ? `أهلاً، أريد الاستفسار عن الطلب رقم #${order.id}` : `Hello, I want to inquire about order #${order.id}`)}`}
                           target="_blank"
                           rel="noreferrer"
                           style={{
@@ -413,23 +461,19 @@ export default function MyOrdersPage() {
                             color: '#FFF',
                             fontWeight: 800,
                             fontSize: '0.88rem',
-                            boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)',
                             textDecoration: 'none'
                           }}
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.099 4.019 4.103-1.077z" />
-                          </svg>
-                          <span>طلب إلغاء الأوردر عبر الواتساب (01114687759) 💬</span>
+                          <span>{lang === 'ar' ? 'تواصل عبر الواتساب للطلب 💬' : 'Contact via WhatsApp 💬'}</span>
                         </a>
-                      )}
+                      ) : null}
 
                       <Link href="/track-order" className="btn-secondary" style={{ padding: '0.55rem 1.25rem', fontSize: '0.88rem' }}>
-                        تتبع الشحنة 🚚
+                        {t('navTrackOrder')} 🚚
                       </Link>
                     </div>
 
-                    {/* Full Comprehensive Inline Edit Form Modal */}
+                    {/* Inline Edit Form */}
                     {editingOrderId === order.id && (
                       <form 
                         onSubmit={(e) => handleSaveEdit(e, order.id)} 
@@ -438,18 +482,17 @@ export default function MyOrdersPage() {
                           padding: '1.75rem 1.5rem', 
                           background: 'rgba(5, 7, 12, 0.95)', 
                           border: '1px solid var(--border-gold-bright)', 
-                          borderRadius: 'var(--radius-md)',
-                          boxShadow: '0 8px 30px rgba(0,0,0,0.5)'
+                          borderRadius: 'var(--radius-md)'
                         }}
                       >
-                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span>✏️ لوحة تعديل الطلب رقم #{order.id}</span>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '1.25rem' }}>
+                          ✏️ {lang === 'ar' ? `تعديل الطلب #${order.id}` : `Edit Order #${order.id}`}
                         </h4>
 
-                        {/* SECTION 1: EDIT ORDER ITEMS & SIZES */}
+                        {/* Items & Sizes */}
                         <div style={{ marginBottom: '2rem' }}>
                           <label style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: '0.75rem' }}>
-                            📦 منتجات الطلب والمقاسات (يمكنك تغيير المقاسات والكميات مباشرة):
+                            📦 {lang === 'ar' ? 'محتويات الطلب والمقاسات:' : 'Order Items & Sizes:'}
                           </label>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -469,16 +512,22 @@ export default function MyOrdersPage() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                  <img src={item.image} alt={item.nameAr} style={{ width: '48px', height: '48px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                                  <img src={item.image || '/assets/kemet-emblem-icon.png'} alt={item.nameAr} style={{ width: '48px', height: '48px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
                                   <div>
-                                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>{item.nameAr}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--gold-primary)', fontWeight: 700 }}>سعر القطعة: {item.price} ج.م</div>
+                                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                                      {lang === 'ar' ? item.nameAr : item.nameEn}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--gold-primary)', fontWeight: 700 }}>
+                                      {item.price} {t('currency')}
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* Size pills selector */}
+                                {/* Size selector */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700 }}>المقاس:</span>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                                    {lang === 'ar' ? 'المقاس:' : 'Size:'}
+                                  </span>
                                   {['M', 'L', 'XL', 'XXL'].map(s => (
                                     <button
                                       key={s}
@@ -521,35 +570,19 @@ export default function MyOrdersPage() {
                               </div>
                             ))}
                           </div>
-
-                          {/* Add another kit to order */}
-                          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>➕ إضافة طقم آخر لهذا الطلب:</span>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                              {storeProducts.map(p => (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  onClick={() => handleAddNewKitToOrder(p.id)}
-                                  className="btn-secondary"
-                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
-                                >
-                                  + {p.nameAr.split(' (')[0]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
                         </div>
 
-                        {/* SECTION 2: EDIT DELIVERY DETAILS */}
+                        {/* Delivery details */}
                         <div style={{ marginBottom: '1.5rem' }}>
                           <label style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: '0.75rem' }}>
-                            📍 بيانات عنوان وتسليم الطلب:
+                            📍 {lang === 'ar' ? 'عنوان التسليم:' : 'Delivery Address:'}
                           </label>
 
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                             <div>
-                              <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>الاسم بالكامل:</label>
+                              <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>
+                                {t('fullName')}
+                              </label>
                               <input 
                                 type="text" 
                                 value={editFormCustomer.fullName}
@@ -559,7 +592,9 @@ export default function MyOrdersPage() {
                             </div>
 
                             <div>
-                              <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>رقم الهاتف:</label>
+                              <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>
+                                {t('phone')}
+                              </label>
                               <input 
                                 type="tel" 
                                 value={editFormCustomer.phone}
@@ -569,7 +604,9 @@ export default function MyOrdersPage() {
                             </div>
 
                             <div>
-                              <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>المحافظة:</label>
+                              <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>
+                                {t('governorate')}
+                              </label>
                               <input 
                                 type="text" 
                                 value={editFormCustomer.governorate}
@@ -580,7 +617,9 @@ export default function MyOrdersPage() {
                           </div>
 
                           <div>
-                            <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>العنوان التفصيلي:</label>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>
+                              {t('address')}
+                            </label>
                             <input 
                               type="text" 
                               value={editFormCustomer.address}
@@ -590,7 +629,7 @@ export default function MyOrdersPage() {
                           </div>
                         </div>
 
-                        {/* Save & Cancel buttons */}
+                        {/* Save & Cancel */}
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                           <button 
                             type="button" 
@@ -598,7 +637,7 @@ export default function MyOrdersPage() {
                             className="btn-secondary"
                             style={{ padding: '0.6rem 1.25rem', fontSize: '0.88rem' }}
                           >
-                            إلغاء التعديل
+                            {lang === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit'}
                           </button>
 
                           <button 
@@ -606,7 +645,7 @@ export default function MyOrdersPage() {
                             className="btn-primary"
                             style={{ padding: '0.6rem 1.6rem', fontSize: '0.88rem' }}
                           >
-                            حفظ كافة التعديلات 💾
+                            {lang === 'ar' ? 'حفظ التعديلات 💾' : 'Save Changes 💾'}
                           </button>
                         </div>
                       </form>
