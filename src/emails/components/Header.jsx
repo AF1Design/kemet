@@ -7,7 +7,7 @@ export const Header = () => {
       <tr>
         <td align="left" style={tdStyle}>
           <Img
-            src="https://kemetmisr.com/assets/kemet-logo-black.png"
+            src="https://kemetmisr.com/assets/kemet-text-logo.png"
             alt="KEMET"
             width="130"
             style={imageStyle}
