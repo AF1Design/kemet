@@ -1,25 +1,22 @@
-import React from 'react';
+import React, { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { ProductDetailClient } from '../../../components/ProductDetailClient';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
 
-// Fetch helper for server component & metadata
-async function fetchProduct(id) {
+// Fast, cached fetch helper to deduplicate requests between generateMetadata & page component
+const fetchProduct = cache(async (id) => {
   try {
-    const { data: prodData, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const [prodRes, varRes] = await Promise.all([
+      supabase.from('products').select('*').eq('id', id).single(),
+      supabase.from('product_variants').select('size, stock_quantity').eq('product_id', id)
+    ]);
 
-    if (error || !prodData) return null;
+    if (prodRes.error || !prodRes.data) return null;
 
-    const { data: varData } = await supabase
-      .from('product_variants')
-      .select('size, stock_quantity')
-      .eq('product_id', id);
+    const prodData = prodRes.data;
+    const varData = varRes.data;
 
     const variants = (varData && varData.length > 0)
       ? varData.map(v => ({ size: v.size, stock: Number(v.stock_quantity ?? 50) }))
@@ -49,7 +46,7 @@ async function fetchProduct(id) {
     console.error('Error fetching product in server component:', err);
     return null;
   }
-}
+});
 
 // 1. Dynamic Unique Metadata API per product page for SEO
 export async function generateMetadata({ params }) {
