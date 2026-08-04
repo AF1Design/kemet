@@ -236,33 +236,87 @@ export async function updateCategoryAction(catId, nameAr, nameEn) {
   }
 }
 
+export async function mapDisplayStatusToDb(status) {
+  if (!status) return 'pending';
+  if (status.includes('جديد') || status === 'pending') return 'pending';
+  if (status.includes('التجهيز') || status === 'processing') return 'processing';
+  if (status.includes('الشحن') || status === 'shipped') return 'shipped';
+  if (status.includes('التسليم') || status.includes('التوصيل') || status === 'delivered') return 'delivered';
+  if (status.includes('ملغي') || status === 'cancelled') return 'cancelled';
+  return 'pending';
+}
+
+export async function mapDbStatusToDisplay(status) {
+  switch (status) {
+    case 'pending': return 'جديد 📦';
+    case 'processing': return 'جاري التجهيز ⚙️';
+    case 'shipped': return 'تم الشحن 🚚';
+    case 'delivered': return 'تم التسليم ✅';
+    case 'cancelled': return 'ملغي ❌';
+    default: return status || 'جديد 📦';
+  }
+}
+
 /**
- * Server Action: Saves a customer order into Supabase orders table
+ * Server Action: Saves a customer order into Supabase orders & order_items tables
  */
 export async function createOrderAction(orderData) {
   try {
     const supabaseAdmin = getAdminSupabase();
+    const dbStatus = mapDisplayStatusToDb(orderData.status);
 
-    const { data: newOrder, error } = await supabaseAdmin
+    const orderPayload = {
+      id: orderData.id,
+      user_id: orderData.userId || null,
+      customer_name: orderData.customer?.fullName || orderData.customerName || 'عميل KEMET',
+      customer_phone: orderData.customer?.phone || orderData.customerPhone || '',
+      governorate: orderData.customer?.governorate || orderData.governorate || 'القاهرة',
+      address: orderData.customer?.address || orderData.address || '',
+      delivery_notes: orderData.customer?.notes || orderData.notes || '',
+      subtotal: Number(orderData.subtotal || 0),
+      shipping_fee: Number(orderData.shipping || orderData.shipping_fee || 0),
+      total_amount: Number(orderData.total || orderData.total_amount || 0),
+      payment_method: orderData.paymentMethod || 'COD',
+      status: dbStatus,
+      is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
+    };
+
+    const { data: newOrder, error: orderErr } = await supabaseAdmin
       .from('orders')
-      .insert({
-        id: orderData.id,
-        user_id: orderData.userId || null,
-        customer_name: orderData.customer?.fullName || 'عميل KEMET',
-        customer_phone: orderData.customer?.phone || '',
-        governorate: orderData.customer?.governorate || 'القاهرة',
-        address: orderData.customer?.address || '',
-        notes: orderData.customer?.notes || '',
-        subtotal: Number(orderData.subtotal),
-        shipping_fee: Number(orderData.shipping),
-        total_amount: Number(orderData.total),
-        status: orderData.status || 'جديد 📦',
-        items: orderData.items || []
-      })
+      .insert(orderPayload)
       .select()
       .single();
 
-    if (error) throw error;
+    if (orderErr) throw orderErr;
+
+    // Insert order items if present
+    const rawItems = orderData.items || [];
+    if (rawItems.length > 0) {
+      const { data: validProducts } = await supabaseAdmin.from('products').select('id');
+      const validProductIds = new Set((validProducts || []).map(p => String(p.id)));
+
+      const itemsToInsert = rawItems.map(item => {
+        const rawProdId = item.id || item.product_id ? String(item.id || item.product_id) : null;
+        const validProdId = validProductIds.has(rawProdId) ? rawProdId : null;
+
+        return {
+          order_id: newOrder.id,
+          product_id: validProdId,
+          product_name_ar: item.nameAr || item.name_ar || item.title || 'منتج KEMET',
+          product_name_en: item.nameEn || item.name_en || '',
+          size: item.size || 'M',
+          unit_price: Number(item.price || 0),
+          quantity: Number(item.quantity || 1),
+          total_price: Number(item.price || 0) * Number(item.quantity || 1)
+        };
+      });
+
+      const { error: itemsErr } = await supabaseAdmin
+        .from('order_items')
+        .insert(itemsToInsert);
+
+      if (itemsErr) console.error('Error inserting order items:', itemsErr);
+    }
 
     triggerBackgroundRevalidate(['/admin/orders', '/my-orders']);
 
@@ -279,10 +333,14 @@ export async function createOrderAction(orderData) {
 export async function updateOrderStatusAction(orderId, newStatus) {
   try {
     const supabaseAdmin = getAdminSupabase();
+    const dbStatus = mapDisplayStatusToDb(newStatus);
 
     const { data: updated, error } = await supabaseAdmin
       .from('orders')
-      .update({ status: newStatus })
+      .update({
+        status: dbStatus,
+        is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
+      })
       .eq('id', orderId)
       .select()
       .single();
