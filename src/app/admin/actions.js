@@ -336,21 +336,27 @@ export async function createOrderAction(orderData) {
 }
 
 /**
- * Server Action: Updates order status in Supabase orders table & sends email notification
+ * Server Action: Updates order status in Supabase orders table & sends rich status email
  */
-export async function updateOrderStatusAction(orderId, newStatus) {
+export async function updateOrderStatusAction(orderId, newStatus, trackingNumber = null) {
   try {
     const supabaseAdmin = getAdminSupabase();
     const dbStatus = toDbStatus(newStatus);
 
+    const updatePayload = {
+      status: dbStatus,
+      is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
+    };
+
+    if (trackingNumber && String(trackingNumber).trim()) {
+      updatePayload.tracking_number = String(trackingNumber).trim();
+    }
+
     const { data: updated, error } = await supabaseAdmin
       .from('orders')
-      .update({
-        status: dbStatus,
-        is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
-      })
+      .update(updatePayload)
       .eq('id', orderId)
-      .select()
+      .select('*, order_items(*)')
       .single();
 
     if (error) throw error;
@@ -368,7 +374,6 @@ export async function updateOrderStatusAction(orderId, newStatus) {
       }
 
       if (!customerEmail && updated.customer_phone) {
-        // Try finding profile by phone
         const { data: prof } = await supabaseAdmin
           .from('profiles')
           .select('email')
@@ -382,27 +387,86 @@ export async function updateOrderStatusAction(orderId, newStatus) {
         const resend = getResendClient();
         const displayStatus = toDisplayStatus(dbStatus);
 
+        const itemsRows = (updated.order_items || []).map(item => `
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; font-weight: bold; color: #0F172A;">${item.product_name_ar || 'منتج KEMET'}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569;">${item.size || 'M'}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569;">${item.quantity || 1}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: left; font-weight: bold; color: #0F172A;">${(item.unit_price || 0) * (item.quantity || 1)} ج.م</td>
+          </tr>
+        `).join('');
+
+        const trackingSection = updated.tracking_number ? `
+          <div style="background: #EFF6FF; border: 1px solid #93C5FD; padding: 18px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <div style="font-size: 14px; color: #1E40AF; margin-bottom: 6px; font-weight: bold;">📦 كود تتبع الشحنة لدى البريد المصري:</div>
+            <div style="font-size: 22px; font-weight: 900; color: #1E3A8A; letter-spacing: 2px; margin-bottom: 12px; font-family: monospace;">${updated.tracking_number}</div>
+            <a href="https://kemetmisr.com/track-order" target="_blank" style="display: inline-block; background: #2563EB; color: #FFFFFF; text-decoration: none; padding: 10px 22px; border-radius: 6px; font-size: 14px; font-weight: bold;">
+              تتبع الشحنة الآن على موقع KEMET 🚚
+            </a>
+          </div>
+        ` : '';
+
         const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px; background-color: #FFFFFF;">
             <div style="text-align: left; margin-bottom: 20px;">
               <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px;" />
             </div>
+            
             <h2 style="color: #0F172A; font-size: 20px; margin-bottom: 16px;">تحديث حالة طلبك رقم #${updated.id}</h2>
+            
             <p style="color: #475569; font-size: 15px; line-height: 1.6;">
-              عزيزنا العميل <strong>${updated.customer_name || 'KEMET Customer'}</strong>،
+              عزيزنا العميل <strong>${updated.customer_name || 'عميل KEMET'}</strong>،
             </p>
+            
             <p style="color: #475569; font-size: 15px; line-height: 1.6;">
               تم تحديث حالة طلبك رقم <strong style="color: #0F172A;">#${updated.id}</strong> في KEMET إلى:
             </p>
-            <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 15px; border-radius: 6px; text-align: center; font-size: 18px; font-weight: bold; color: #0F172A; margin: 20px 0;">
+
+            <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 15px; border-radius: 6px; text-align: center; font-size: 18px; font-weight: bold; color: #0F172A; margin: 16px 0;">
               ${displayStatus}
             </div>
+
+            ${trackingSection}
+
+            <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">📋 تفاصيل المنتجات والطلب:</h3>
+            
+            <table border="0" cellPadding="0" cellSpacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 16px;">
+              <thead>
+                <tr style="background: #F8FAFC;">
+                  <th style="padding: 8px 10px; text-align: right; font-size: 13px; color: #64748B;">المنتج</th>
+                  <th style="padding: 8px 10px; text-align: center; font-size: 13px; color: #64748B;">المقاس</th>
+                  <th style="padding: 8px 10px; text-align: center; font-size: 13px; color: #64748B;">الكمية</th>
+                  <th style="padding: 8px 10px; text-align: left; font-size: 13px; color: #64748B;">السعر</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsRows}
+              </tbody>
+            </table>
+
+            <div style="background: #F8FAFC; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; color: #334155;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>عنوان التسليم:</span>
+                <strong>${updated.governorate} (${updated.address})</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>مصاريف الشحن:</span>
+                <strong>${updated.shipping_fee || 50} ج.م</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #0F172A; margin-top: 8px; border-top: 1px solid #CBD5E1; padding-top: 8px;">
+                <span>الإجمالي الكلي:</span>
+                <strong>${updated.total_amount} ج.م</strong>
+              </div>
+            </div>
+
             <p style="color: #64748B; font-size: 14px;">
-              يمكنك متابعة حالة طلبك ومحتوياته في أي وقت من خلال قسم "طلباتي" في حسابه على الموقع.
+              يمكنك متابعة حالة طلبك ومحتوياته في أي وقت من خلال قسم "طلباتي" في حسابك على الموقع.
             </p>
+
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
-            <p style="color: #94A3B8; font-size: 12px; text-align: center;">
-              KEMET Sportswear — جميع الحقوق محفوظة © 2026
+            
+            <p style="color: #94A3B8; font-size: 12px; text-align: center; margin: 0;">
+              KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
             </p>
           </div>
         `;
@@ -426,6 +490,7 @@ export async function updateOrderStatusAction(orderId, newStatus) {
     return { success: false, error: err.message || 'فشل تحديث حالة الطلب' };
   }
 }
+
 
 /**
  * Server Action: Deletes an order and its items from Supabase database

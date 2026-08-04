@@ -19,13 +19,25 @@ export function AdminOrdersTable({ initialOrders }) {
   const [isPending, startTransition] = useTransition();
 
   const handleStatusChange = (orderId, newStatus) => {
+    let trackingCode = null;
+
+    if (newStatus.includes('الشحن') || newStatus === 'shipped') {
+      const input = window.prompt(
+        `أدخل كود تتبع البريد المصري للطلب رقم #${orderId} (مثال: EB504461459EG):`,
+        ''
+      );
+      if (input !== null && input.trim()) {
+        trackingCode = input.trim();
+      }
+    }
+
     startTransition(async () => {
-      const res = await updateOrderStatusAction(orderId, newStatus);
+      const res = await updateOrderStatusAction(orderId, newStatus, trackingCode);
       if (res.success) {
         setOrders(prev =>
-          prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+          prev.map(o => o.id === orderId ? { ...o, status: newStatus, tracking_number: trackingCode || o.tracking_number } : o)
         );
-        alert(`تم تحديث حالة الطلب #${orderId} وإرسال إشعار على بريد العميل 📧`);
+        alert(`تم تحديث حالة الطلب #${orderId} وإرسال إشعار تفصيلي بكود التتبع والمنتجات على بريد العميل 📧`);
       } else {
         alert(`فشل تحديث الحالة: ${res.error}`);
       }

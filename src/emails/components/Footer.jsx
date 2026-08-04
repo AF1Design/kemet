@@ -9,10 +9,11 @@ export const Footer = () => {
         <td style={tdStyle}>
           <div style={dividerStyle} />
           <Text style={copyrightStyle}>
-            &copy; {new Date().getFullYear()} KEMET. جميع الحقوق محفوظة.{' '}
+            KEMET — جميع الحقوق محفوظة &copy; {new Date().getFullYear()} (
             <Link href="https://kemetmisr.com" target="_blank" style={linkStyle}>
               kemetmisr.com
             </Link>
+            )
           </Text>
         </td>
       </tr>
