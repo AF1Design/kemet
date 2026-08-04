@@ -424,6 +424,26 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
           </div>
         ` : '';
 
+        const isCancelled = dbStatus === 'cancelled';
+
+        const cancellationNoticeSection = isCancelled ? `
+          <div style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 18px; border-radius: 8px; margin: 20px 0; text-align: center; color: #991B1B;">
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">⚠️ نأسف لإبلاغك بأنه تم إلغاء الطلب رقم #${updated.id}</div>
+            <div style="font-size: 14px; line-height: 1.6; color: #7F1D1D; margin-bottom: 16px;">
+              تم إلغاء هذا الطلب بسبب وجود خطأ أو عدم استكمال في بيانات الشحن أو الموبايل المرفقة مع الطلب. يمكنك إعادة الطلب بسهولة عبر الموقع بعد مراجعة البيانات، أو تواصل معنا مباشرة على الواتساب لمعرفة التفاصيل.
+            </div>
+
+            <div style="text-align: center; margin-top: 14px;">
+              <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; text-decoration: none; padding: 11px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
+                🛒 إعادة الطلب من الموقع
+              </a>
+              <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، أود الاستفسار عن سبب إلغاء طلبي رقم: #${updated.id}`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; text-decoration: none; padding: 11px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
+                💬 معرفة سبب الإلغاء عبر الواتساب
+              </a>
+            </div>
+          </div>
+        ` : '';
+
         const courierNoticeSection = isOutForDelivery || updated.delivery_notes?.includes('[OUT_FOR_DELIVERY]') ? `
           <div style="background: #FEF9C3; border: 1px solid #FDE047; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; color: #854D0E; font-size: 15px; font-weight: bold; line-height: 1.6;">
             🛵 أوردرك اليوم مع المندوب وفي الطريق إليك خلال ساعات! يرجى التواجد في العنوان وتوافر الهاتف لتسهيل استلام الشحنة.
@@ -450,6 +470,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
               ${displayStatus}
             </div>
 
+            ${cancellationNoticeSection}
             ${courierNoticeSection}
             ${trackingSection}
 
