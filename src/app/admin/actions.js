@@ -336,7 +336,7 @@ export async function createOrderAction(orderData) {
 }
 
 /**
- * Server Action: Updates order status in Supabase orders table
+ * Server Action: Updates order status in Supabase orders table & sends email notification
  */
 export async function updateOrderStatusAction(orderId, newStatus) {
   try {
@@ -355,6 +355,69 @@ export async function updateOrderStatusAction(orderId, newStatus) {
 
     if (error) throw error;
 
+    // Send email notification to customer if email is available
+    try {
+      let customerEmail = null;
+      if (updated.user_id) {
+        const { data: prof } = await supabaseAdmin
+          .from('profiles')
+          .select('email')
+          .eq('id', updated.user_id)
+          .single();
+        if (prof?.email) customerEmail = prof.email;
+      }
+
+      if (!customerEmail && updated.customer_phone) {
+        // Try finding profile by phone
+        const { data: prof } = await supabaseAdmin
+          .from('profiles')
+          .select('email')
+          .eq('phone', updated.customer_phone)
+          .single();
+        if (prof?.email) customerEmail = prof.email;
+      }
+
+      if (customerEmail) {
+        const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
+        const resend = getResendClient();
+        const displayStatus = toDisplayStatus(dbStatus);
+
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px;">
+            <div style="text-align: left; margin-bottom: 20px;">
+              <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px;" />
+            </div>
+            <h2 style="color: #0F172A; font-size: 20px; margin-bottom: 16px;">تحديث حالة طلبك رقم #${updated.id}</h2>
+            <p style="color: #475569; font-size: 15px; line-height: 1.6;">
+              عزيزنا العميل <strong>${updated.customer_name || 'KEMET Customer'}</strong>،
+            </p>
+            <p style="color: #475569; font-size: 15px; line-height: 1.6;">
+              تم تحديث حالة طلبك رقم <strong style="color: #0F172A;">#${updated.id}</strong> في KEMET إلى:
+            </p>
+            <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 15px; border-radius: 6px; text-align: center; font-size: 18px; font-weight: bold; color: #0F172A; margin: 20px 0;">
+              ${displayStatus}
+            </div>
+            <p style="color: #64748B; font-size: 14px;">
+              يمكنك متابعة حالة طلبك ومحتوياته في أي وقت من خلال قسم "طلباتي" في حسابه على الموقع.
+            </p>
+            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+            <p style="color: #94A3B8; font-size: 12px; text-align: center;">
+              KEMET Sportswear — جميع الحقوق محفوظة © 2026
+            </p>
+          </div>
+        `;
+
+        await resend.emails.send({
+          from: SENDER_SUPPORT,
+          to: [customerEmail],
+          subject: `تحديث حالة طلبك #${updated.id} - KEMET`,
+          html: emailHtml
+        });
+      }
+    } catch (emailErr) {
+      console.warn('Status change email notification warning:', emailErr);
+    }
+
     triggerBackgroundRevalidate(['/admin/orders', '/my-orders']);
 
     return { success: true, order: updated };
@@ -363,3 +426,36 @@ export async function updateOrderStatusAction(orderId, newStatus) {
     return { success: false, error: err.message || 'فشل تحديث حالة الطلب' };
   }
 }
+
+/**
+ * Server Action: Deletes an order and its items from Supabase database
+ */
+export async function deleteOrderAction(orderId) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    // 1. Delete order items first
+    const { error: itemsErr } = await supabaseAdmin
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId);
+
+    if (itemsErr) console.warn('Order items delete warning:', itemsErr);
+
+    // 2. Delete main order
+    const { error: orderErr } = await supabaseAdmin
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (orderErr) throw orderErr;
+
+    triggerBackgroundRevalidate(['/admin/orders', '/my-orders']);
+
+    return { success: true };
+  } catch (err) {
+    console.error('deleteOrderAction error:', err);
+    return { success: false, error: err.message || 'فشل حذف الطلب' };
+  }
+}
+

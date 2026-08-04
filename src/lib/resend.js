@@ -9,4 +9,7 @@ export const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-export const SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'KEMET Sportswear <noreply@kemetmisr.com>';
+// Branded Senders for KEMET
+export const SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'KEMET <support@kemetmisr.com>';
+export const SENDER_NOREPLY = 'KEMET <noreply@kemetmisr.com>';
+export const SENDER_SUPPORT = 'KEMET <support@kemetmisr.com>';

@@ -43,6 +43,7 @@ export default function CheckoutPage() {
     notes: ''
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
 
@@ -50,9 +51,11 @@ export default function CheckoutPage() {
   const shippingFee = SHIPPING_RATES[formData.governorate] || 50;
   const totalAmount = subtotal + shippingFee;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
 
     const orderId = `KM-2027-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder = {
@@ -67,11 +70,10 @@ export default function CheckoutPage() {
       customer: { ...formData }
     };
 
-    try {
-      await createOrderAction(newOrder);
-    } catch (err) {
-      console.warn('Supabase order creation fallback:', err);
-    }
+    // Instant Non-blocking Server Save (Zero Delay UX)
+    createOrderAction(newOrder).catch(err => {
+      console.warn('Background order save note:', err);
+    });
 
     addOrder(newOrder);
     setCreatedOrder(newOrder);
@@ -228,8 +230,8 @@ export default function CheckoutPage() {
                 <span>{t('smsMarketingLabel')}</span>
               </label>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
-                تأكيد الطلب بدفع {totalAmount} ج.م 🛍️
+              <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
+                {isSubmitting ? 'جاري تأكيد الطلب فورياً...' : `تأكيد الطلب بدفع ${totalAmount} ج.م 🛍️`}
               </button>
             </form>
 
