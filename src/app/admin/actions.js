@@ -238,7 +238,7 @@ export async function updateCategoryAction(catId, nameAr, nameEn) {
 
 function toDbStatus(status) {
   if (!status || typeof status !== 'string') return 'pending';
-  if (status.includes('مندوب') || status === 'out_for_delivery') return 'out_for_delivery';
+  if (status.includes('مندوب') || status === 'out_for_delivery') return 'shipped';
   if (status.includes('جديد') || status === 'pending') return 'pending';
   if (status.includes('التجهيز') || status === 'processing') return 'processing';
   if (status.includes('الشحن') || status === 'shipped') return 'shipped';
@@ -247,7 +247,11 @@ function toDbStatus(status) {
   return 'pending';
 }
 
-function toDisplayStatus(status) {
+function toDisplayStatus(status, deliveryNotes = '') {
+  const notesStr = String(deliveryNotes || '');
+  if (notesStr.includes('[OUT_FOR_DELIVERY]')) {
+    return 'مع المندوب 🛵';
+  }
   switch (status) {
     case 'pending': return 'جديد 📦';
     case 'processing': return 'جاري التجهيز ⚙️';
@@ -302,8 +306,11 @@ export async function createOrderAction(orderData) {
     // Insert order items if present
     const rawItems = orderData.items || [];
     if (rawItems.length > 0) {
-      const { data: validProducts } = await supabaseAdmin.from('products').select('id');
-      const validProductIds = new Set((validProducts || []).map(p => String(p.id)));
+      const { data: existingProducts } = await supabaseAdmin
+        .from('products')
+        .select('id');
+      
+      const validProductIds = new Set((existingProducts || []).map(p => String(p.id)));
 
       const itemsToInsert = rawItems.map(item => {
         const rawProdId = item.id || item.product_id ? String(item.id || item.product_id) : null;
@@ -343,12 +350,21 @@ export async function createOrderAction(orderData) {
 export async function updateOrderStatusAction(orderId, newStatus, trackingNumber = null) {
   try {
     const supabaseAdmin = getAdminSupabase();
+    const isOutForDelivery = newStatus.includes('مندوب') || newStatus === 'out_for_delivery';
     const dbStatus = toDbStatus(newStatus);
 
     const updatePayload = {
       status: dbStatus,
-      is_shipped: dbStatus === 'shipped' || dbStatus === 'out_for_delivery' || dbStatus === 'delivered'
+      is_shipped: true
     };
+
+    if (isOutForDelivery) {
+      const { data: curr } = await supabaseAdmin.from('orders').select('delivery_notes').eq('id', orderId).single();
+      const existingNotes = curr?.delivery_notes || '';
+      if (!existingNotes.includes('[OUT_FOR_DELIVERY]')) {
+        updatePayload.delivery_notes = `${existingNotes} [OUT_FOR_DELIVERY]`.trim();
+      }
+    }
 
     if (trackingNumber && String(trackingNumber).trim()) {
       updatePayload.tracking_number = String(trackingNumber).trim();
@@ -387,7 +403,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
       if (customerEmail) {
         const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
         const resend = getResendClient();
-        const displayStatus = toDisplayStatus(dbStatus);
+        const displayStatus = isOutForDelivery ? 'مع المندوب 🛵' : toDisplayStatus(dbStatus, updated.delivery_notes);
 
         const itemsRows = (updated.order_items || []).map(item => `
           <tr>
@@ -408,7 +424,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
           </div>
         ` : '';
 
-        const courierNoticeSection = dbStatus === 'out_for_delivery' ? `
+        const courierNoticeSection = isOutForDelivery || updated.delivery_notes?.includes('[OUT_FOR_DELIVERY]') ? `
           <div style="background: #FEF9C3; border: 1px solid #FDE047; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; color: #854D0E; font-size: 15px; font-weight: bold; line-height: 1.6;">
             🛵 أوردرك اليوم مع المندوب وفي الطريق إليك خلال ساعات! يرجى التواجد في العنوان وتوافر الهاتف لتسهيل استلام الشحنة.
           </div>
