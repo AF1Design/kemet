@@ -236,8 +236,8 @@ export async function updateCategoryAction(catId, nameAr, nameEn) {
   }
 }
 
-export async function mapDisplayStatusToDb(status) {
-  if (!status) return 'pending';
+function toDbStatus(status) {
+  if (!status || typeof status !== 'string') return 'pending';
   if (status.includes('جديد') || status === 'pending') return 'pending';
   if (status.includes('التجهيز') || status === 'processing') return 'processing';
   if (status.includes('الشحن') || status === 'shipped') return 'shipped';
@@ -246,7 +246,7 @@ export async function mapDisplayStatusToDb(status) {
   return 'pending';
 }
 
-export async function mapDbStatusToDisplay(status) {
+function toDisplayStatus(status) {
   switch (status) {
     case 'pending': return 'جديد 📦';
     case 'processing': return 'جاري التجهيز ⚙️';
@@ -257,13 +257,21 @@ export async function mapDbStatusToDisplay(status) {
   }
 }
 
+export async function mapDisplayStatusToDb(status) {
+  return toDbStatus(status);
+}
+
+export async function mapDbStatusToDisplay(status) {
+  return toDisplayStatus(status);
+}
+
 /**
  * Server Action: Saves a customer order into Supabase orders & order_items tables
  */
 export async function createOrderAction(orderData) {
   try {
     const supabaseAdmin = getAdminSupabase();
-    const dbStatus = mapDisplayStatusToDb(orderData.status);
+    const dbStatus = toDbStatus(orderData.status);
 
     const orderPayload = {
       id: orderData.id,
@@ -333,7 +341,7 @@ export async function createOrderAction(orderData) {
 export async function updateOrderStatusAction(orderId, newStatus) {
   try {
     const supabaseAdmin = getAdminSupabase();
-    const dbStatus = mapDisplayStatusToDb(newStatus);
+    const dbStatus = toDbStatus(newStatus);
 
     const { data: updated, error } = await supabaseAdmin
       .from('orders')
