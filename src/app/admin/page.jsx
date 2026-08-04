@@ -2,6 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import { getAdminSupabase } from '../../lib/supabase/admin';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboardPage() {
   let totalProducts = 0;
   let activeProducts = 0;
