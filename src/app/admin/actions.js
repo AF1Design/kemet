@@ -238,6 +238,7 @@ export async function updateCategoryAction(catId, nameAr, nameEn) {
 
 function toDbStatus(status) {
   if (!status || typeof status !== 'string') return 'pending';
+  if (status.includes('مندوب') || status === 'out_for_delivery') return 'out_for_delivery';
   if (status.includes('جديد') || status === 'pending') return 'pending';
   if (status.includes('التجهيز') || status === 'processing') return 'processing';
   if (status.includes('الشحن') || status === 'shipped') return 'shipped';
@@ -251,6 +252,7 @@ function toDisplayStatus(status) {
     case 'pending': return 'جديد 📦';
     case 'processing': return 'جاري التجهيز ⚙️';
     case 'shipped': return 'تم الشحن 🚚';
+    case 'out_for_delivery': return 'مع المندوب 🛵';
     case 'delivered': return 'تم التسليم ✅';
     case 'cancelled': return 'ملغي ❌';
     default: return status || 'جديد 📦';
@@ -345,7 +347,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
 
     const updatePayload = {
       status: dbStatus,
-      is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
+      is_shipped: dbStatus === 'shipped' || dbStatus === 'out_for_delivery' || dbStatus === 'delivered'
     };
 
     if (trackingNumber && String(trackingNumber).trim()) {

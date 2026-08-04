@@ -7,6 +7,7 @@ const STATUS_OPTIONS = [
   'جديد 📦',
   'جاري التجهيز ⚙️',
   'تم الشحن 🚚',
+  'مع المندوب 🛵',
   'تم التسليم ✅',
   'ملغي ❌'
 ];
@@ -109,7 +110,7 @@ export function AdminOrdersTable({ initialOrders }) {
               الكل ({orders.length})
             </button>
 
-            {['جديد', 'جاري التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'].map(st => (
+            {['جديد', 'جاري التجهيز', 'تم الشحن', 'مع المندوب', 'تم التسليم', 'ملغي'].map(st => (
               <button
                 key={st}
                 type="button"

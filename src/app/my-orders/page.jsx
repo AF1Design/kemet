@@ -284,6 +284,8 @@ export default function MyOrdersPage() {
                   statusLabel = lang === 'ar' ? 'جاري التجهيز ⚙️' : 'Processing ⚙️';
                 } else if (statusStr.includes('shipped') || statusStr.includes('شحن')) {
                   statusLabel = lang === 'ar' ? 'تم الشحن 🚚' : 'Shipped 🚚';
+                } else if (statusStr.includes('out_for_delivery') || statusStr.includes('مندوب')) {
+                  statusLabel = lang === 'ar' ? 'مع المندوب 🛵' : 'Out for Delivery 🛵';
                 } else if (statusStr.includes('delivered') || statusStr.includes('تسليم')) {
                   statusLabel = lang === 'ar' ? 'تم التسليم ✅' : 'Delivered ✅';
                 } else if (isCancelled) {
