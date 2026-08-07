@@ -23,8 +23,10 @@ export default async function AdminOrdersPage() {
         id: o.id,
         status: await mapDbStatusToDisplay(o.status),
         created_at: o.created_at,
+        tracking_number: o.tracking_number || null,
         customer_name: o.customer_name,
         customer_phone: o.customer_phone,
+        customer_email: o.customer_email || o.email || null,
         governorate: o.governorate,
         address: o.address,
         notes: o.delivery_notes,
@@ -34,6 +36,7 @@ export default async function AdminOrdersPage() {
         customer: {
           fullName: o.customer_name,
           phone: o.customer_phone,
+          email: o.customer_email || o.email || null,
           governorate: o.governorate,
           address: o.address,
           notes: o.delivery_notes
