@@ -64,14 +64,10 @@ export default function CheckoutPage() {
   const [availableCoupons, setAvailableCoupons] = useState(INITIAL_COUPONS);
 
   useEffect(() => {
+    // Clear legacy local coupons cache to enforce strict server-side validation
     try {
-      const saved = localStorage.getItem('kemet_coupons');
-      if (saved) {
-        setAvailableCoupons(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.warn('Checkout coupon load note:', e);
-    }
+      localStorage.removeItem('kemet_coupons');
+    } catch (e) {}
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
@@ -170,7 +166,6 @@ export default function CheckoutPage() {
           return c;
         });
         setAvailableCoupons(updatedCoupons);
-        localStorage.setItem('kemet_coupons', JSON.stringify(updatedCoupons));
       } catch (err) {
         console.warn('Coupon usage save note:', err);
       }

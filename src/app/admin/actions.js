@@ -299,22 +299,28 @@ export async function getCustomerOrdersAction({ email, phone, userId, orderIds =
 
     let query = supabaseAdmin.from('orders').select('*, order_items(*)');
 
-    const conditions = [];
+    const userConditions = [];
     if (targetPhone) {
-      conditions.push(`customer_phone.eq.${targetPhone}`);
+      userConditions.push(`customer_phone.eq.${targetPhone}`);
     }
     if (targetUserId) {
-      conditions.push(`user_id.eq.${targetUserId}`);
+      userConditions.push(`user_id.eq.${targetUserId}`);
     }
-    if (Array.isArray(orderIds) && orderIds.length > 0) {
+
+    let queryConditions = [];
+    if (userConditions.length > 0) {
+      // Query strictly for logged in user's profile and phone number
+      queryConditions = userConditions;
+    } else if (Array.isArray(orderIds) && orderIds.length > 0) {
+      // Only query by orderIds if NO logged-in user context exists (guest tracking)
       const cleanIds = orderIds.map(id => String(id).trim()).filter(Boolean);
       if (cleanIds.length > 0) {
-        conditions.push(`id.in.(${cleanIds.join(',')})`);
+        queryConditions.push(`id.in.(${cleanIds.join(',')})`);
       }
     }
 
-    if (conditions.length > 0) {
-      query = query.or(conditions.join(','));
+    if (queryConditions.length > 0) {
+      query = query.or(queryConditions.join(','));
     } else {
       return { success: true, orders: [] };
     }

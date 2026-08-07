@@ -65,12 +65,9 @@ export const AppProvider = ({ children }) => {
       const savedUser = localStorage.getItem('kemet_user');
       if (savedUser) setUser(JSON.parse(savedUser));
 
-      const savedOrders = localStorage.getItem('kemet_orders');
-      if (savedOrders) {
-        setOrders(JSON.parse(savedOrders));
-      } else {
-        setOrders([]);
-      }
+      // Clear legacy local orders cache to prevent cross-account order leakage
+      localStorage.removeItem('kemet_orders');
+      setOrders([]);
     } catch (e) {
       console.error('Error loading local state:', e);
     }
@@ -109,12 +106,6 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('kemet_cart', JSON.stringify(cart));
   }, [cart, mounted]);
 
-  // Sync orders
-  useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem('kemet_orders', JSON.stringify(orders));
-  }, [orders, mounted]);
-
   // Sync user
   useEffect(() => {
     if (!mounted) return;
@@ -147,6 +138,9 @@ export const AppProvider = ({ children }) => {
 
   const logoutUser = () => {
     setUser(null);
+    setOrders([]);
+    localStorage.removeItem('kemet_user');
+    localStorage.removeItem('kemet_orders');
     showToast('تم تسجيل الخروج بنجاح 👋');
   };
 
