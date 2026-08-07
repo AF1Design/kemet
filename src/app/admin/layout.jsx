@@ -94,9 +94,6 @@ export default async function AdminLayout({ children }) {
             <Link href="/admin/orders" className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
               📦 إدارة الطلبات
             </Link>
-            <Link href="/admin/content" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
-              ⚙️ إدارة نصوص ومحتوى الموقع (CMS)
-            </Link>
             <Link href="/" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
               🏠 الواجهة الرئيسية
             </Link>

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { getAdminSupabase } from '../../lib/supabase/admin';
+import { PromoEmailControl } from '../../components/admin/PromoEmailControl';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,9 @@ export default async function AdminDashboardPage() {
         </div>
 
       </div>
+
+      {/* Mass Promo Email Control & Stats Section */}
+      <PromoEmailControl />
 
       {/* Quick Action Cards */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '2rem' }}>

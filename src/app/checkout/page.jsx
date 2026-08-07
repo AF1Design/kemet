@@ -70,7 +70,7 @@ export default function CheckoutPage() {
         setAvailableCoupons(JSON.parse(saved));
       }
     } catch (e) {
-      console.warn('Coupon load warning:', e);
+      console.warn('Checkout coupon load note:', e);
     }
   }, []);
 
@@ -140,6 +140,7 @@ export default function CheckoutPage() {
     const orderId = `KM-2027-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder = {
       id: orderId,
+      userId: user?.id || null,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
       status: 'جديد 📦',
@@ -204,7 +205,7 @@ export default function CheckoutPage() {
                 تم تأكيد طلبك بنجاح!
               </h1>
               <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                شكراً لثقتك بـ KEMET. تم استلام طلبك برقم <strong style="color: #FFF;">#{createdOrder.id}</strong> وجاري تجهيزه للشحن فوراً.
+                شكراً لثقتك بـ KEMET. تم استلام طلبك برقم <strong style={{ color: '#FFF' }}>#{createdOrder.id}</strong> وجاري تجهيزه للشحن فوراً.
               </p>
               
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', textAlign: 'right', fontSize: '0.9rem' }}>

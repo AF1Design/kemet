@@ -1,6 +1,7 @@
 'use server';
 
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
+import { processAndUploadProductImage } from '../../lib/image-uploader.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
@@ -30,6 +31,29 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
       keywords = keywords.filter(k => k !== 'IS_FEATURED_GOLD');
     }
 
+    // Process and Upload Main Image to Supabase Storage as clean .webp URL
+    const mainImageUrl = await processAndUploadProductImage({
+      imageInput: productData.mainImage,
+      productName: productData.nameAr || 'kemet-product',
+      nameEn: productData.nameEn || '',
+      productId: productData.id || '',
+      suffix: 'main'
+    });
+
+    // Process and Upload Gallery Images to Supabase Storage as clean .webp URLs
+    const rawGallery = productData.galleryImages || [productData.mainImage];
+    const galleryUrls = [];
+    for (let i = 0; i < rawGallery.length; i++) {
+      const gUrl = await processAndUploadProductImage({
+        imageInput: rawGallery[i],
+        productName: productData.nameAr || 'kemet-product',
+        nameEn: productData.nameEn || '',
+        productId: productData.id || '',
+        suffix: `gallery-${i + 1}`
+      });
+      if (gUrl) galleryUrls.push(gUrl);
+    }
+
     const payload = {
       name_ar: productData.nameAr,
       name_en: productData.nameEn,
@@ -38,8 +62,8 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
       category_id: productData.categoryId,
       price: Number(productData.price),
       old_price: productData.oldPrice ? Number(productData.oldPrice) : null,
-      main_image: productData.mainImage,
-      gallery_images: productData.galleryImages || [productData.mainImage],
+      main_image: mainImageUrl || productData.mainImage,
+      gallery_images: galleryUrls.length > 0 ? galleryUrls : [mainImageUrl],
       is_best_seller: productData.isBestSeller ?? false,
       is_new: productData.isNew ?? true,
       is_active: productData.isActive ?? true,
@@ -192,85 +216,50 @@ export async function updateProductInventoryAction(productId, sizeVariants) {
 }
 
 /**
- * Server Action: Creates a new category in Supabase
+ * Server Action: Fetches all categories list from Supabase
  */
-export async function createCategoryAction(catId, nameAr, nameEn = '') {
+export async function getCategoriesListAction() {
   try {
     const supabaseAdmin = getAdminSupabase();
-
-    const { data: newCat, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('categories')
-      .insert({
-        id: catId.trim().toLowerCase(),
-        name_ar: nameAr.trim(),
-        name_en: nameEn.trim() || nameAr.trim()
-      })
-      .select()
-      .single();
+      .select('*');
 
-    if (error) throw error;
-
-    triggerBackgroundRevalidate(['/', '/category/all', '/admin/products']);
-    return { success: true, category: newCat };
+    if (!error && data) {
+      const filtered = data.filter(c => !c.id.startsWith('_'));
+      return { success: true, categories: filtered };
+    }
   } catch (err) {
-    console.error('createCategoryAction error:', err);
-    return { success: false, error: err.message || 'فشل في إضافة القسم' };
+    console.warn('getCategoriesListAction note:', err);
   }
-}
-
-/**
- * Server Action: Updates an existing category name (Arabic & English) in Supabase
- */
-export async function updateCategoryAction(catId, nameAr, nameEn) {
-  try {
-    const supabaseAdmin = getAdminSupabase();
-
-    const { data: updatedCat, error } = await supabaseAdmin
-      .from('categories')
-      .update({
-        name_ar: nameAr.trim(),
-        name_en: nameEn.trim() || nameAr.trim()
-      })
-      .eq('id', catId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    triggerBackgroundRevalidate(['/', '/category/all', '/admin/products']);
-
-    return { success: true, category: updatedCat };
-  } catch (err) {
-    console.error('updateCategoryAction error:', err);
-    return { success: false, error: err.message || 'فشل في تعديل اسم القسم' };
-  }
+  return { success: false, categories: [] };
 }
 
 function toDbStatus(status) {
   if (!status || typeof status !== 'string') return 'pending';
-  if (status.includes('مندوب') || status === 'out_for_delivery') return 'shipped';
-  if (status.includes('جديد') || status === 'pending') return 'pending';
-  if (status.includes('التجهيز') || status === 'processing') return 'processing';
-  if (status.includes('الشحن') || status === 'shipped') return 'shipped';
-  if (status.includes('التسليم') || status.includes('التوصيل') || status === 'delivered') return 'delivered';
-  if (status.includes('ملغي') || status === 'cancelled') return 'cancelled';
+  const clean = status.trim().toLowerCase();
+  if (clean.includes('مندوب') || clean === 'out_for_delivery') return 'out_for_delivery';
+  if (clean.includes('جديد') || clean === 'pending') return 'pending';
+  if (clean.includes('تجهيز') || clean === 'processing') return 'processing';
+  if (clean.includes('شحن') || clean === 'shipped') return 'shipped';
+  if (clean.includes('تسليم') || clean.includes('توصيل') || clean === 'delivered') return 'delivered';
+  if (clean.includes('ملغي') || clean === 'cancelled') return 'cancelled';
   return 'pending';
 }
 
 function toDisplayStatus(status, deliveryNotes = '') {
-  const notesStr = String(deliveryNotes || '');
-  if (notesStr.includes('[OUT_FOR_DELIVERY]')) {
-    return 'مع المندوب 🛵';
+  const cleanStatus = (status || '').toLowerCase();
+  if (cleanStatus === 'cancelled' || cleanStatus.includes('ملغي')) return 'ملغي ❌';
+  if (cleanStatus === 'delivered' || cleanStatus.includes('تسليم')) return 'تم التسليم ✅';
+  if (cleanStatus === 'out_for_delivery' || cleanStatus.includes('مندوب')) return 'مع المندوب 🛵';
+  if (cleanStatus === 'shipped' || cleanStatus.includes('شحن')) {
+    if (String(deliveryNotes || '').includes('[OUT_FOR_DELIVERY]')) {
+      return 'مع المندوب 🛵';
+    }
+    return 'تم الشحن 🚚';
   }
-  switch (status) {
-    case 'pending': return 'جديد 📦';
-    case 'processing': return 'جاري التجهيز ⚙️';
-    case 'shipped': return 'تم الشحن 🚚';
-    case 'out_for_delivery': return 'مع المندوب 🛵';
-    case 'delivered': return 'تم التسليم ✅';
-    case 'cancelled': return 'ملغي ❌';
-    default: return status || 'جديد 📦';
-  }
+  if (cleanStatus === 'processing' || cleanStatus.includes('تجهيز')) return 'جاري التجهيز ⚙️';
+  return 'جديد 📦';
 }
 
 export async function mapDisplayStatusToDb(status) {
@@ -282,6 +271,99 @@ export async function mapDbStatusToDisplay(status) {
 }
 
 /**
+ * Server Action: Fetches live orders from Supabase DB for a customer by phone, email, or order IDs
+ */
+export async function getCustomerOrdersAction({ email, phone, userId, orderIds = [] } = {}) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    let targetPhone = phone && String(phone).trim() ? String(phone).trim() : null;
+    let targetUserId = userId && String(userId).trim() ? String(userId).trim() : null;
+    let targetEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+
+    // Fetch profile via admin client to resolve phone & user UUID
+    if ((targetEmail || targetUserId) && (!targetPhone || !targetUserId)) {
+      let profQuery = supabaseAdmin.from('profiles').select('id, phone, email');
+      if (targetUserId) {
+        profQuery = profQuery.eq('id', targetUserId);
+      } else if (targetEmail) {
+        profQuery = profQuery.eq('email', targetEmail);
+      }
+
+      const { data: prof } = await profQuery.single();
+      if (prof) {
+        if (prof.id) targetUserId = prof.id;
+        if (prof.phone) targetPhone = prof.phone;
+      }
+    }
+
+    let query = supabaseAdmin.from('orders').select('*, order_items(*)');
+
+    const conditions = [];
+    if (targetPhone) {
+      conditions.push(`customer_phone.eq.${targetPhone}`);
+    }
+    if (targetUserId) {
+      conditions.push(`user_id.eq.${targetUserId}`);
+    }
+    if (Array.isArray(orderIds) && orderIds.length > 0) {
+      const cleanIds = orderIds.map(id => String(id).trim()).filter(Boolean);
+      if (cleanIds.length > 0) {
+        conditions.push(`id.in.(${cleanIds.join(',')})`);
+      }
+    }
+
+    if (conditions.length > 0) {
+      query = query.or(conditions.join(','));
+    } else {
+      return { success: true, orders: [] };
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (!error && data) {
+      // Fetch all dynamic products from DB to resolve product images for order items
+      const { data: dbProducts } = await supabaseAdmin
+        .from('products')
+        .select('id, name_ar, name_en, main_image');
+
+      const enrichedOrders = data.map(order => {
+        const rawItems = order.order_items || order.items || [];
+        const enrichedItems = rawItems.map(item => {
+          let matchedProd = dbProducts?.find(p => String(p.id) === String(item.product_id || item.id));
+          if (!matchedProd && item.product_name_ar) {
+            matchedProd = dbProducts?.find(p => p.name_ar && p.name_ar.trim() === item.product_name_ar.trim());
+          }
+          if (!matchedProd && item.product_name_en) {
+            matchedProd = dbProducts?.find(p => p.name_en && p.name_en.trim().toLowerCase() === item.product_name_en.trim().toLowerCase());
+          }
+
+          const image = item.image || item.main_image || item.mainImage || matchedProd?.main_image || null;
+
+          return {
+            ...item,
+            image: image,
+            main_image: image,
+            mainImage: image
+          };
+        });
+
+        return {
+          ...order,
+          order_items: enrichedItems,
+          items: enrichedItems
+        };
+      });
+
+      return { success: true, orders: enrichedOrders };
+    }
+  } catch (err) {
+    console.warn('getCustomerOrdersAction note:', err);
+  }
+  return { success: false, orders: [] };
+}
+
+/**
  * Server Action: Saves a customer order into Supabase orders & order_items tables
  */
 export async function createOrderAction(orderData) {
@@ -289,9 +371,24 @@ export async function createOrderAction(orderData) {
     const supabaseAdmin = getAdminSupabase();
     const dbStatus = toDbStatus(orderData.status);
 
+    let validUserId = null;
+    if (orderData.userId && typeof orderData.userId === 'string') {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderData.userId.trim());
+      if (isUuid) {
+        const { data: prof } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('id', orderData.userId.trim())
+          .single();
+        if (prof?.id) {
+          validUserId = prof.id;
+        }
+      }
+    }
+
     const orderPayload = {
       id: orderData.id,
-      user_id: orderData.userId || null,
+      user_id: validUserId,
       customer_name: orderData.customer?.fullName || orderData.customerName || 'عميل KEMET',
       customer_phone: orderData.customer?.phone || orderData.customerPhone || '',
       governorate: orderData.customer?.governorate || orderData.governorate || 'القاهرة',
@@ -305,17 +402,37 @@ export async function createOrderAction(orderData) {
       is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
     };
 
-    const { data: newOrder, error: orderErr } = await supabaseAdmin
+    let { data: newOrder, error: orderErr } = await supabaseAdmin
       .from('orders')
       .insert(orderPayload)
       .select()
       .single();
 
-    if (orderErr) throw orderErr;
+    if (orderErr) {
+      console.warn('First order insert attempt warning:', orderErr.message);
+      if (orderErr.code === '23503' || orderErr.code === '22P02' || orderErr.message?.includes('user_id')) {
+        orderPayload.user_id = null;
+        const retryRes = await supabaseAdmin
+          .from('orders')
+          .insert(orderPayload)
+          .select()
+          .single();
+        if (!retryRes.error && retryRes.data) {
+          newOrder = retryRes.data;
+          orderErr = null;
+        } else {
+          console.error('Retry order insert error:', retryRes.error);
+          return { success: false, error: 'فشل حفظ الطلب' };
+        }
+      } else {
+        console.error('Order insert error:', orderErr);
+        return { success: false, error: 'فشل حفظ الطلب' };
+      }
+    }
 
     // Insert order items if present
     const rawItems = orderData.items || [];
-    if (rawItems.length > 0) {
+    if (newOrder && rawItems.length > 0) {
       const { data: existingProducts } = await supabaseAdmin
         .from('products')
         .select('id');
@@ -360,21 +477,25 @@ export async function createOrderAction(orderData) {
 export async function updateOrderStatusAction(orderId, newStatus, trackingNumber = null) {
   try {
     const supabaseAdmin = getAdminSupabase();
-    const isOutForDelivery = newStatus.includes('مندوب') || newStatus === 'out_for_delivery';
     const dbStatus = toDbStatus(newStatus);
+    const isOutForDelivery = dbStatus === 'out_for_delivery';
+
+    const { data: curr } = await supabaseAdmin.from('orders').select('delivery_notes').eq('id', orderId).single();
+    let existingNotes = curr?.delivery_notes || '';
+
+    if (isOutForDelivery) {
+      if (!existingNotes.includes('[OUT_FOR_DELIVERY]')) {
+        existingNotes = `${existingNotes} [OUT_FOR_DELIVERY]`.trim();
+      }
+    } else {
+      existingNotes = existingNotes.replace(/\[OUT_FOR_DELIVERY\]/g, '').trim();
+    }
 
     const updatePayload = {
       status: dbStatus,
-      is_shipped: true
+      is_shipped: dbStatus === 'shipped' || dbStatus === 'out_for_delivery' || dbStatus === 'delivered',
+      delivery_notes: existingNotes
     };
-
-    if (isOutForDelivery) {
-      const { data: curr } = await supabaseAdmin.from('orders').select('delivery_notes').eq('id', orderId).single();
-      const existingNotes = curr?.delivery_notes || '';
-      if (!existingNotes.includes('[OUT_FOR_DELIVERY]')) {
-        updatePayload.delivery_notes = `${existingNotes} [OUT_FOR_DELIVERY]`.trim();
-      }
-    }
 
     if (trackingNumber && String(trackingNumber).trim()) {
       updatePayload.tracking_number = String(trackingNumber).trim();
@@ -397,23 +518,26 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
           .from('profiles')
           .select('email')
           .eq('id', updated.user_id)
-          .single();
+          .maybeSingle();
         if (prof?.email) customerEmail = prof.email;
       }
 
       if (!customerEmail && updated.customer_phone) {
-        const { data: prof } = await supabaseAdmin
+        const cleanPhone = String(updated.customer_phone).trim();
+        const { data: profs } = await supabaseAdmin
           .from('profiles')
           .select('email')
-          .eq('phone', updated.customer_phone)
-          .single();
-        if (prof?.email) customerEmail = prof.email;
+          .eq('phone', cleanPhone);
+        if (profs && profs.length > 0 && profs[0]?.email) {
+          customerEmail = profs[0].email;
+        }
       }
 
       if (customerEmail) {
+        console.log(`Sending order status update email for Order #${updated.id} to ${customerEmail}...`);
         const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
         const resend = getResendClient();
-        const displayStatus = isOutForDelivery ? 'مع المندوب 🛵' : toDisplayStatus(dbStatus, updated.delivery_notes);
+        const displayStatus = toDisplayStatus(dbStatus, updated.delivery_notes);
 
         const itemsRows = (updated.order_items || []).map(item => `
           <tr>
@@ -454,7 +578,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
           </div>
         ` : '';
 
-        const courierNoticeSection = isOutForDelivery || updated.delivery_notes?.includes('[OUT_FOR_DELIVERY]') ? `
+        const courierNoticeSection = isOutForDelivery ? `
           <div style="background: #FEF9C3; border: 1px solid #FDE047; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; color: #854D0E; font-size: 15px; font-weight: bold; line-height: 1.6;">
             🛵 أوردرك اليوم مع المندوب وفي الطريق إليك خلال ساعات! يرجى التواجد في العنوان وتوافر الهاتف لتسهيل استلام الشحنة.
           </div>
@@ -586,7 +710,7 @@ export async function deleteOrderAction(orderId) {
 /**
  * Server Action: Sends mass promo email campaign to all registered customer emails
  */
-export async function sendMassPromoEmailAction(promoTextAr) {
+export async function sendMassPromoEmailAction(params) {
   try {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     const supabaseAdmin = getAdminSupabase();
@@ -610,7 +734,14 @@ export async function sendMassPromoEmailAction(promoTextAr) {
     emailSet.add('support@kemetmisr.com');
 
     const recipients = Array.from(emailSet);
-    const promoContent = promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
+    let rawText = '';
+    if (typeof params === 'string') {
+      rawText = params.trim();
+    } else if (params && typeof params === 'object') {
+      rawText = params.promoTextAr || params.textAr || params.promoText || '';
+    }
+
+    const promoContent = rawText ? String(rawText).trim() : '🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px; background-color: #FFFFFF;" dir="rtl">
@@ -678,6 +809,100 @@ export async function sendMassPromoEmailAction(promoTextAr) {
   } catch (err) {
     console.error('sendMassPromoEmailAction error:', err);
     return { success: false, error: err.message || 'فشل إرسال البريد الجماعي' };
+  }
+}
+
+/**
+ * Server Action: Fetches live Banner Control Settings from Supabase DB
+ */
+export async function getBannerSettingsAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .select('*')
+      .eq('id', 'banner_config')
+      .single();
+
+    if (!error && data) {
+      return {
+        success: true,
+        isVisible: data.description_ar === 'true',
+        textAr: data.name_ar || '⚡ شحن مجاني لجميع المحافظات لفترة محدودة! ⚡',
+        textEn: data.name_en || ''
+      };
+    }
+  } catch (err) {
+    console.warn('getBannerSettingsAction error:', err);
+  }
+  return {
+    success: true,
+    isVisible: false,
+    textAr: '⚡ شحن مجاني لجميع المحافظات لفترة محدودة! ⚡',
+    textEn: ''
+  };
+}
+
+/**
+ * Server Action: Saves Banner Control Settings (Visibility & Text) to Supabase DB
+ */
+export async function saveBannerSettingsAction({ isVisible, textAr, textEn = '' }) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanText = textAr ? String(textAr).trim() : '⚡ شحن مجاني لجميع المحافظات لفترة محدودة! ⚡';
+
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .upsert({
+        id: 'banner_config',
+        name_ar: cleanText,
+        name_en: textEn || cleanText,
+        description_ar: isVisible ? 'true' : 'false',
+        description_en: 'BANNER_CONFIG'
+      }, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('saveBannerSettingsAction DB error:', error);
+      return { success: false, error: `فشل حفظ التغييرات في قاعدة البيانات: ${error.message}` };
+    }
+
+    // Synchronize legacy _cms_settings row as well to ensure total backward compatibility across deployed clients
+    try {
+      const cmsPayload = {
+        isPromoActive: isVisible,
+        promoTextAr: cleanText,
+        promoTextEn: textEn || cleanText,
+        isFreeShippingPromo: false
+      };
+
+      await supabaseAdmin
+        .from('categories')
+        .upsert({
+          id: '_cms_settings',
+          name_ar: JSON.stringify(cmsPayload),
+          name_en: 'CMS_SETTINGS',
+          description_ar: isVisible ? 'true' : 'false',
+          description_en: 'CMS_SETTINGS'
+        }, { onConflict: 'id' });
+    } catch (e) {
+      console.warn('_cms_settings sync note:', e);
+    }
+
+    triggerBackgroundRevalidate(['/', '/admin', '/admin/products', '/admin/orders']);
+
+    return {
+      success: true,
+      banner: {
+        isVisible: data.description_ar === 'true',
+        textAr: data.name_ar,
+        textEn: data.name_en
+      }
+    };
+  } catch (err) {
+    console.error('saveBannerSettingsAction exception:', err);
+    return { success: false, error: err.message || 'حدث خطأ في السيرفر أثناء حفظ البانر.' };
   }
 }
 

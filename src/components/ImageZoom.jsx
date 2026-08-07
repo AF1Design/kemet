@@ -57,7 +57,21 @@ export const ImageZoom = ({ src, alt }) => {
           onTouchEnd={() => setIsZoomed(false)}
           onTouchMove={handleTouchMove}
           onClick={() => setIsModalOpen(true)}
-          style={{ cursor: 'zoom-in', touchAction: 'pan-y' }}
+          style={{ 
+            cursor: 'zoom-in', 
+            touchAction: 'pan-y',
+            position: 'relative',
+            width: '100%',
+            aspectRatio: '1 / 1',
+            maxHeight: '520px',
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0
+          }}
         >
           <img 
             src={src} 
@@ -72,7 +86,8 @@ export const ImageZoom = ({ src, alt }) => {
               transition: isZoomed ? 'transform-origin 0.05s ease-out, transform 0.2s ease-out' : 'transform 0.25s ease-out',
               width: '100%',
               height: '100%',
-              objectFit: 'contain'
+              objectFit: 'cover',
+              objectPosition: 'center'
             }}
           />
           

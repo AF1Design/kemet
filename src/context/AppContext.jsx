@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations } from '../data/translations';
 
+import { getCategoriesListAction } from '../app/admin/actions';
+
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
@@ -14,11 +16,12 @@ export const AppProvider = ({ children }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [dbCategories, setDbCategories] = useState([]);
 
-  const DEFAULT_CMS_SETTINGS = {
-    isPromoActive: true,
-    promoTextAr: '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية',
-    promoTextEn: '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!',
+  const cmsSettings = {
+    isPromoActive: false,
+    promoTextAr: '',
+    promoTextEn: '',
     isFreeShippingPromo: false,
     shippingRates: {
       'القاهرة': 40,
@@ -46,9 +49,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const [cmsSettings, setCmsSettings] = useState(DEFAULT_CMS_SETTINGS);
-
-  // Initialize client state safely from localStorage after mount
+  // Initialize client state safely & fetch live Supabase Categories data
   useEffect(() => {
     setMounted(true);
     try {
@@ -64,11 +65,6 @@ export const AppProvider = ({ children }) => {
       const savedUser = localStorage.getItem('kemet_user');
       if (savedUser) setUser(JSON.parse(savedUser));
 
-      const savedCms = localStorage.getItem('kemet_cms_settings');
-      if (savedCms) {
-        setCmsSettings(JSON.parse(savedCms));
-      }
-
       const savedOrders = localStorage.getItem('kemet_orders');
       if (savedOrders) {
         setOrders(JSON.parse(savedOrders));
@@ -78,17 +74,19 @@ export const AppProvider = ({ children }) => {
     } catch (e) {
       console.error('Error loading local state:', e);
     }
-  }, []);
 
-  const updateCmsSettings = (updated) => {
-    const newSettings = { ...cmsSettings, ...updated };
-    setCmsSettings(newSettings);
-    try {
-      localStorage.setItem('kemet_cms_settings', JSON.stringify(newSettings));
-    } catch (err) {
-      console.warn('CMS settings save error:', err);
+    async function syncCategories() {
+      try {
+        const catRes = await getCategoriesListAction();
+        if (catRes.success && catRes.categories && catRes.categories.length > 0) {
+          setDbCategories(catRes.categories);
+        }
+      } catch (err) {
+        console.warn('Categories sync note:', err);
+      }
     }
-  };
+    syncCategories();
+  }, []);
 
   // Sync lang & dir
   useEffect(() => {
@@ -233,7 +231,8 @@ export const AppProvider = ({ children }) => {
         toast,
         mounted,
         cmsSettings,
-        updateCmsSettings,
+        dbCategories,
+        setDbCategories,
         toggleLang,
         toggleTheme,
         loginUser,

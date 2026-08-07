@@ -56,7 +56,7 @@ export const ProductDetailClient = ({ product, initialVariants }) => {
             
             {/* Gallery Column */}
             <div>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-lg)', padding: '1rem', overflow: 'hidden', boxShadow: 'var(--shadow-glow)', marginBottom: '1rem' }}>
+              <div style={{ background: 'transparent', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-lg)', padding: '0', overflow: 'hidden', boxShadow: 'var(--shadow-glow)', marginBottom: '1rem' }}>
                 <ImageZoom src={activeImage || product.image} alt={title} />
               </div>
 
@@ -68,18 +68,18 @@ export const ProductDetailClient = ({ product, initialVariants }) => {
                       type="button"
                       onClick={() => setActiveImage(imgUrl)}
                       style={{
-                        width: '70px',
-                        height: '70px',
+                        width: '72px',
+                        height: '72px',
                         borderRadius: 'var(--radius-md)',
                         border: activeImage === imgUrl ? '2px solid var(--gold-primary)' : '1px solid var(--border-color)',
                         overflow: 'hidden',
                         cursor: 'pointer',
                         background: 'transparent',
-                        padding: '0.2rem',
+                        padding: '0',
                         flexShrink: 0
                       }}
                     >
-                      <img src={imgUrl} alt={`${title} ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img src={imgUrl} alt={`${title} ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </button>
                   ))}
                 </div>

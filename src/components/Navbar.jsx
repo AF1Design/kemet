@@ -20,7 +20,7 @@ const normalizeText = (text = '') => {
 };
 
 export const Navbar = ({ onOpenMobileMenu }) => {
-  const { lang, theme, cart, user, toggleLang, toggleTheme, setIsCartOpen, cmsSettings, t } = useApp();
+  const { lang, theme, cart, user, toggleLang, toggleTheme, setIsCartOpen, dbCategories, t } = useApp();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -119,27 +119,8 @@ export const Navbar = ({ onOpenMobileMenu }) => {
 
   const isActive = (path) => pathname === path;
 
-  const isPromoActive = cmsSettings?.isPromoActive ?? true;
-  const promoTextAr = cmsSettings?.promoTextAr || '🔥 خصومات KEMET 2027 لفترة محدودة - شحن سريع لكافة المحافظات مجاناً مع الأطقم الرسمية';
-  const promoTextEn = cmsSettings?.promoTextEn || '🔥 Limited Time Offer - Fast Shipping Across All Egypt Governorates!';
-
   return (
     <header className="header">
-      {/* Top Promo Announcement Bar */}
-      {isPromoActive && (
-        <div style={{
-          background: 'linear-gradient(90deg, #D4AF37 0%, #FFDF73 50%, #D4AF37 100%)',
-          color: '#000000',
-          textAlign: 'center',
-          padding: '0.45rem 1rem',
-          fontSize: '0.85rem',
-          fontWeight: 900,
-          boxShadow: '0 2px 10px rgba(212,175,55,0.2)'
-        }}>
-          {lang === 'ar' ? promoTextAr : promoTextEn}
-        </div>
-      )}
-
       <div className="header-container container">
         
         {/* Right (in RTL): Brand Animated Logo */}
@@ -177,30 +158,32 @@ export const Navbar = ({ onOpenMobileMenu }) => {
                   >
                     {t('allProductsCategory')}
                   </Link>
-                  <Link 
-                    href="/category/kits" 
-                    className="dropdown-menu-item" 
-                    onClick={() => setIsCategoriesOpen(false)}
-                    style={{ fontWeight: 800 }}
-                  >
-                    {t('navKits')}
-                  </Link>
-                  <Link 
-                    href="/category/training" 
-                    className="dropdown-menu-item" 
-                    onClick={() => setIsCategoriesOpen(false)}
-                    style={{ fontWeight: 800 }}
-                  >
-                    {t('navTraining')}
-                  </Link>
-                  <Link 
-                    href="/category/shorts" 
-                    className="dropdown-menu-item" 
-                    onClick={() => setIsCategoriesOpen(false)}
-                    style={{ fontWeight: 800 }}
-                  >
-                    {t('navShorts')}
-                  </Link>
+
+                  {dbCategories && dbCategories.length > 0 ? (
+                    dbCategories.map(cat => (
+                      <Link 
+                        key={cat.id}
+                        href={`/category/${cat.id}`} 
+                        className="dropdown-menu-item" 
+                        onClick={() => setIsCategoriesOpen(false)}
+                        style={{ fontWeight: 800 }}
+                      >
+                        {lang === 'ar' ? (cat.name_ar || cat.nameAr) : (cat.name_en || cat.nameEn || cat.id)}
+                      </Link>
+                    ))
+                  ) : (
+                    <>
+                      <Link href="/category/kits" className="dropdown-menu-item" onClick={() => setIsCategoriesOpen(false)} style={{ fontWeight: 800 }}>
+                        {t('navKits')}
+                      </Link>
+                      <Link href="/category/training" className="dropdown-menu-item" onClick={() => setIsCategoriesOpen(false)} style={{ fontWeight: 800 }}>
+                        {t('navTraining')}
+                      </Link>
+                      <Link href="/category/shorts" className="dropdown-menu-item" onClick={() => setIsCategoriesOpen(false)} style={{ fontWeight: 800 }}>
+                        {t('navShorts')}
+                      </Link>
+                    </>
+                  )}
                 </div>
               )}
             </li>

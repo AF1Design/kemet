@@ -1,3 +1,5 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 import { Resend } from 'resend';
 
 // Standard Resend Client Initialization

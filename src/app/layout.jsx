@@ -6,10 +6,10 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
 export const metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: 'KEMET | Build Your Legacy - أطقم وملابس رياضية فاخرة 2027',
+    default: 'KEMET | Build Your Legacy',
     template: '%s | KEMET Build Your Legacy',
   },
-  description: 'المتجر الرسمي لبراند KEMET لأحدث أطقم كرة القدم الرسمية موديلات 2027 خامة (Player Edition) والملابس الرياضية الفاخرة بجودة عالمية وشحن لكافة المحافظات.',
+  description: 'تسوق أحدث الأطقم الرياضية بأعلى جودة وأسرع خدمة توصيل وضمان مميز على جميع المنتجات',
   keywords: [
     'KEMET',
     'Build Your Legacy',
@@ -41,10 +41,10 @@ export const metadata = {
     ],
   },
   openGraph: {
-    title: 'KEMET | Build Your Legacy - أطقم وملابس رياضية 2027',
-    description: 'تسوق أحدث أطقم كرة القدم والملابس الرياضية موديلات 2027 (Player Edition) خامات فاخرة وطباعة حرارية مقاومة للتقشير.',
+    title: 'KEMET | Build Your Legacy',
+    description: 'تسوق أحدث الأطقم الرياضية بأعلى جودة وأسرع خدمة توصيل وضمان مميز على جميع المنتجات',
     url: baseUrl,
-    siteName: 'KEMET',
+    siteName: 'Kemet | كيميت',
     images: [
       {
         url: '/assets/kemet-og-image.png',
@@ -59,7 +59,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'KEMET | Build Your Legacy',
-    description: 'المتجر الرسمي لبراند KEMET لأحدث أطقم كرة القدم والملابس الرياضية الفاخرة 2027.',
+    description: 'تسوق أحدث الأطقم الرياضية بأعلى جودة وأسرع خدمة توصيل وضمان مميز على جميع المنتجات',
     images: ['/assets/kemet-og-image.png'],
   },
   robots: {
@@ -80,10 +80,11 @@ export default function RootLayout({ children }) {
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'KEMET',
+    name: 'Kemet | كيميت',
+    alternateName: 'KEMET',
     url: baseUrl,
     logo: `${baseUrl}/assets/kemet-emblem-icon.png`,
-    description: 'Egyptian sportswear brand crafting elite 2027 Player Edition football kits & activewear.',
+    description: 'تسوق أحدث الأطقم الرياضية بأعلى جودة وأسرع خدمة توصيل وضمان مميز على جميع المنتجات',
     sameAs: [
       'https://www.facebook.com/share/18tVb5nvWy/?mibextid=wwXIfr',
       'https://www.instagram.com/kemetbrand.eg?igsh=bmxka2pzcGxyMDdy',

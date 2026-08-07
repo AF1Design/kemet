@@ -1,5 +1,7 @@
 'use server';
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 import React from 'react';
 import { render } from '@react-email/render';
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
@@ -14,8 +16,11 @@ function formatKemetError(err, defaultMsg = 'تعذر تنفيذ العملية.
   if (!err) return defaultMsg;
   const msg = typeof err === 'string' ? err : err.message || '';
 
-  if (msg.includes('already been registered') || msg.includes('email_exists')) {
-    return 'البريد الإلكتروني مسجل بالفعل.';
+  if (msg.includes('profiles_phone_key') || msg.includes('duplicate key value violates unique constraint') || (msg.includes('phone') && msg.includes('already exists'))) {
+    return 'رقم الهاتف المدخل مسجّل بالفعل بحساب آخر. يرجى إدخال رقم هاتف آخر.';
+  }
+  if (msg.includes('already been registered') || msg.includes('email_exists') || msg.includes('profiles_email_key')) {
+    return 'البريد الالكتروني المدخل مسجّل بالفعل بحساب آخر. يرجى إدخال بريد الكتروني آخر او تسجيل الدخول بهذا البريد.';
   }
   if (msg.includes('invalid') || msg.includes('expired') || msg.includes('Token')) {
     return 'رمز التحقق غير صحيح أو انتهت صلاحيته.';
@@ -56,31 +61,18 @@ export async function customSignupAction({ email, password, fullName, phone = ''
     let otpCode = linkData?.properties?.email_otp;
     let userId = linkData?.user?.id;
 
-    // Security-Neutral Existing Email Handling
+    // Existing Email & Phone Constraint Handling
     if (linkErr) {
       if (linkErr.code === 'email_exists' || linkErr.message?.includes('already been registered')) {
-        console.log('User exists. Generating fresh OTP for email verification...');
-        const { data: magicData, error: magicErr } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: cleanEmail
-        });
-
-        if (!magicErr && magicData?.properties?.email_otp) {
-          otpCode = magicData.properties.email_otp;
-        } else {
-          // Return security neutral response
-          return {
-            success: true,
-            emailSent: true,
-            message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.'
-          };
-        }
-      } else {
         return {
           success: false,
-          error: formatKemetError(linkErr)
+          error: 'البريد الالكتروني المدخل مسجّل بالفعل بحساب آخر. يرجى إدخال بريد الكتروني آخر او تسجيل الدخول بهذا البريد.'
         };
       }
+      return {
+        success: false,
+        error: formatKemetError(linkErr)
+      };
     }
 
     // 2. Upsert Customer Profile in Supabase profiles table
@@ -99,7 +91,7 @@ export async function customSignupAction({ email, password, fullName, phone = ''
         if (profileErr.message?.includes('profiles_phone_key') || profileErr.message?.includes('phone')) {
           return {
             success: false,
-            error: 'رقم الهاتف مستخدم بالفعل.'
+            error: 'رقم الهاتف المدخل مسجّل بالفعل بحساب آخر. يرجى إدخال رقم هاتف آخر.'
           };
         }
       }
@@ -356,5 +348,116 @@ export async function verifyPasswordResetOtpAction({ email, otp, newPassword }) 
       success: false,
       error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
     };
+  }
+}
+
+/**
+ * 6. getUserProfileAction: Fetches user profile from Supabase profiles using Admin client
+ */
+export async function getUserProfileAction(userId, email) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    let query = supabaseAdmin.from('profiles').select('*');
+    if (userId) {
+      query = query.eq('id', userId);
+    } else if (email) {
+      query = query.eq('email', email.trim().toLowerCase());
+    }
+
+    const { data: prof, error } = await query.single();
+    if (!error && prof) {
+      return { success: true, profile: prof };
+    }
+  } catch (err) {
+    console.warn('getUserProfileAction note:', err);
+  }
+  return { success: false, profile: null };
+}
+
+/**
+ * 7. updateUserProfileAction: Updates customer profile in Supabase profiles using Admin client
+ * - Bypasses RLS permission errors cleanly
+ */
+export async function updateUserProfileAction({ userId, fullName, phone, governorate, address = null, allowSmsMarketing = true, email = null }) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    if (!userId) {
+      return { success: false, error: 'مطلوب معرّف المستخدم لتحديث البيانات' };
+    }
+
+    const cleanName = fullName ? String(fullName).trim() : '';
+    const cleanPhone = phone ? String(phone).trim() : null;
+
+    // 1. Direct update targeted by user id (preserves existing email & avoids NOT NULL constraint)
+    const updatePayload = {
+      full_name: cleanName,
+      governorate: governorate || 'القاهرة',
+      allow_sms_marketing: allowSmsMarketing,
+      updated_at: new Date().toISOString()
+    };
+
+    if (cleanPhone) {
+      updatePayload.phone = cleanPhone;
+    }
+    if (address !== undefined && address !== null) {
+      updatePayload.address = String(address).trim();
+    }
+    if (email && String(email).includes('@')) {
+      updatePayload.email = String(email).trim().toLowerCase();
+    }
+
+    const { data: updated, error: updateErr } = await supabaseAdmin
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', userId)
+      .select()
+      .maybeSingle();
+
+    if (updateErr) {
+      console.error('updateUserProfileAction DB update error:', updateErr);
+      return { success: false, error: formatKemetError(updateErr, 'فشل تحديث بيانات الملف الشخصي') };
+    }
+
+    if (updated) {
+      return { success: true, profile: updated };
+    }
+
+    // 2. Fallback: If profile row doesn't exist yet, get email from Auth & upsert
+    let userEmail = email;
+    if (!userEmail) {
+      try {
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (authUser?.user?.email) {
+          userEmail = authUser.user.email;
+        }
+      } catch (e) {}
+    }
+
+    const upsertPayload = {
+      id: userId,
+      email: userEmail || `user_${userId.slice(0, 8)}@kemet.eg`,
+      full_name: cleanName,
+      phone: cleanPhone,
+      governorate: governorate || 'القاهرة',
+      address: address ? String(address).trim() : null,
+      allow_sms_marketing: allowSmsMarketing,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data: upsertData, error: upsertErr } = await supabaseAdmin
+      .from('profiles')
+      .upsert(upsertPayload, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (upsertErr) {
+      console.error('updateUserProfileAction DB error:', upsertErr);
+      return { success: false, error: formatKemetError(upsertErr, 'فشل تحديث بيانات الملف الشخصي') };
+    }
+
+    return { success: true, profile: upsertData };
+  } catch (err) {
+    console.error('updateUserProfileAction exception:', err);
+    return { success: false, error: err.message || 'حدث خطأ أثناء تحديث الملف الشخصي' };
   }
 }

@@ -6,10 +6,11 @@ import { useApp } from '../../context/AppContext';
 import { products as storeProducts } from '../../data/products';
 import { Footer } from '../../components/Footer';
 import { supabase } from '../../lib/supabase/client';
-import { updateOrderStatusAction } from '../admin/actions';
+import { updateOrderStatusAction, getCustomerOrdersAction } from '../admin/actions';
+import { updateUserProfileAction } from '../actions/auth-actions';
 
 export default function MyOrdersPage() {
-  const { lang, user, orders, cancelOrder, updateFullOrder, logout, updateProfile, showToast, t } = useApp();
+  const { lang, user, orders, cancelOrder, updateFullOrder, logout, loginUser, showToast, t } = useApp();
   const [dbOrders, setDbOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'profile'
 
@@ -29,48 +30,109 @@ export default function MyOrdersPage() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (updateProfile) {
-      await updateProfile({
+    if (!user?.id) return;
+
+    try {
+      const res = await updateUserProfileAction({
+        userId: user.id,
         fullName: profileName,
         phone: profilePhone,
         governorate: profileGov,
         address: profileAddress
       });
+
+      if (res?.success) {
+        loginUser({
+          ...user,
+          fullName: profileName,
+          phone: profilePhone,
+          governorate: profileGov,
+          address: profileAddress
+        });
+        showToast(lang === 'ar' ? 'تم حفظ وتحديث بيانات حسابك بنجاح ✅' : 'Account updated successfully ✅');
+      } else {
+        alert(res?.error || (lang === 'ar' ? 'فشل في تحديث البيانات' : 'Failed to update profile'));
+      }
+    } catch (err) {
+      alert(err.message || (lang === 'ar' ? 'فشل في تحديث البيانات' : 'Failed to update profile'));
     }
-    showToast(lang === 'ar' ? 'تم حفظ وتحديث بيانات حسابك بنجاح ✅' : 'Account updated successfully ✅');
   };
 
+  // Fetch live orders directly from Supabase DB via Server Action + Live Polling
   useEffect(() => {
+    let interval = null;
+
     async function fetchDbOrders() {
       try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*, order_items(*)')
-          .order('created_at', { ascending: false });
+        const localOrderIds = (orders || []).map(o => o.id);
+        const res = await getCustomerOrdersAction({
+          userId: user?.id,
+          phone: user?.phone,
+          email: user?.email,
+          orderIds: localOrderIds
+        });
 
-        if (!error && data) {
-          setDbOrders(data);
+        if (res.success && Array.isArray(res.orders)) {
+          setDbOrders(res.orders);
         }
       } catch (err) {
         console.warn('Orders sync warning:', err);
       }
     }
+
     fetchDbOrders();
-  }, []);
+    interval = setInterval(fetchDbOrders, 4000);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user, orders]);
 
   const displayOrders = (dbOrders.length > 0 ? dbOrders : orders).map(o => {
     const matchedDb = dbOrders.find(dbo => dbo.id === o.id);
     if (matchedDb) {
       const rawItems = matchedDb.order_items || matchedDb.items || o.items || [];
-      const formattedItems = rawItems.map(item => ({
-        id: item.product_id || item.id,
-        nameAr: item.product_name_ar || item.nameAr || item.title || 'منتج KEMET',
-        nameEn: item.product_name_en || item.nameEn || item.title || 'KEMET Product',
-        size: item.size || 'M',
-        quantity: item.quantity || 1,
-        price: item.unit_price || item.price || 0,
-        image: item.image || '/assets/kemet-emblem-icon.png'
-      }));
+      const formattedItems = rawItems.map(item => {
+        const itemId = item.product_id || item.id;
+        const itemNameAr = (item.product_name_ar || item.nameAr || item.title || '').trim();
+        const itemNameEn = (item.product_name_en || item.nameEn || item.title || '').trim().toLowerCase();
+
+        // 1. Check local AppContext order items
+        const localItem = (o.items || []).find(it => 
+          (String(it.id) === String(itemId)) || 
+          (it.nameAr && it.nameAr.trim() === itemNameAr) ||
+          (it.nameEn && it.nameEn.trim().toLowerCase() === itemNameEn)
+        );
+
+        // 2. Check static storeProducts catalog
+        const catalogItem = storeProducts.find(p => 
+          (String(p.id) === String(itemId)) ||
+          (p.nameAr && p.nameAr.trim() === itemNameAr) ||
+          (p.nameEn && p.nameEn.trim().toLowerCase() === itemNameEn)
+        );
+
+        // 3. Resolve actual product image
+        let resolvedImage = item.image || item.main_image || item.mainImage;
+        if (!resolvedImage || resolvedImage === '/assets/kemet-emblem-icon.png') {
+          resolvedImage = 
+            (localItem?.image && localItem.image !== '/assets/kemet-emblem-icon.png' ? localItem.image : null) ||
+            localItem?.main_image ||
+            localItem?.mainImage ||
+            catalogItem?.image ||
+            catalogItem?.main_image ||
+            null;
+        }
+
+        return {
+          id: itemId,
+          nameAr: item.product_name_ar || item.nameAr || item.title || 'منتج KEMET',
+          nameEn: item.product_name_en || item.nameEn || item.title || 'KEMET Product',
+          size: item.size || 'M',
+          quantity: item.quantity || 1,
+          price: item.unit_price || item.price || 0,
+          image: resolvedImage || '/assets/kemet-emblem-icon.png'
+        };
+      });
 
       return {
         id: matchedDb.id,
@@ -611,7 +673,7 @@ export default function MyOrdersPage() {
                             textDecoration: 'none'
                           }}
                         >
-                          <span>{lang === 'ar' ? 'تواصل عبر الواتساب للطلب 💬' : 'Contact via WhatsApp 💬'}</span>
+                          <span>{lang === 'ar' ? 'تواصل عبر الواتساب لمعرفة تفاصيل الطلب 💬' : 'Contact via WhatsApp for Order Details 💬'}</span>
                         </a>
                       ) : null}
 

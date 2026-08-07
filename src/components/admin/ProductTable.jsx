@@ -8,11 +8,12 @@ import {
   toggleProductActiveAction, 
   deleteProductAction,
   updateProductInventoryAction,
-  createCategoryAction,
-  updateCategoryAction
+  getCategoriesListAction
 } from '../../app/admin/actions';
+import { useApp } from '../../context/AppContext';
 
 export function ProductTable({ initialProducts, categories: initialCategories }) {
+  const { setDbCategories } = useApp();
   const [products, setProducts] = useState(initialProducts || []);
   const [categoriesList, setCategoriesList] = useState(initialCategories || []);
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,6 +29,11 @@ export function ProductTable({ initialProducts, categories: initialCategories })
   const [newCatNameAr, setNewCatNameAr] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
   const [catError, setCatError] = useState(null);
+
+  // Inline Category Editing State
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editCatAr, setEditCatAr] = useState('');
+  const [editCatEn, setEditCatEn] = useState('');
 
   // Dynamic Custom Size Input State for Product Modal
   const [customSizeCode, setCustomSizeCode] = useState('');
@@ -238,19 +244,75 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     });
   };
 
-  // Helper to handle local file uploads and convert to Data URL
-  const handleFileUpload = (e, fieldName) => {
+  // Automatic Client-Side Image Resizer & WebP Converter (Max 1200px, 85% Quality WebP)
+  const compressAndConvertToWebP = (file, maxDimension = 1200, quality = 0.85) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate aspect-ratio preserved new dimensions
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to WebP format
+          let webpDataUrl = canvas.toDataURL('image/webp', quality);
+          if (!webpDataUrl.startsWith('data:image/webp')) {
+            webpDataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+
+          resolve(webpDataUrl);
+        };
+        img.onerror = (err) => reject(err);
+        img.src = e.target.result;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper to handle local file uploads, resize & convert to WebP automatically
+  const handleFileUpload = async (e, fieldName) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
+    try {
+      const optimizedWebPDataUrl = await compressAndConvertToWebP(file, 1200, 0.85);
       setFormData(prev => ({
         ...prev,
-        [fieldName]: event.target.result
+        [fieldName]: optimizedWebPDataUrl
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('WebP conversion note, falling back to raw upload:', err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData(prev => ({
+          ...prev,
+          [fieldName]: event.target.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Create New Category Submit
@@ -267,30 +329,52 @@ export function ProductTable({ initialProducts, categories: initialCategories })
       const res = await createCategoryAction(newCatId, newCatNameAr, newCatNameEn);
       if (res.success) {
         setCategoriesList(prev => [...prev, res.category]);
+        if (setDbCategories) setDbCategories(prev => [...prev, res.category]);
         setFormData(prev => ({ ...prev, categoryId: res.category.id }));
         setIsCategoryModalOpen(false);
         setNewCatId('');
         setNewCatNameAr('');
         setNewCatNameEn('');
+        // Re-fetch all categories from DB
+        const fresh = await getCategoriesListAction();
+        if (fresh.success && fresh.categories && setDbCategories) {
+          setDbCategories(fresh.categories);
+        }
       } else {
         setCatError(res.error);
       }
     });
   };
 
-  // Edit Existing Category Submit
-  const handleEditCategorySubmit = (catId, oldNameAr, oldNameEn) => {
-    const newAr = window.prompt(`تعديل الاسم بالعربي للقسم (${catId}):`, oldNameAr);
-    if (newAr === null || !newAr.trim()) return;
-    const newEn = window.prompt(`تعديل الاسم بالإنجليزي للقسم (${catId}):`, oldNameEn || newAr);
+  // Save Inline Edited Category Name
+  const handleSaveCategoryEdit = (catId) => {
+    if (!editCatAr.trim()) {
+      alert('⚠️ يرجى كتابة الاسم بالعربي للقسم');
+      return;
+    }
 
     startTransition(async () => {
-      const res = await updateCategoryAction(catId, newAr, newEn || newAr);
-      if (res.success) {
-        setCategoriesList(prev => prev.map(c => c.id === catId ? res.category : c));
-        alert(`تم تعديل اسم القسم (${catId}) إلى: "${newAr}" بنجاح 🏷️`);
+      const res = await updateCategoryAction(catId, editCatAr, editCatEn || editCatAr);
+      if (res.success && res.category) {
+        const updatedCatObj = {
+          ...res.category,
+          name_ar: res.category.name_ar,
+          name_en: res.category.name_en,
+          nameAr: res.category.name_ar,
+          nameEn: res.category.name_en
+        };
+        setCategoriesList(prev => prev.map(c => c.id === catId ? updatedCatObj : c));
+        if (setDbCategories) setDbCategories(prev => prev.map(c => c.id === catId ? updatedCatObj : c));
+        setEditingCatId(null);
+
+        // Re-fetch all categories from DB
+        const fresh = await getCategoriesListAction();
+        if (fresh.success && fresh.categories && setDbCategories) {
+          setDbCategories(fresh.categories);
+        }
+        alert(`✅ تم حفظ وتعديل اسم القسم (${catId}) إلى: "${res.category.name_ar}" بنجاح 🏷️`);
       } else {
-        alert(`فشل تعديل الاسم: ${res.error}`);
+        alert(`⚠️ فشل تعديل الاسم: ${res.error || 'خطأ بالسيرفر'}`);
       }
     });
   };
@@ -342,31 +426,36 @@ export function ProductTable({ initialProducts, categories: initialCategories })
           stock_quantity: Number(v.stockQuantity)
         }));
 
+        const returnedMainImage = res.product?.main_image || formData.mainImage;
+        const returnedGalleryImages = res.product?.gallery_images || galleryImages;
+
         if (editingProduct) {
           setProducts(prev =>
             prev.map(p => p.id === editingProduct.id ? { 
               ...p, 
               ...res.product, 
+              main_image: returnedMainImage,
+              gallery_images: returnedGalleryImages,
               price: Number(formData.price),
               old_price: parsedOldPrice,
               is_best_seller: formData.isBestSeller,
               is_featured: formData.isFeatured,
               isFeatured: formData.isFeatured,
               is_new: formData.isNew,
-              gallery_images: galleryImages,
               product_variants: updatedVariants 
             } : p)
           );
         } else {
           setProducts(prev => [{ 
             ...res.product, 
+            main_image: returnedMainImage,
+            gallery_images: returnedGalleryImages,
             price: Number(formData.price),
             old_price: parsedOldPrice,
             is_best_seller: formData.isBestSeller,
             is_featured: formData.isFeatured,
             isFeatured: formData.isFeatured,
             is_new: formData.isNew,
-            gallery_images: galleryImages, 
             product_variants: updatedVariants 
           }, ...prev]);
         }
@@ -390,11 +479,8 @@ export function ProductTable({ initialProducts, categories: initialCategories })
         />
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button type="button" className="btn-secondary" onClick={() => setIsCategoryModalOpen(true)} style={{ padding: '0.8rem 1.25rem' }}>
-            🏷️ إضافة قسم جديد
-          </button>
-          <button type="button" className="btn-primary" onClick={handleOpenAddModal} style={{ padding: '0.8rem 1.5rem' }}>
-            ➕ إضافة منتج جديد للكتالوج
+          <button type="button" className="btn-primary" onClick={handleOpenAddModal} style={{ padding: '0.8rem 1.75rem' }}>
+            ⚽ إضافة منتج جديد
           </button>
         </div>
       </div>
@@ -524,111 +610,6 @@ export function ProductTable({ initialProducts, categories: initialCategories })
         </table>
       </div>
 
-      {/* Add New Category Modal Dialog */}
-      {isCategoryModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(5, 7, 12, 0.96)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999999,
-          padding: '1rem'
-        }}>
-          <div style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-gold-bright)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
-            maxWidth: '480px',
-            width: '100%',
-            boxShadow: 'var(--shadow-glow)'
-          }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1.25rem', color: 'var(--gold-primary)' }}>
-              🏷️ إضافة قسم جديد لكتالوج المتجر
-            </h3>
-
-            {catError && (
-              <div style={{ color: '#F43F5E', background: 'rgba(244,63,94,0.1)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                {catError}
-              </div>
-            )}
-
-            <form onSubmit={handleAddCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>معرف القسم بالإنكليزي (ID / Slug)</label>
-                <input 
-                  type="text" 
-                  placeholder="مثال: shoes أو accessories" 
-                  value={newCatId} 
-                  onChange={e => setNewCatId(e.target.value)} 
-                  required 
-                  style={{ width: '100%', padding: '0.75rem' }} 
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>اسم القسم بالعربي</label>
-                <input 
-                  type="text" 
-                  placeholder="مثال: الأحذية الرياضية" 
-                  value={newCatNameAr} 
-                  onChange={e => setNewCatNameAr(e.target.value)} 
-                  required 
-                  style={{ width: '100%', padding: '0.75rem' }} 
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>اسم القسم بالإنكليزي (اختياري)</label>
-                <input 
-                  type="text" 
-                  placeholder="مثال: Sports Shoes" 
-                  value={newCatNameEn} 
-                  onChange={e => setNewCatNameEn(e.target.value)} 
-                  style={{ width: '100%', padding: '0.75rem' }} 
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsCategoryModalOpen(false)}>
-                  إلغاء
-                </button>
-                <button type="submit" className="btn-primary" disabled={isPending} style={{ padding: '0.75rem 1.5rem' }}>
-                  {isPending ? 'جاري الإضافة...' : 'حفظ القسم الجديد 🏷️'}
-                </button>
-              </div>
-            </form>
-
-            {/* Existing Categories Editor List */}
-            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '1rem' }}>
-                🏷️ إدارة وتعديل أسماء الأقسام الحالية ({categoriesList.length})
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '180px', overflowY: 'auto' }}>
-                {categoriesList.map(cat => (
-                  <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    <div>
-                      <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#FFF' }}>{cat.name_ar}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>({cat.name_en || cat.id})</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleEditCategorySubmit(cat.id, cat.name_ar, cat.name_en)}
-                      style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', fontWeight: 800, borderRadius: '4px', background: 'rgba(212,175,55,0.15)', color: 'var(--gold-primary)', border: '1px solid var(--border-gold)', cursor: 'pointer' }}
-                    >
-                      ✏️ تعديل الاسم
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Product Edit / Add Modal Dialog */}
       {isModalOpen && (
         <div style={{
@@ -728,9 +709,14 @@ export function ProductTable({ initialProducts, categories: initialCategories })
 
               {/* 📷 4 Images Management Section (Front + 3 Catalog Images) */}
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-gold)' }}>
-                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 900, marginBottom: '0.8rem', color: 'var(--gold-primary)' }}>
-                  🖼️ صور المنتج الأربعة (صورة الواجهة Front + 3 صور معرض الكتالوج)
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
+                    🖼️ صور المنتج الأربعة (صورة الواجهة Front + 3 صور معرض الكتالوج)
+                  </label>
+                  <span style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10B981', color: '#10B981', fontSize: '0.72rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
+                    ⚡ الضغط التلقائي مفعّل (تحويل لـ WebP وتصغير أبعاد 1200px)
+                  </span>
+                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                   {/* Image 1: Main Front View */}

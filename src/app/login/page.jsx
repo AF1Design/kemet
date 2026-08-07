@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
 import { OtpModal } from '../../components/OtpModal';
 import { supabase } from '../../lib/supabase/client';
-import { customSignupAction, forgotPasswordOtpAction } from '../actions/auth-actions';
+import { customSignupAction, forgotPasswordOtpAction, getUserProfileAction, updateUserProfileAction } from '../actions/auth-actions';
 
 const EyeOfHorusOpen = () => (
   <svg className="eye-horus-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -80,17 +80,17 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName.trim(),
-          phone: phone.trim(),
-          governorate: governorate,
-          allow_sms_marketing: allowSmsMarketing
-        })
-        .eq('id', user.id);
+      const res = await updateUserProfileAction({
+        userId: user.id,
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        governorate: governorate,
+        allowSmsMarketing: allowSmsMarketing
+      });
 
-      if (error) throw error;
+      if (!res?.success) {
+        throw new Error(res?.error || 'فشل في تحديث بيانات البروفايل');
+      }
 
       loginUser({
         ...user,
@@ -144,17 +144,23 @@ export default function LoginPage() {
           let userRole = 'customer';
           let profileData = null;
 
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, full_name, phone, governorate')
-            .eq('id', data.user.id)
-            .single();
+          const profRes = await getUserProfileAction(data.user.id, data.user.email);
+          if (profRes.success && profRes.profile) {
+            profileData = profRes.profile;
+            userRole = profRes.profile.role || 'customer';
+          } else {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role, full_name, phone, governorate')
+              .eq('id', data.user.id)
+              .single();
 
-          if (profile) {
-            profileData = profile;
-            userRole = profile.role || 'customer';
-          } else if (data.user.email === 'admin@kemet.eg' || data.user.user_metadata?.role === 'admin') {
-            userRole = 'admin';
+            if (profile) {
+              profileData = profile;
+              userRole = profile.role || 'customer';
+            } else if (data.user.email === 'admin@kemet.eg' || data.user.user_metadata?.role === 'admin') {
+              userRole = 'admin';
+            }
           }
 
           loginUser({

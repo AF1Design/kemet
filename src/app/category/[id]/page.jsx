@@ -107,6 +107,15 @@ export default function CategoryPage({ params }) {
     if (searchQueryParam) {
       return lang === 'ar' ? `نتائج البحث عن: "${searchQueryParam}"` : `Search Results for: "${searchQueryParam}"`;
     }
+    
+    // Check if category exists dynamically in DB categories list
+    if (id && id !== 'all' && dbCategories && dbCategories.length > 0) {
+      const match = dbCategories.find(c => c.id.toLowerCase() === id.toLowerCase());
+      if (match) {
+        return lang === 'ar' ? (match.name_ar || match.nameAr) : (match.name_en || match.nameEn || match.id);
+      }
+    }
+
     switch (id) {
       case 'kits':
         return t('navKits');
