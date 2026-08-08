@@ -226,13 +226,77 @@ export async function getCategoriesListAction() {
       .select('*');
 
     if (!error && data) {
-      const filtered = data.filter(c => !c.id.startsWith('_'));
+      const filtered = data.filter(c => !c.id.startsWith('_') && !c.id.includes('config'));
       return { success: true, categories: filtered };
     }
   } catch (err) {
     console.warn('getCategoriesListAction note:', err);
   }
   return { success: false, categories: [] };
+}
+
+/**
+ * Server Action: Creates a new category in Supabase DB
+ */
+export async function createCategoryAction(catId, nameAr, nameEn = '') {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanId = String(catId).toLowerCase().trim();
+    const cleanAr = String(nameAr).trim();
+    const cleanEn = String(nameEn || cleanAr).trim();
+
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .upsert({
+        id: cleanId,
+        name_ar: cleanAr,
+        name_en: cleanEn,
+        description_ar: `استعرض أحدث تشكيلة من ${cleanAr}`,
+        description_en: `Explore all products in ${cleanEn}`
+      }, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    triggerBackgroundRevalidate(['/', '/admin', '/admin/products', `/category/${cleanId}`]);
+    return { success: true, category: data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Updates category name in Supabase DB
+ */
+export async function updateCategoryAction(catId, nameAr, nameEn = '') {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanId = String(catId).toLowerCase().trim();
+    const cleanAr = String(nameAr).trim();
+    const cleanEn = String(nameEn || cleanAr).trim();
+
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .update({
+        name_ar: cleanAr,
+        name_en: cleanEn
+      })
+      .eq('id', cleanId)
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    triggerBackgroundRevalidate(['/', '/admin', '/admin/products', `/category/${cleanId}`]);
+    return { success: true, category: data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }
 
 function toDbStatus(status) {
@@ -995,5 +1059,114 @@ export async function sendDirectCustomerEmailAction({ orderId, recipientEmail, s
     return { success: false, error: err.message || 'حدث خطأ أثناء إرسال البريد للعميل' };
   }
 }
+
+/**
+ * Server Action: Fetches Homepage Sections Configuration from Supabase DB
+ */
+export async function getHomepageSectionsAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const { data } = await supabaseAdmin
+      .from('categories')
+      .select('*')
+      .eq('id', 'homepage_sections_config')
+      .single();
+
+    if (data && data.name_ar) {
+      const parsed = JSON.parse(data.name_ar);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return { success: true, sections: parsed };
+      }
+    }
+  } catch (err) {
+    console.warn('getHomepageSectionsAction error:', err);
+  }
+
+  // Default Smart Sections Configuration
+  const defaultSections = [
+    {
+      id: 'best_sellers',
+      titleAr: 'الأكثر مبيعاً 🔥',
+      titleEn: 'Best Sellers 🔥',
+      subtitleAr: 'القطع الأكثر طلباً وإقبالاً في كولكشن KEMET',
+      subtitleEn: 'Most popular and featured KEMET sportswear',
+      categoryId: 'all',
+      filterType: 'best_seller',
+      enabled: true,
+      order: 1,
+      limit: 8
+    },
+    {
+      id: 'kits',
+      titleAr: 'أطقم وتيشيرتات KEMET ⚽',
+      titleEn: 'Official KEMET Kits ⚽',
+      subtitleAr: 'أحدث تشكيلة من أطقم الأندية والمنتخبات الرياضية',
+      subtitleEn: 'Latest official football kits and sportswear',
+      categoryId: 'kits',
+      filterType: 'category',
+      enabled: true,
+      order: 2,
+      limit: 6
+    },
+    {
+      id: 'training',
+      titleAr: 'ملابس التدريب والجيم 💪',
+      titleEn: 'Training & Gym Wear 💪',
+      subtitleAr: 'خامات مريحة ومقاومة للعرق مصممة للتمارين الشاقة',
+      subtitleEn: 'Performance sportswear engineered for the gym',
+      categoryId: 'training',
+      filterType: 'category',
+      enabled: true,
+      order: 3,
+      limit: 6
+    },
+    {
+      id: 'shorts',
+      titleAr: 'الشورتات والمستلزمات 🩳',
+      titleEn: 'Shorts & Gear 🩳',
+      subtitleAr: 'شورتات رياضية ومستلزمات أساسية لكل رياضي',
+      subtitleEn: 'Athletic shorts and essential gear',
+      categoryId: 'shorts',
+      filterType: 'category',
+      enabled: true,
+      order: 4,
+      limit: 6
+    }
+  ];
+
+  return { success: true, sections: defaultSections };
+}
+
+/**
+ * Server Action: Saves Homepage Sections Configuration to Supabase DB
+ */
+export async function saveHomepageSectionsAction(sectionsList) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanJson = JSON.stringify(sectionsList);
+
+    const { error } = await supabaseAdmin
+      .from('categories')
+      .upsert({
+        id: 'homepage_sections_config',
+        name_ar: cleanJson,
+        name_en: 'HOMEPAGE_SECTIONS_CONFIG',
+        description_ar: 'active',
+        description_en: 'JSON_CONFIG'
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.error('saveHomepageSectionsAction DB error:', error);
+      return { success: false, error: error.message };
+    }
+
+    triggerBackgroundRevalidate(['/', '/admin', '/admin/products']);
+    return { success: true };
+  } catch (err) {
+    console.error('saveHomepageSectionsAction exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 
 

@@ -5,16 +5,69 @@ import Link from 'next/link';
 import { useApp } from '../context/AppContext';
 import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
+import { HorizontalProductRail } from '../components/HorizontalProductRail';
 import { WhyKemet } from '../components/WhyKemet';
 import { Footer } from '../components/Footer';
 import { KemetLoader } from '../components/KemetLoader';
 import { supabase } from '../lib/supabase';
 
+const DEFAULT_SECTIONS = [
+  {
+    id: 'best_sellers',
+    titleAr: 'الأكثر مبيعاً 🔥',
+    titleEn: 'Best Sellers 🔥',
+    subtitleAr: 'القطع الأكثر طلباً وإقبالاً في كولكشن KEMET',
+    subtitleEn: 'Most popular and featured KEMET sportswear',
+    categoryId: 'all',
+    filterType: 'best_seller',
+    enabled: true,
+    order: 1,
+    limit: 8
+  },
+  {
+    id: 'kits',
+    titleAr: 'أطقم وتيشيرتات KEMET ⚽',
+    titleEn: 'Official KEMET Kits ⚽',
+    subtitleAr: 'أحدث تشكيلة من أطقم الأندية والمنتخبات الرياضية',
+    subtitleEn: 'Latest official football kits and sportswear',
+    categoryId: 'kits',
+    filterType: 'category',
+    enabled: true,
+    order: 2,
+    limit: 6
+  },
+  {
+    id: 'training',
+    titleAr: 'ملابس التدريب والجيم 💪',
+    titleEn: 'Training & Gym Wear 💪',
+    subtitleAr: 'خامات مريحة ومقاومة للعرق مصممة للتمارين الشاقة',
+    subtitleEn: 'Performance sportswear engineered for the gym',
+    categoryId: 'training',
+    filterType: 'category',
+    enabled: true,
+    order: 3,
+    limit: 6
+  },
+  {
+    id: 'shorts',
+    titleAr: 'الشورتات والمستلزمات 🩳',
+    titleEn: 'Shorts & Gear 🩳',
+    subtitleAr: 'شورتات رياضية ومستلزمات أساسية لكل رياضي',
+    subtitleEn: 'Athletic shorts and essential gear',
+    categoryId: 'shorts',
+    filterType: 'category',
+    enabled: true,
+    order: 4,
+    limit: 6
+  }
+];
+
 export default function Home() {
   const { lang, t } = useApp();
 
-  const [bestSellerProducts, setBestSellerProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
+  const [sectionsConfig, setSectionsConfig] = useState(DEFAULT_SECTIONS);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
@@ -24,12 +77,14 @@ export default function Home() {
       setFetchError(null);
 
       try {
-        const [{ data: productsData, error: prodErr }, { data: categoriesData, error: catErr }] = await Promise.all([
+        const [
+          { data: productsData, error: prodErr },
+          { data: categoriesData, error: catErr }
+        ] = await Promise.all([
           supabase
             .from('products')
             .select('*, product_variants(*)')
             .eq('is_active', true)
-            .eq('is_best_seller', true)
             .order('created_at', { ascending: false }),
           supabase
             .from('categories')
@@ -53,20 +108,35 @@ export default function Home() {
             images: p.gallery_images,
             isBestSeller: p.is_best_seller,
             isNew: p.is_new,
-            keywords: p.keywords,
+            keywords: p.keywords || [],
             product_variants: p.product_variants || []
           }));
-          setBestSellerProducts(mapped);
+          setAllProducts(mapped);
         }
 
         if (catErr) {
           console.error('Error fetching categories:', catErr);
         } else if (categoriesData) {
           const map = {};
+          let customSections = null;
+
           categoriesData.forEach(c => {
-            map[c.id] = c;
+            if (c.id === 'homepage_sections_config' && c.name_ar) {
+              try {
+                const parsed = JSON.parse(c.name_ar);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  customSections = parsed;
+                }
+              } catch (e) {}
+            } else {
+              map[c.id] = c;
+            }
           });
+
           setCategoriesMap(map);
+          if (customSections) {
+            setSectionsConfig(customSections);
+          }
         }
       } catch (err) {
         console.error('Unhandled Home fetch error:', err);
@@ -124,51 +194,77 @@ export default function Home() {
     }
   ];
 
+  // Sort and filter active homepage sections
+  const activeSections = [...sectionsConfig]
+    .filter(s => s.enabled !== false)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+
   return (
     <div>
       {/* 1. Hero Banner */}
       <Hero />
 
-      {/* 2. الأكثر مبيعاً 🔥 (Best Sellers Section) */}
-      <section className="section" style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
-        <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-              <span className="brand-glow">{t('featuredProductsTitle')}</span>
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 700, maxWidth: '600px', margin: '0 auto' }}>
-              {t('featuredProductsSubtitle')}
-            </p>
-          </div>
-
-          {isLoading ? (
-            <KemetLoader message={lang === 'ar' ? 'جاري تحميل منتجات KEMET...' : 'Loading KEMET products...'} />
-          ) : fetchError ? (
-            <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', maxWidth: '500px', margin: '0 auto' }}>
-              <p style={{ color: '#F43F5E', fontWeight: 700, marginBottom: '0.5rem' }}>
-                {lang === 'ar' ? 'مؤقتاً غير قادرين على جلب المنتجات' : 'Unable to load products temporarily'}
-              </p>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                {lang === 'ar' ? 'يرجى تحديث الصفحة أو المحاولة لاحقاً' : 'Please refresh the page or try again later'}
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 420px))', gap: '2rem', justifyContent: 'center' }}>
-              {bestSellerProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-
-          <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-            <Link href="/category/all" className="btn-primary" style={{ padding: '0.85rem 2.2rem' }}>
-              {t('viewAllProducts')}
-            </Link>
-          </div>
+      {/* Loading State with Logo Animation */}
+      {isLoading ? (
+        <div style={{ padding: '4rem 1rem' }}>
+          <KemetLoader message={lang === 'ar' ? 'جاري تحميل منتجات وأقسام KEMET...' : 'Loading KEMET collections...'} />
         </div>
-      </section>
+      ) : fetchError ? (
+        <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', maxWidth: '500px', margin: '3rem auto' }}>
+          <p style={{ color: '#F43F5E', fontWeight: 700, marginBottom: '0.5rem' }}>
+            {lang === 'ar' ? 'مؤقتاً غير قادرين على جلب المنتجات' : 'Unable to load products temporarily'}
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            {lang === 'ar' ? 'يرجى تحديث الصفحة أو المحاولة لاحقاً' : 'Please refresh the page or try again later'}
+          </p>
+        </div>
+      ) : (
+        /* 2. Dynamic Horizontal Rails Sections */
+        <div>
+          {activeSections.map(section => {
+            let sectionProducts = [];
 
-      {/* 3. Main Category Cards */}
+            if (section.filterType === 'best_seller') {
+              sectionProducts = allProducts.filter(p => p.isBestSeller);
+              if (sectionProducts.length === 0) sectionProducts = allProducts; // graceful fallback
+            } else if (section.filterType === 'new_arrivals') {
+              sectionProducts = allProducts.filter(p => p.isNew);
+            } else if (section.categoryId && section.categoryId !== 'all') {
+              sectionProducts = allProducts.filter(p => p.category === section.categoryId);
+            } else {
+              sectionProducts = allProducts;
+            }
+
+            if (sectionProducts.length === 0) return null;
+
+            const categoryHref = section.categoryId && section.categoryId !== 'all' 
+              ? `/category/${section.categoryId}` 
+              : '/category/all';
+
+            const sectionTitle = lang === 'ar' 
+              ? (section.titleAr || section.title) 
+              : (section.titleEn || section.title);
+
+            const sectionSubtitle = lang === 'ar' 
+              ? section.subtitleAr 
+              : section.subtitleEn;
+
+            return (
+              <HorizontalProductRail
+                key={section.id}
+                title={sectionTitle}
+                subtitle={sectionSubtitle}
+                categoryHref={categoryHref}
+                products={sectionProducts}
+                limit={section.limit || 8}
+                badge={section.filterType === 'best_seller' ? '🔥 الأكثر طلباً' : '✨ مميز'}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* 3. Main Category Cards Grid */}
       <section className="section">
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
@@ -223,3 +319,4 @@ export default function Home() {
     </div>
   );
 }
+

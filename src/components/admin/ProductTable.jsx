@@ -8,7 +8,11 @@ import {
   toggleProductActiveAction, 
   deleteProductAction,
   updateProductInventoryAction,
-  getCategoriesListAction
+  getCategoriesListAction,
+  updateCategoryAction,
+  createCategoryAction,
+  getHomepageSectionsAction,
+  saveHomepageSectionsAction
 } from '../../app/admin/actions';
 import { useApp } from '../../context/AppContext';
 
@@ -22,6 +26,11 @@ export function ProductTable({ initialProducts, categories: initialCategories })
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null); // null = add new, object = edit
+
+  // Homepage Sections CMS Modal State
+  const [isSectionsModalOpen, setIsSectionsModalOpen] = useState(false);
+  const [homepageSections, setHomepageSections] = useState([]);
+  const [isSavingSections, setIsSavingSections] = useState(false);
 
   // New Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -466,6 +475,75 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     });
   };
 
+  const handleOpenSectionsModal = async () => {
+    setIsSectionsModalOpen(true);
+    const res = await getHomepageSectionsAction();
+    if (res.success && res.sections) {
+      setHomepageSections(res.sections);
+    }
+  };
+
+  const handleToggleSection = (secId) => {
+    setHomepageSections(prev =>
+      prev.map(s => s.id === secId ? { ...s, enabled: !s.enabled } : s)
+    );
+  };
+
+  const handleMoveSection = (index, direction) => {
+    setHomepageSections(prev => {
+      const list = [...prev];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+      return list.map((item, idx) => ({ ...item, order: idx + 1 }));
+    });
+  };
+
+  const handleChangeLimit = (secId, limitNum) => {
+    setHomepageSections(prev =>
+      prev.map(s => s.id === secId ? { ...s, limit: Number(limitNum) } : s)
+    );
+  };
+
+  const handleAddCategoryToHomepage = (cat) => {
+    if (homepageSections.some(s => s.categoryId === cat.id)) {
+      alert('هذا القسم مضاف بالفعل في قائمة أقسام الواجهة');
+      return;
+    }
+    const newSec = {
+      id: `cat_${cat.id}`,
+      titleAr: cat.name_ar || cat.nameAr,
+      titleEn: cat.name_en || cat.nameEn || cat.id,
+      subtitleAr: `استعرض أحدث تشكيلة من ${cat.name_ar || cat.nameAr}`,
+      subtitleEn: `Explore all products in ${cat.name_en || cat.nameEn}`,
+      categoryId: cat.id,
+      filterType: 'category',
+      enabled: true,
+      order: homepageSections.length + 1,
+      limit: 6
+    };
+    setHomepageSections(prev => [...prev, newSec]);
+  };
+
+  const handleSaveSections = async () => {
+    setIsSavingSections(true);
+    try {
+      const res = await saveHomepageSectionsAction(homepageSections);
+      if (res.success) {
+        alert('✅ تم حفظ وتحديث ترتيب وأقسام الصفحة الرئيسية بنجاح 🎠');
+        setIsSectionsModalOpen(false);
+      } else {
+        alert(`⚠️ فشل حفظ الإعدادات: ${res.error}`);
+      }
+    } catch (err) {
+      alert(`حدث خطأ: ${err.message}`);
+    } finally {
+      setIsSavingSections(false);
+    }
+  };
+
   return (
     <div>
       {/* Controls Bar */}
@@ -478,7 +556,25 @@ export function ProductTable({ initialProducts, categories: initialCategories })
           style={{ padding: '0.8rem 1.25rem', width: '320px', fontSize: '0.95rem' }}
         />
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleOpenSectionsModal}
+            style={{
+              padding: '0.8rem 1.5rem',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              border: '1px solid var(--border-gold)',
+              background: 'rgba(212,175,55,0.12)',
+              color: 'var(--gold-primary)'
+            }}
+          >
+            🎛️ إدارة وترتيب أقسام الواجهة
+          </button>
+
           <button type="button" className="btn-primary" onClick={handleOpenAddModal} style={{ padding: '0.8rem 1.75rem' }}>
             ⚽ إضافة منتج جديد
           </button>
@@ -920,6 +1016,207 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Homepage Sections CMS Modal */}
+      {isSectionsModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-gold-bright)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '2rem',
+            maxWidth: '650px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: 'var(--shadow-glow)'
+          }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>🎛️ إدارة وترتيب أقسام وسلايدرات الواجهة</span>
+              <button type="button" onClick={() => setIsSectionsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+            </h3>
+
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              تحكم في ظهور وترتيب الأقسام الأفقية (السلايدرات) في الصفحة الرئيسية، وحدد عدد المنتجات المعروضة في كل سلايدر.
+            </p>
+
+            {/* Sections List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.5rem' }}>
+              {homepageSections.map((sec, idx) => (
+                <div
+                  key={sec.id}
+                  style={{
+                    background: sec.enabled ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)',
+                    border: sec.enabled ? '1px solid var(--border-gold)' : '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                    opacity: sec.enabled ? 1 : 0.6
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {/* Reorder Buttons */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveSection(idx, 'up')}
+                        disabled={idx === 0}
+                        style={{
+                          background: 'rgba(0,0,0,0.4)',
+                          border: '1px solid var(--border-color)',
+                          color: idx === 0 ? 'var(--text-secondary)' : 'var(--gold-primary)',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          fontSize: '0.7rem',
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                        }}
+                        title="تحريك لأعلى"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveSection(idx, 'down')}
+                        disabled={idx === homepageSections.length - 1}
+                        style={{
+                          background: 'rgba(0,0,0,0.4)',
+                          border: '1px solid var(--border-color)',
+                          color: idx === homepageSections.length - 1 ? 'var(--text-secondary)' : 'var(--gold-primary)',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          fontSize: '0.7rem',
+                          cursor: idx === homepageSections.length - 1 ? 'not-allowed' : 'pointer'
+                        }}
+                        title="تحريك لأسفل"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: sec.enabled ? '#FFF' : 'var(--text-secondary)' }}>
+                        <span style={{ color: 'var(--gold-primary)', marginLeft: '0.4rem' }}>#{idx + 1}</span>
+                        {sec.titleAr || sec.title}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        {sec.filterType === 'best_seller' ? 'منتجات الأكثر مبيعاً' : `قسم: ${sec.categoryId}`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {/* Limit Selector */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>العدد:</span>
+                      <select
+                        value={sec.limit || 6}
+                        onChange={e => handleChangeLimit(sec.id, e.target.value)}
+                        style={{
+                          padding: '0.35rem 0.6rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(0,0,0,0.5)',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--gold-primary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {[4, 6, 8, 10, 12].map(n => (
+                          <option key={n} value={n} style={{ background: '#0B0F19', color: '#FFF' }}>
+                            {n} منتجات
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Enable / Disable Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSection(sec.id)}
+                      style={{
+                        padding: '0.4rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 800,
+                        borderRadius: 'var(--radius-md)',
+                        border: sec.enabled ? '1px solid #10B981' : '1px solid #F43F5E',
+                        background: sec.enabled ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
+                        color: sec.enabled ? '#10B981' : '#F43F5E',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {sec.enabled ? 'ظاهر بالواجهة ✅' : 'مخفي ❌'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Add Available Categories to Homepage Sections */}
+            <div style={{ marginBottom: '1.75rem', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.5rem' }}>
+                ➕ إضافة فئات الكتالوج الأخرى إلى الصفحة الرئيسية:
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {categoriesList.map(cat => {
+                  const isAlreadyAdded = homepageSections.some(s => s.categoryId === cat.id);
+                  if (isAlreadyAdded) return null;
+
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleAddCategoryToHomepage(cat)}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(212,175,55,0.12)',
+                        border: '1px solid var(--border-gold)',
+                        color: 'var(--gold-primary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + {cat.name_ar || cat.nameAr}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" onClick={() => setIsSectionsModalOpen(false)} style={{ padding: '0.65rem 1.25rem' }}>
+                إلغاء
+              </button>
+              <button
+                type="button"
+                className="btn-gold"
+                onClick={handleSaveSections}
+                disabled={isSavingSections}
+                style={{ padding: '0.65rem 1.75rem' }}
+              >
+                {isSavingSections ? 'جاري الحفظ...' : '💾 حفظ وتحديث الواجهة'}
+              </button>
+            </div>
           </div>
         </div>
       )}
