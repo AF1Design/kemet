@@ -143,9 +143,11 @@ export default function CheckoutPage() {
       items: [...cart],
       subtotal: subtotal,
       discount: discountAmount,
-      shipping: shippingFee,
-      total: totalAmount,
-      customer: { ...formData }
+      customer: {
+        ...formData,
+        email: user?.email || formData.email || null
+      },
+      customer_email: user?.email || formData.email || null
     };
 
     // Update coupon usage & decrement remaining uses

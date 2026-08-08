@@ -42,6 +42,7 @@ export function AdminOrdersTable({ initialOrders }) {
 
   // Direct Customer Email Modal State
   const [emailModalOrder, setEmailModalOrder] = useState(null);
+  const [emailRecipient, setEmailRecipient] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -128,9 +129,10 @@ export function AdminOrdersTable({ initialOrders }) {
     });
   };
 
-  // Open Direct Email Modal
+  // Open Direct Email Modal with auto-resolved customer email
   const handleOpenEmailModal = (order) => {
     setEmailModalOrder(order);
+    setEmailRecipient(order.customer_email || order.customer?.email || '');
     setEmailSubject(`تحديث بشأن طلبك رقم #${order.id} - KEMET`);
     setEmailMessage('');
   };
@@ -138,10 +140,10 @@ export function AdminOrdersTable({ initialOrders }) {
   // Send Direct Email to Single Customer
   const handleSendDirectEmail = async () => {
     if (!emailModalOrder) return;
-    const recipientEmail = emailModalOrder.customer_email || emailModalOrder.customer?.email;
+    const targetEmail = (emailRecipient || emailModalOrder.customer_email || emailModalOrder.customer?.email || '').trim();
 
-    if (!recipientEmail || !recipientEmail.includes('@')) {
-      alert('⚠️ هذا العميل لم يقم بإدخال بريد إلكتروني أثناء الطلب.');
+    if (!targetEmail || !targetEmail.includes('@')) {
+      alert('⚠️ الرجاء إدخال بريد إلكتروني صحيح للعميل في خانة البريد المستهدف.');
       return;
     }
 
@@ -154,13 +156,13 @@ export function AdminOrdersTable({ initialOrders }) {
     try {
       const res = await sendDirectCustomerEmailAction({
         orderId: emailModalOrder.id,
-        recipientEmail: recipientEmail,
+        recipientEmail: targetEmail,
         subject: emailSubject,
         message: emailMessage
       });
 
       if (res.success) {
-        alert(`تم إرسال الرسالة بنجاح إلى بريد العميل (${recipientEmail}) 📧`);
+        alert(`تم إرسال الرسالة بنجاح إلى بريد العميل (${targetEmail}) 📧`);
         setEmailModalOrder(null);
       } else {
         alert(`فشل إرسال البريد: ${res.error}`);
@@ -625,7 +627,19 @@ export function AdminOrdersTable({ initialOrders }) {
 
             <div style={{ marginBottom: '1.25rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
               <div>👤 العميل: <strong style={{ color: '#FFF' }}>{emailModalOrder.customer_name || emailModalOrder.customer?.fullName}</strong></div>
-              <div>📧 البريد المستهدف: <strong style={{ color: 'var(--gold-primary)' }}>{emailModalOrder.customer_email || emailModalOrder.customer?.email || 'غير مسجل'}</strong></div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--gold-primary)', fontWeight: 800, marginBottom: '0.35rem' }}>
+                📧 البريد الإلكتروني المستهدف للعميل:
+              </label>
+              <input
+                type="email"
+                value={emailRecipient}
+                onChange={e => setEmailRecipient(e.target.value)}
+                placeholder="بريد العميل (مثال: client@gmail.com)..."
+                style={{ width: '100%', padding: '0.65rem 0.9rem', fontSize: '0.9rem', direction: 'ltr', textAlign: 'left' }}
+              />
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
