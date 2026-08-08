@@ -25,7 +25,7 @@ export default function CategoryPage({ params }) {
   const searchParams = useSearchParams();
   const searchQueryParam = searchParams.get('search') || '';
 
-  const { lang, t } = useApp();
+  const { lang, t, dbCategories } = useApp();
   const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [fetchError, setFetchError] = useState(null);
