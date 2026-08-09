@@ -147,10 +147,17 @@ export default function MyOrdersPage() {
           address: matchedDb.address || o.customer?.address
         },
         items: formattedItems.length > 0 ? formattedItems : (o.items || []),
-        total: matchedDb.total_amount || o.total
+        total: Number(matchedDb.total_amount ?? o.total ?? o.total_amount ?? o.totalAmount ?? 0) || (formattedItems.reduce((s, it) => s + (Number(it.price || 0) * (it.quantity || 1)), 0) + 50)
       };
     }
-    return o;
+
+    const fallbackItems = o.items || [];
+    const fallbackTotal = Number(o.total ?? o.total_amount ?? o.totalAmount ?? 0) || (fallbackItems.reduce((s, it) => s + (Number(it.price || 0) * (it.quantity || 1)), 0) + (o.shipping_fee || 50));
+
+    return {
+      ...o,
+      total: fallbackTotal
+    };
   });
 
   const [editingOrderId, setEditingOrderId] = useState(null);

@@ -142,7 +142,12 @@ export default function CheckoutPage() {
       status: 'جديد 📦',
       items: [...cart],
       subtotal: subtotal,
+      shipping: shippingFee,
+      shipping_fee: shippingFee,
       discount: discountAmount,
+      total: totalAmount,
+      total_amount: totalAmount,
+      totalAmount: totalAmount,
       customer: {
         ...formData,
         email: user?.email || formData.email || null
@@ -186,6 +191,8 @@ export default function CheckoutPage() {
   };
 
   if (isSubmitted && createdOrder) {
+    const finalDisplayTotal = createdOrder.total ?? createdOrder.total_amount ?? totalAmount;
+
     return (
       <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
         <section className="section" style={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
@@ -210,7 +217,7 @@ export default function CheckoutPage() {
                 <div><strong>رقم الموبايل:</strong> {createdOrder.customer.phone}</div>
                 <div><strong>العنوان:</strong> {createdOrder.customer.governorate} ({createdOrder.customer.address})</div>
                 {createdOrder.discount > 0 && <div style={{ color: '#10B981', fontWeight: 800 }}><strong>مبلغ الخصم:</strong> - {createdOrder.discount} ج.م</div>}
-                <div><strong>المبلغ الإجمالي المطلوب عند الاستلام:</strong> <strong style={{ color: 'var(--gold-primary)', fontSize: '1.1rem' }}>{createdOrder.total} ج.م</strong></div>
+                <div><strong>المبلغ الإجمالي المطلوب عند الاستلام:</strong> <strong style={{ color: 'var(--gold-primary)', fontSize: '1.15rem' }}>{finalDisplayTotal} ج.م</strong></div>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>

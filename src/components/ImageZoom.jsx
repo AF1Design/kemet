@@ -123,30 +123,40 @@ export const ImageZoom = ({ src, alt }) => {
           }}
           onClick={() => setIsModalOpen(false)}
         >
-          {/* Top Bar Controls */}
+          {/* Top Bar Controls - Fixed & Safe-Area Aware */}
           <div 
             style={{
-              position: 'absolute',
-              top: '1rem',
-              left: '1rem',
-              right: '1rem',
+              position: 'fixed',
+              top: 'max(12px, env(safe-area-inset-top, 12px))',
+              left: '12px',
+              right: '12px',
               display: 'flex',
-              justify: 'space-between',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              zIndex: 1000000,
-              pointerEvents: 'auto'
+              zIndex: 1000001,
+              pointerEvents: 'auto',
+              background: 'rgba(11, 15, 25, 0.92)',
+              border: '1px solid var(--border-gold-bright)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '0.6rem 1rem',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.8)',
+              gap: '0.5rem',
+              flexWrap: 'wrap'
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ color: '#D4AF37', fontWeight: 900, fontSize: '1rem', background: 'rgba(0,0,0,0.6)', padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid rgba(212,175,55,0.4)' }}>
-              🔍 زوم مكبّر ({Math.round(modalScale * 100)}%)
+            <div style={{ color: '#D4AF37', fontWeight: 900, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span>🔍</span>
+              <span>زوم ({Math.round(modalScale * 100)}%)</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
               <button 
                 type="button" 
                 onClick={() => setModalScale(prev => Math.min(3.5, prev + 0.5))}
-                style={{ background: 'var(--bg-card)', border: '1px solid #D4AF37', color: '#FFF', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', fontWeight: 900, cursor: 'pointer' }}
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid #D4AF37', color: '#FFF', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.2rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="تكبير"
               >
                 +
               </button>
@@ -154,7 +164,8 @@ export const ImageZoom = ({ src, alt }) => {
               <button 
                 type="button" 
                 onClick={() => setModalScale(prev => Math.max(1, prev - 0.5))}
-                style={{ background: 'var(--bg-card)', border: '1px solid #D4AF37', color: '#FFF', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', fontWeight: 900, cursor: 'pointer' }}
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid #D4AF37', color: '#FFF', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.2rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="تصغير"
               >
                 -
               </button>
@@ -162,15 +173,18 @@ export const ImageZoom = ({ src, alt }) => {
               <button 
                 type="button" 
                 onClick={() => setModalScale(1)}
-                style={{ background: 'var(--bg-card)', border: '1px solid #D4AF37', color: '#D4AF37', padding: '0 0.8rem', height: '40px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 800, cursor: 'pointer' }}
+                style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid #D4AF37', color: '#D4AF37', padding: '0 0.75rem', height: '38px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                title="إعادة ضبط الحجم"
               >
-                إعادة ضبط 🔄
+                <span>ضبط</span>
+                <span>🔄</span>
               </button>
 
               <button 
                 type="button" 
                 onClick={() => setIsModalOpen(false)}
-                style={{ background: '#F43F5E', border: 'none', color: '#FFF', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', fontWeight: 900, cursor: 'pointer', marginLeft: '0.5rem' }}
+                style={{ background: '#F43F5E', border: 'none', color: '#FFF', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.1rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '0.25rem' }}
+                title="إغلاق"
               >
                 ✕
               </button>

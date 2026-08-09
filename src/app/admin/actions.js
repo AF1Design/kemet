@@ -455,6 +455,12 @@ export async function createOrderAction(orderData) {
       }
     }
 
+    const calcSubtotal = Number(orderData.subtotal || 0);
+    const calcShipping = Number(orderData.shipping ?? orderData.shipping_fee ?? 50);
+    const calcDiscount = Number(orderData.discount || 0);
+    const rawTotal = orderData.total ?? orderData.total_amount ?? orderData.totalAmount;
+    const calcTotal = rawTotal != null && Number(rawTotal) > 0 ? Number(rawTotal) : Math.max(0, calcSubtotal - calcDiscount) + calcShipping;
+
     const orderPayload = {
       id: orderData.id,
       user_id: validUserId,
@@ -463,9 +469,9 @@ export async function createOrderAction(orderData) {
       governorate: orderData.customer?.governorate || orderData.governorate || 'القاهرة',
       address: orderData.customer?.address || orderData.address || '',
       delivery_notes: orderData.customer?.notes || orderData.notes || '',
-      subtotal: Number(orderData.subtotal || 0),
-      shipping_fee: Number(orderData.shipping || orderData.shipping_fee || 0),
-      total_amount: Number(orderData.total || orderData.total_amount || 0),
+      subtotal: calcSubtotal,
+      shipping_fee: calcShipping,
+      total_amount: calcTotal,
       payment_method: orderData.paymentMethod || 'COD',
       status: dbStatus,
       is_shipped: dbStatus === 'shipped' || dbStatus === 'delivered'
