@@ -4,8 +4,19 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 
+const STANDARD_SIZES = ['S', 'M', 'L', 'XL', '2XL'];
+
 export const CartDrawer = () => {
-  const { lang, cart, isCartOpen, setIsCartOpen, updateQuantity, t } = useApp();
+  const { 
+    lang, 
+    cart, 
+    isCartOpen, 
+    setIsCartOpen, 
+    updateQuantity, 
+    updateItemSize, 
+    removeFromCart, 
+    t 
+  } = useApp();
   const router = useRouter();
 
   if (!isCartOpen) return null;
@@ -23,20 +34,43 @@ export const CartDrawer = () => {
   return (
     <div className="cart-drawer-overlay active" onClick={() => setIsCartOpen(false)}>
       <div className="cart-drawer" onClick={e => e.stopPropagation()}>
+        
         {/* Cart Drawer Header */}
         <div style={{ 
-          padding: '1.5rem', 
+          padding: '1.4rem 1.6rem', 
           borderBottom: '1px solid var(--border-color)', 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          background: '#090C12'
+          background: 'var(--bg-card)'
         }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>{t('cartTitle')}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.4rem' }}>🛍️</span>
+            <div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
+                {t('cartTitle')}
+              </h3>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                ({cart.reduce((total, item) => total + item.quantity, 0)} {lang === 'ar' ? 'قطع في السلة' : 'items'})
+              </span>
+            </div>
+          </div>
+          
           <button 
             type="button"
-            style={{ fontSize: '1.8rem', color: 'var(--gold-primary)', lineHeight: 1 }} 
+            style={{ 
+              fontSize: '1.5rem', 
+              color: 'var(--text-secondary)', 
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.2rem 0.5rem',
+              borderRadius: 'var(--radius-sm)',
+              lineHeight: 1,
+              transition: 'all 0.2s ease'
+            }} 
             onClick={() => setIsCartOpen(false)}
+            aria-label="Close Cart"
           >
             &times;
           </button>
@@ -44,19 +78,21 @@ export const CartDrawer = () => {
 
         {/* Cart Items Body */}
         <div style={{ 
-          padding: '1.25rem', 
+          padding: '1.4rem 1.6rem', 
           flexGrow: 1, 
           overflowY: 'auto', 
           display: 'flex', 
           flexDirection: 'column', 
-          gap: '1rem',
-          background: '#05070B'
+          gap: '1.2rem',
+          background: 'var(--bg-deep)'
         }}>
           {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛒</div>
-              <p style={{ fontWeight: 700, marginBottom: '1.5rem', color: '#FFFFFF' }}>{t('cartEmpty')}</p>
-              <button type="button" className="btn-primary" onClick={() => setIsCartOpen(false)}>
+            <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: '3.5rem', marginBottom: '1.2rem' }}>🛒</div>
+              <p style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
+                {t('cartEmpty')}
+              </p>
+              <button type="button" className="btn-primary" onClick={() => setIsCartOpen(false)} style={{ padding: '0.75rem 2rem' }}>
                 {t('cartEmptyBtn')}
               </button>
             </div>
@@ -66,53 +102,215 @@ export const CartDrawer = () => {
               const itemTotal = itemPrice * item.quantity;
               const title = lang === 'ar' ? (item.nameAr || item.name_ar || item.nameEn) : (item.nameEn || item.name_en || item.nameAr);
               const itemImg = item.image || item.main_image || '/assets/kemet-hero-banner.jpg';
+              const availableSizes = Array.isArray(item.sizes) && item.sizes.length > 0 ? item.sizes : STANDARD_SIZES;
 
               return (
                 <div 
                   key={`${item.id}-${item.size}`} 
                   style={{ 
-                    display: 'flex', 
-                    gap: '1rem', 
-                    background: '#111622', 
+                    background: 'var(--bg-card)', 
                     border: '1px solid var(--border-gold)', 
-                    borderRadius: 'var(--radius-md)', 
-                    padding: '0.9rem' 
+                    borderRadius: 'var(--radius-lg)', 
+                    padding: '1.2rem',
+                    boxShadow: 'var(--shadow-sm)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <img 
-                    src={itemImg} 
-                    alt={title} 
-                    style={{ width: '75px', height: '75px', objectFit: 'cover', background: '#030407', borderRadius: 'var(--radius-sm)' }} 
-                  />
-                  <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.35 }}>
-                      {title}
+                  {/* Top Row: Product Image + Title & Delete Button */}
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <img 
+                      src={itemImg} 
+                      alt={title} 
+                      style={{ 
+                        width: '82px', 
+                        height: '82px', 
+                        objectFit: 'cover', 
+                        background: '#000', 
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-color)',
+                        flexShrink: 0
+                      }} 
+                    />
+
+                    <div style={{ flexGrow: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <h4 style={{ 
+                          fontSize: '0.98rem', 
+                          fontWeight: 800, 
+                          color: 'var(--text-primary)', 
+                          lineHeight: 1.4,
+                          margin: 0
+                        }}>
+                          {title}
+                        </h4>
+                        
+                        {/* Delete / Remove Button */}
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id, item.size)}
+                          title={lang === 'ar' ? 'حذف المنتج من السلة' : 'Remove from cart'}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: '#EF4444',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            padding: '0.3rem 0.5rem',
+                            fontSize: '0.78rem',
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            flexShrink: 0,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <span>✕</span>
+                          <span>{lang === 'ar' ? 'حذف' : 'Remove'}</span>
+                        </button>
+                      </div>
+
+                      <div style={{ 
+                        fontSize: '1.05rem', 
+                        fontWeight: 900, 
+                        color: 'var(--gold-primary)', 
+                        marginTop: '0.4rem',
+                        fontFamily: 'var(--font-en)'
+                      }}>
+                        {itemPrice} {currency}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: '#FFDF73', fontWeight: 800 }}>
-                      {lang === 'ar' ? 'المقاس:' : 'Size:'} <span style={{ background: 'rgba(212,175,55,0.25)', color: '#FFDF73', border: '1px solid rgba(255,223,115,0.4)', padding: '0.15rem 0.55rem', borderRadius: '4px', marginInlineStart: '4px' }}>{item.size}</span>
+                  </div>
+
+                  {/* Middle Row: Size Selector (تعديل المقاس) */}
+                  <div style={{ 
+                    padding: '0.65rem 0.85rem', 
+                    background: 'rgba(212, 175, 55, 0.06)', 
+                    border: '1px dashed var(--border-gold)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
+                  }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      🏷️ {lang === 'ar' ? 'المقاس المختار:' : 'Selected Size:'}
+                    </span>
+
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      {availableSizes.map((sz) => {
+                        const isCurrent = item.size === sz;
+                        return (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => updateItemSize(item.id, item.size, sz)}
+                            style={{
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: '4px',
+                              border: isCurrent ? '1.5px solid var(--gold-primary)' : '1px solid var(--border-color)',
+                              background: isCurrent ? 'var(--gold-gradient)' : 'var(--bg-card)',
+                              color: isCurrent ? '#000000' : 'var(--text-secondary)',
+                              fontWeight: 900,
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              fontFamily: 'var(--font-en)',
+                              transition: 'all 0.15s ease',
+                              boxShadow: isCurrent ? '0 2px 8px var(--gold-glow)' : 'none'
+                            }}
+                          >
+                            {sz}
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#FFFFFF' }}>
-                      <span style={{ color: '#CBD5E1' }}>{itemPrice} {currency} x {item.quantity} = </span>
-                      <span style={{ color: '#FFDF73', fontWeight: 900 }}>{itemTotal} {currency}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.5rem' }}>
+                  </div>
+
+                  {/* Bottom Row: Quantity Modifier & Line Item Total (تعديل العدد + الإجمالي) */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    paddingTop: '0.4rem',
+                    borderTop: '1px solid var(--border-color)'
+                  }}>
+                    {/* Quantity Controls */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', marginInlineEnd: '0.2rem' }}>
+                        {lang === 'ar' ? 'الكمية:' : 'Qty:'}
+                      </span>
+                      
                       <button 
                         type="button"
                         onClick={() => updateQuantity(item.id, item.size, -1)}
-                        style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.3)', width: '28px', height: '28px', borderRadius: '4px', fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ 
+                          width: '32px', 
+                          height: '32px', 
+                          borderRadius: '6px', 
+                          border: '1px solid var(--border-gold)',
+                          background: 'var(--bg-deep)', 
+                          color: 'var(--text-primary)', 
+                          fontWeight: 900, 
+                          fontSize: '1.1rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
+                        }}
                       >
                         -
                       </button>
-                      <span style={{ fontWeight: 900, color: '#FFFFFF', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+                      
+                      <span style={{ 
+                        fontWeight: 900, 
+                        color: 'var(--text-primary)', 
+                        minWidth: '24px', 
+                        textAlign: 'center',
+                        fontSize: '1rem',
+                        fontFamily: 'var(--font-en)'
+                      }}>
+                        {item.quantity}
+                      </span>
+                      
                       <button 
                         type="button"
                         onClick={() => updateQuantity(item.id, item.size, 1)}
-                        style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.3)', width: '28px', height: '28px', borderRadius: '4px', fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ 
+                          width: '32px', 
+                          height: '32px', 
+                          borderRadius: '6px', 
+                          border: '1px solid var(--border-gold)',
+                          background: 'var(--bg-deep)', 
+                          color: 'var(--text-primary)', 
+                          fontWeight: 900, 
+                          fontSize: '1.1rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
+                        }}
                       >
                         +
                       </button>
                     </div>
+
+                    {/* Total For this Item */}
+                    <div style={{ textAlign: 'end' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        {lang === 'ar' ? 'إجمالي القطع' : 'Total'}
+                      </div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-en)' }}>
+                        {itemTotal} {currency}
+                      </div>
+                    </div>
                   </div>
+
                 </div>
               );
             })
@@ -122,29 +320,53 @@ export const CartDrawer = () => {
         {/* Cart Drawer Footer */}
         {cart.length > 0 && (
           <div style={{ 
-            padding: '1.25rem', 
+            padding: '1.4rem 1.6rem', 
             borderTop: '1px solid var(--border-color)', 
-            background: '#090C12', 
+            background: 'var(--bg-card)', 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: '0.75rem' 
+            gap: '0.85rem',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.92rem' }}>
-              <span style={{ color: '#CBD5E1', fontWeight: 700 }}>{t('cartSubtotal')}</span>
-              <span style={{ fontWeight: 800, color: '#FFFFFF' }}>{subtotal} {currency}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.95rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{t('cartSubtotal')}</span>
+              <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-en)' }}>{subtotal} {currency}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.92rem' }}>
-              <span style={{ color: '#CBD5E1', fontWeight: 700 }}>{t('cartShipping')}</span>
-              <span style={{ fontWeight: 800, color: '#FFDF73' }}>+ {estimatedShipping} {currency}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.95rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{t('cartShipping')}</span>
+              <span style={{ fontWeight: 800, color: 'var(--gold-primary)', fontFamily: 'var(--font-en)' }}>+ {estimatedShipping} {currency}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#FFFFFF', paddingTop: '0.75rem', borderTop: '1px solid rgba(212,175,55,0.35)' }}>
-              <span style={{ color: '#FFFFFF' }}>{t('cartTotal')}</span>
-              <span style={{ color: '#FFDF73', textShadow: '0 0 10px rgba(255,223,115,0.4)' }}>{totalAmount} {currency}</span>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              fontSize: '1.25rem', 
+              fontWeight: 900, 
+              color: 'var(--text-primary)', 
+              paddingTop: '0.85rem', 
+              borderTop: '1px solid var(--border-gold)' 
+            }}>
+              <span>{t('cartTotal')}</span>
+              <span style={{ color: 'var(--gold-primary)', fontFamily: 'var(--font-en)', textShadow: '0 0 10px var(--gold-glow)' }}>
+                {totalAmount} {currency}
+              </span>
             </div>
 
-            <button type="button" className="btn-primary" onClick={handleCheckoutClick} style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', marginTop: '0.25rem' }}>
+            <button 
+              type="button" 
+              className="btn-primary" 
+              onClick={handleCheckoutClick} 
+              style={{ 
+                width: '100%', 
+                padding: '1rem', 
+                fontSize: '1.05rem', 
+                fontWeight: 900,
+                marginTop: '0.4rem',
+                borderRadius: 'var(--radius-md)'
+              }}
+            >
               {t('cartCheckoutBtn')}
             </button>
           </div>

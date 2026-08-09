@@ -1666,32 +1666,32 @@ select option {
   position: fixed;
   top: 0;
   bottom: 0;
-  right: -420px;
+  right: -450px;
   width: 100%;
-  max-width: 420px;
-  background: #0B0F19 !important;
-  color: #FFFFFF !important;
+  max-width: 440px;
+  background: var(--bg-deep) !important;
+  color: var(--text-primary) !important;
   border-left: 1px solid var(--border-gold-bright);
   z-index: 10001;
   display: flex;
   flex-direction: column;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.9);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
 }
 
 [dir="rtl"] .cart-drawer {
   right: auto;
-  left: -420px;
+  left: -450px;
   border-left: none;
   border-right: 1px solid var(--border-gold-bright);
 }
 
 .cart-drawer-overlay.active .cart-drawer {
-  transform: translateX(-420px);
+  transform: translateX(-450px);
 }
 
 [dir="rtl"] .cart-drawer-overlay.active .cart-drawer {
-  transform: translateX(420px);
+  transform: translateX(450px);
 }
 
 /* Responsive Grid Breakpoints & Mobile Specific Layout */

@@ -161,6 +161,31 @@ export const AppProvider = ({ children }) => {
     setCart(prev => prev.filter(item => !(item.id === id && item.size === size)));
   };
 
+  const updateItemSize = (id, oldSize, newSize) => {
+    if (!newSize || oldSize === newSize) return;
+    setCart(prev => {
+      const sourceItem = prev.find(item => item.id === id && item.size === oldSize);
+      if (!sourceItem) return prev;
+      const targetIndex = prev.findIndex(item => item.id === id && item.size === newSize);
+
+      if (targetIndex > -1) {
+        return prev.map((item, idx) => {
+          if (idx === targetIndex) {
+            return { ...item, quantity: item.quantity + sourceItem.quantity };
+          }
+          return item;
+        }).filter(item => !(item.id === id && item.size === oldSize));
+      } else {
+        return prev.map(item => {
+          if (item.id === id && item.size === oldSize) {
+            return { ...item, size: newSize };
+          }
+          return item;
+        });
+      }
+    });
+  };
+
   const updateQuantity = (id, size, delta) => {
     setCart(prev => {
       return prev.map(item => {
@@ -234,6 +259,7 @@ export const AppProvider = ({ children }) => {
         setIsCartOpen,
         addToCart,
         removeFromCart,
+        updateItemSize,
         updateQuantity,
         clearCart,
         addOrder,
