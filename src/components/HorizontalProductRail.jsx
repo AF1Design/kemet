@@ -164,11 +164,7 @@ export function HorizontalProductRail({
           {displayProducts.map((product) => (
             <div
               key={product.id}
-              style={{
-                flex: '0 0 auto',
-                width: 'min(300px, 82vw)',
-                scrollSnapAlign: 'start'
-              }}
+              className="rail-item-wrapper"
             >
               <ProductCard product={product} />
             </div>
@@ -176,12 +172,7 @@ export function HorizontalProductRail({
 
           {/* Final "View All in Category" Card */}
           <div
-            style={{
-              flex: '0 0 auto',
-              width: 'min(240px, 70vw)',
-              scrollSnapAlign: 'start',
-              display: 'flex'
-            }}
+            className="rail-view-all-wrapper"
           >
             <Link
               href={categoryHref}

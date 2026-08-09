@@ -398,6 +398,57 @@ select option {
     will-change: opacity, transform;
     transform: translateZ(0);
   }
+
+  /* Compact Mobile Product Rails (Nike / Global Brands Standards) */
+  .rail-item-wrapper {
+    width: 215px !important;
+  }
+  
+  .rail-view-all-wrapper {
+    width: 180px !important;
+  }
+
+  .rail-item-wrapper .product-image-box {
+    height: 185px !important;
+  }
+
+  .rail-item-wrapper .product-info {
+    padding: 0.75rem !important;
+  }
+
+  .rail-item-wrapper .product-title {
+    font-size: 0.88rem !important;
+    min-height: 2.2rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .rail-item-wrapper .size-pill {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0 !important;
+  }
+
+  .rail-item-wrapper .price-current {
+    font-size: 1.05rem !important;
+  }
+
+  .rail-item-wrapper .btn-add-cart {
+    padding: 0.5rem 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* Horizontal Rails Base Desktop Dimensions */
+.rail-item-wrapper {
+  flex: 0 0 auto;
+  width: 270px;
+  scroll-snap-align: start;
+}
+
+.rail-view-all-wrapper {
+  flex: 0 0 auto;
+  width: 230px;
+  scroll-snap-align: start;
+  display: flex;
 }
 
 /* ==========================================================================
@@ -1494,15 +1545,25 @@ select option {
 .btn-secondary-link {
   display: block;
   text-align: center;
-  margin-top: 0.4rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--gold-primary) !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   transition: var(--transition);
+  opacity: 0.95;
 }
 
 .btn-secondary-link:hover {
-  color: var(--gold-primary);
+  opacity: 1;
+  color: #FFF !important;
+  text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.featured-gold-card .btn-secondary-link {
+  color: #FFDF73 !important;
+  text-shadow: 0 0 8px rgba(255, 223, 115, 0.4);
 }
 
 /* Image Zoom Component Styles */
