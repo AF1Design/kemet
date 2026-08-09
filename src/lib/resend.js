@@ -11,7 +11,7 @@ export const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-// Branded Senders for KEMET
+// Unified Branded Sender for KEMET
 export const SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'KEMET <support@kemetmisr.com>';
-export const SENDER_NOREPLY = 'KEMET <noreply@kemetmisr.com>';
-export const SENDER_SUPPORT = 'KEMET <support@kemetmisr.com>';
+export const SENDER_SUPPORT = SENDER_EMAIL;
+export const SENDER_NOREPLY = SENDER_EMAIL;

@@ -303,7 +303,7 @@ export async function updateCategoryAction(catId, nameAr, nameEn = '') {
 function toDbStatus(status) {
   if (!status || typeof status !== 'string') return 'pending';
   const clean = status.trim().toLowerCase();
-  if (clean.includes('مندوب') || clean === 'out_for_delivery') return 'out_for_delivery';
+  if (clean.includes('مندوب') || clean === 'out_for_delivery') return 'shipped';
   if (clean.includes('جديد') || clean === 'pending') return 'pending';
   if (clean.includes('تجهيز') || clean === 'processing') return 'processing';
   if (clean.includes('شحن') || clean === 'shipped') return 'shipped';
@@ -316,13 +316,11 @@ function toDisplayStatus(status, deliveryNotes = '') {
   const cleanStatus = (status || '').toLowerCase();
   if (cleanStatus === 'cancelled' || cleanStatus.includes('ملغي')) return 'ملغي ❌';
   if (cleanStatus === 'delivered' || cleanStatus.includes('تسليم')) return 'تم التسليم ✅';
-  if (cleanStatus === 'out_for_delivery' || cleanStatus.includes('مندوب')) return 'مع المندوب 🛵';
-  if (cleanStatus === 'shipped' || cleanStatus.includes('شحن')) {
-    if (String(deliveryNotes || '').includes('[OUT_FOR_DELIVERY]')) {
-      return 'مع المندوب 🛵';
-    }
-    return 'تم الشحن 🚚';
+  if (String(deliveryNotes || '').includes('[OUT_FOR_DELIVERY]')) {
+    return 'مع المندوب 🛵';
   }
+  if (cleanStatus === 'out_for_delivery' || cleanStatus.includes('مندوب')) return 'مع المندوب 🛵';
+  if (cleanStatus === 'shipped' || cleanStatus.includes('شحن')) return 'تم الشحن 🚚';
   if (cleanStatus === 'processing' || cleanStatus.includes('تجهيز')) return 'جاري التجهيز ⚙️';
   return 'جديد 📦';
 }
@@ -548,8 +546,8 @@ export async function createOrderAction(orderData) {
 export async function updateOrderStatusAction(orderId, newStatus, trackingNumber = null) {
   try {
     const supabaseAdmin = getAdminSupabase();
+    const isOutForDelivery = typeof newStatus === 'string' && (newStatus.includes('مندوب') || newStatus.toLowerCase() === 'out_for_delivery');
     const dbStatus = toDbStatus(newStatus);
-    const isOutForDelivery = dbStatus === 'out_for_delivery';
 
     const { data: curr } = await supabaseAdmin.from('orders').select('delivery_notes').eq('id', orderId).single();
     let existingNotes = curr?.delivery_notes || '';
@@ -564,7 +562,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
 
     const updatePayload = {
       status: dbStatus,
-      is_shipped: dbStatus === 'shipped' || dbStatus === 'out_for_delivery' || dbStatus === 'delivered',
+      is_shipped: dbStatus === 'shipped' || isOutForDelivery || dbStatus === 'delivered',
       delivery_notes: existingNotes
     };
 
@@ -1020,25 +1018,90 @@ export async function sendDirectCustomerEmailAction({ orderId, recipientEmail, s
     }
 
     const resend = getResendClient();
-    const cleanSubject = (subject && String(subject).trim()) || `تحديث بشأن طلبك رقم #${orderId} - KEMET`;
+    const cleanSubject = (subject && String(subject).trim()) || `تحديث ورسالة بشأن طلبك رقم #${orderId} - KEMET`;
     const cleanMessage = String(message).trim();
 
+    // Query order details to include items summary in the unified email
+    const supabaseAdmin = getAdminSupabase();
+    const { data: orderData } = await supabaseAdmin
+      .from('orders')
+      .select('*, order_items(*)')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    const customerName = orderData?.customer_name || 'عميل KEMET';
+    const items = orderData?.order_items || [];
+
+    const itemsRows = items.length > 0 ? items.map(item => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; font-weight: bold; color: #0F172A;">${item.product_name_ar || 'منتج KEMET'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569;">${item.size || 'M'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569;">${item.quantity || 1}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: left; font-weight: bold; color: #0F172A;">${(item.unit_price || 0) * (item.quantity || 1)} ج.م</td>
+      </tr>
+    `).join('') : '';
+
+    const orderDetailsSection = itemsRows ? `
+      <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">📋 تفاصيل الطلب رقم #${orderId}:</h3>
+      
+      <table border="0" cellPadding="0" cellSpacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 16px;">
+        <thead>
+          <tr style="background: #F8FAFC;">
+            <th style="padding: 8px 10px; text-align: right; font-size: 13px; color: #64748B;">المنتج</th>
+            <th style="padding: 8px 10px; text-align: center; font-size: 13px; color: #64748B;">المقاس</th>
+            <th style="padding: 8px 10px; text-align: center; font-size: 13px; color: #64748B;">الكمية</th>
+            <th style="padding: 8px 10px; text-align: left; font-size: 13px; color: #64748B;">السعر</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows}
+        </tbody>
+      </table>
+
+      <div style="background: #F8FAFC; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; color: #334155;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>عنوان التسليم:</span>
+          <strong>${orderData?.governorate || ''} (${orderData?.address || ''})</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #0F172A; margin-top: 8px; border-top: 1px solid #CBD5E1; padding-top: 8px;">
+          <span>الإجمالي الكلي:</span>
+          <strong>${orderData?.total_amount || 0} ج.م</strong>
+        </div>
+      </div>
+    ` : '';
+
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0F19; color: #FFFFFF; padding: 25px; border-radius: 12px; border: 1px solid #D4AF37; direction: rtl; text-align: right;">
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(212,175,55,0.3); padding-bottom: 15px;">
-          <h1 style="color: #D4AF37; margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 2px;">KEMET</h1>
-          <p style="color: #A3A3A3; font-size: 13px; margin-top: 5px;">Build Your Legacy</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 22px; border: 1px solid #E2E8F0; border-radius: 10px; background-color: #FFFFFF; direction: rtl; text-align: right;">
+        <div style="text-align: left; margin-bottom: 20px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
+          <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px;" />
         </div>
         
-        <div style="background: rgba(255,255,255,0.04); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-right: 4px solid #D4AF37;">
-          <h2 style="color: #D4AF37; font-size: 18px; margin-top: 0;">رسالة خاصة بشأن الطلب #${orderId} 📩</h2>
-          <div style="color: #E5E5E5; font-size: 15px; line-height: 1.8; white-space: pre-wrap; margin-top: 10px;">${cleanMessage}</div>
+        <h2 style="color: #0F172A; font-size: 20px; margin-bottom: 16px;">رسالة خاصة بشأن طلبك رقم #${orderId} 📩</h2>
+        
+        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 12px;">
+          عزيزنا العميل <strong>${customerName}</strong>،
+        </p>
+        
+        <div style="background: #F8FAFC; border: 1px solid #D4AF37; border-right: 5px solid #D4AF37; padding: 18px 20px; border-radius: 8px; font-size: 15px; line-height: 1.8; color: #0F172A; margin: 18px 0; white-space: pre-wrap; font-weight: 500;">
+          ${cleanMessage}
         </div>
 
-        <div style="font-size: 13px; color: #A3A3A3; text-align: center; margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-          <p style="margin: 0;">رقم الطلب المرجعي: <strong style="color: #FFF;">#${orderId}</strong></p>
-          <p style="margin: 5px 0 0 0;">شكراً لتسوقك من KEMET - لخدمة العملاء يسعدنا التواصل معك دائماً.</p>
+        ${orderDetailsSection}
+
+        <div style="text-align: center; margin-top: 24px; margin-bottom: 16px;">
+          <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; text-decoration: none; padding: 11px 22px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
+            🛒 زيارة موقع KEMET
+          </a>
+          <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، بخصوص رسالتكم عن طلبي رقم: #${orderId}`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; text-decoration: none; padding: 11px 22px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
+            💬 تواصل معنا واتساب
+          </a>
         </div>
+
+        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+        
+        <p style="color: #94A3B8; font-size: 12px; text-align: center; margin: 0;">
+          KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
+        </p>
       </div>
     `;
 
