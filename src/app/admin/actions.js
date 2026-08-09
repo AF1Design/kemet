@@ -2,6 +2,7 @@
 
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
 import { processAndUploadProductImage } from '../../lib/image-uploader.js';
+import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
