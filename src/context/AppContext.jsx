@@ -145,29 +145,14 @@ export const AppProvider = ({ children }) => {
   };
 
   const addToCart = (product, selectedSize = 'L') => {
-    const itemVariants = product.product_variants || product.variants || [];
-    const itemSizes = product.sizes || [];
-
     setCart(prev => {
       const existingIndex = prev.findIndex(item => item.id === product.id && item.size === selectedSize);
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += 1;
-        if (!updated[existingIndex].product_variants && itemVariants.length > 0) {
-          updated[existingIndex].product_variants = itemVariants;
-        }
-        if (!updated[existingIndex].sizes && itemSizes.length > 0) {
-          updated[existingIndex].sizes = itemSizes;
-        }
         return updated;
       }
-      return [...prev, { 
-        ...product, 
-        size: selectedSize, 
-        quantity: 1,
-        product_variants: itemVariants,
-        sizes: itemSizes
-      }];
+      return [...prev, { ...product, size: selectedSize, quantity: 1 }];
     });
     showToast(`تم إضافة ${product.nameAr || product.nameEn} مقاس (${selectedSize}) للسلة 🛍️`);
   };

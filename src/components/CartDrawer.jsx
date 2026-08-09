@@ -4,40 +4,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 
-// Helper to resolve exact database variants and sizes for a cart item
-function getAvailableSizesForItem(item) {
-  // 1. Check if product_variants or variants array exists
-  const variants = item.product_variants || item.variants || [];
-  if (Array.isArray(variants) && variants.length > 0) {
-    return variants.map(v => ({
-      size: typeof v === 'string' ? v : v.size,
-      stock: typeof v === 'object' && v !== null ? Number(v.stock_quantity ?? v.stock ?? 50) : 50
-    }));
-  }
-
-  // 2. Check if item.sizes exists
-  if (Array.isArray(item.sizes) && item.sizes.length > 0) {
-    return item.sizes.map(s => {
-      if (typeof s === 'object' && s !== null) {
-        return { size: s.size, stock: Number(s.stock ?? s.stock_quantity ?? 50) };
-      }
-      return { size: s, stock: 50 };
-    });
-  }
-
-  // 3. Fallback to the item's own selected size if no other variants are defined
-  if (item.size) {
-    return [{ size: item.size, stock: 50 }];
-  }
-
-  return [
-    { size: 'M', stock: 50 },
-    { size: 'L', stock: 50 },
-    { size: 'XL', stock: 50 },
-    { size: 'XXL', stock: 50 }
-  ];
-}
-
 export const CartDrawer = () => {
   const { 
     lang, 
@@ -47,7 +13,6 @@ export const CartDrawer = () => {
     updateQuantity, 
     updateItemSize, 
     removeFromCart, 
-    showToast,
     t 
   } = useApp();
   const router = useRouter();
@@ -135,7 +100,24 @@ export const CartDrawer = () => {
               const itemTotal = itemPrice * item.quantity;
               const title = lang === 'ar' ? (item.nameAr || item.name_ar || item.nameEn) : (item.nameEn || item.name_en || item.nameAr);
               const itemImg = item.image || item.main_image || '/assets/kemet-hero-banner.jpg';
-              const availableSizes = Array.isArray(item.sizes) && item.sizes.length > 0 ? item.sizes : STANDARD_SIZES;
+              
+              // Extract exact product variants directly from Database
+              const variants = item.product_variants || item.variants || [];
+              let sizesList = [];
+
+              if (variants.length > 0) {
+                sizesList = variants.map(v => ({
+                  size: v.size,
+                  stock: Number(v.stock_quantity ?? 50)
+                }));
+              } else if (Array.isArray(item.sizes) && item.sizes.length > 0) {
+                sizesList = item.sizes.map(s => ({
+                  size: typeof s === 'object' ? s.size : s,
+                  stock: typeof s === 'object' ? Number(s.stock_quantity ?? s.stock ?? 50) : 50
+                }));
+              } else if (item.size) {
+                sizesList = [{ size: item.size, stock: 50 }];
+              }
 
               return (
                 <div 
@@ -218,69 +200,68 @@ export const CartDrawer = () => {
                     </div>
                   </div>
 
-                  {/* Middle Row: Size Selector (تعديل المقاس) */}
-                  <div style={{ 
-                    padding: '0.65rem 0.85rem', 
-                    background: 'rgba(212, 175, 55, 0.06)', 
-                    border: '1px dashed var(--border-gold)',
-                    borderRadius: 'var(--radius-sm)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '0.5rem'
-                  }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                      🏷️ {lang === 'ar' ? 'المقاس المختار:' : 'Selected Size:'}
-                    </span>
+                  {/* Middle Row: Size Selector (تعديل المقاس وفق قاعدة البيانات والمخزون) */}
+                  {sizesList.length > 0 && (
+                    <div style={{ 
+                      padding: '0.65rem 0.85rem', 
+                      background: 'rgba(212, 175, 55, 0.06)', 
+                      border: '1px dashed var(--border-gold)',
+                      borderRadius: 'var(--radius-sm)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem'
+                    }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        🏷️ {lang === 'ar' ? 'المقاس المتاح:' : 'Available Size:'}
+                      </span>
 
-                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {availableSizes.map((szObj) => {
-                        const szName = szObj.size;
-                        const isOutOfStock = szObj.stock <= 0;
-                        const isCurrent = item.size === szName;
+                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                        {sizesList.map((szObj) => {
+                          const isCurrent = item.size === szObj.size;
+                          const isOut = szObj.stock <= 0;
 
-                        return (
-                          <button
-                            key={szName}
-                            type="button"
-                            disabled={isOutOfStock}
-                            onClick={() => {
-                              if (isOutOfStock) {
-                                showToast(lang === 'ar' ? `⚠️ مقاس (${szName}) منتهي الكمية حالياً` : `⚠️ Size (${szName}) is out of stock`);
-                                return;
-                              }
-                              updateItemSize(item.id, item.size, szName);
-                            }}
-                            style={{
-                              padding: '0.25rem 0.65rem',
-                              borderRadius: '4px',
-                              border: isCurrent 
-                                ? '1.5px solid var(--gold-primary)' 
-                                : (isOutOfStock ? '1px dashed rgba(244,63,94,0.4)' : '1px solid var(--border-color)'),
-                              background: isCurrent 
-                                ? 'var(--gold-gradient)' 
-                                : (isOutOfStock ? 'rgba(244,63,94,0.08)' : 'var(--bg-card)'),
-                              color: isCurrent 
-                                ? '#000000' 
-                                : (isOutOfStock ? '#F43F5E' : 'var(--text-secondary)'),
-                              fontWeight: 900,
-                              fontSize: '0.78rem',
-                              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                              opacity: isOutOfStock ? 0.45 : 1,
-                              textDecoration: isOutOfStock ? 'line-through' : 'none',
-                              fontFamily: 'var(--font-en)',
-                              transition: 'all 0.15s ease',
-                              boxShadow: isCurrent ? '0 2px 8px var(--gold-glow)' : 'none'
-                            }}
-                            title={isOutOfStock ? (lang === 'ar' ? 'المقاس منتهي الكمية' : 'Out of stock') : undefined}
-                          >
-                            {szName}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={szObj.size}
+                              type="button"
+                              disabled={isOut}
+                              onClick={() => {
+                                if (!isOut) {
+                                  updateItemSize(item.id, item.size, szObj.size);
+                                }
+                              }}
+                              style={{
+                                padding: '0.25rem 0.65rem',
+                                borderRadius: '4px',
+                                border: isCurrent 
+                                  ? '1.5px solid var(--gold-primary)' 
+                                  : (isOut ? '1px solid rgba(244,63,94,0.3)' : '1px solid var(--border-color)'),
+                                background: isCurrent 
+                                  ? 'var(--gold-gradient)' 
+                                  : (isOut ? 'rgba(244,63,94,0.08)' : 'var(--bg-card)'),
+                                color: isCurrent 
+                                  ? '#000000' 
+                                  : (isOut ? '#F43F5E' : 'var(--text-secondary)'),
+                                fontWeight: 900,
+                                fontSize: '0.78rem',
+                                cursor: isOut ? 'not-allowed' : 'pointer',
+                                opacity: isOut ? 0.45 : 1,
+                                textDecoration: isOut ? 'line-through' : 'none',
+                                fontFamily: 'var(--font-en)',
+                                transition: 'all 0.15s ease',
+                                boxShadow: isCurrent ? '0 2px 8px var(--gold-glow)' : 'none'
+                              }}
+                              title={isOut ? (lang === 'ar' ? 'المقاس منتهي الكمية' : 'Out of stock') : (lang === 'ar' ? `متوفر: ${szObj.stock}` : `In Stock: ${szObj.stock}`)}
+                            >
+                              {szObj.size}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Bottom Row: Quantity Modifier & Line Item Total (تعديل العدد + الإجمالي) */}
                   <div style={{ 
