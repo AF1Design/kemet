@@ -1669,7 +1669,8 @@ select option {
   right: -420px;
   width: 100%;
   max-width: 420px;
-  background: var(--bg-deep);
+  background: #0B0F19 !important;
+  color: #FFFFFF !important;
   border-left: 1px solid var(--border-gold-bright);
   z-index: 10001;
   display: flex;

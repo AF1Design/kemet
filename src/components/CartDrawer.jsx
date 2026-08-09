@@ -85,28 +85,29 @@ export const CartDrawer = () => {
                     style={{ width: '75px', height: '75px', objectFit: 'cover', background: '#030407', borderRadius: 'var(--radius-sm)' }} 
                   />
                   <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.3 }}>
+                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.35 }}>
                       {title}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--gold-primary)', fontWeight: 800 }}>
-                      {lang === 'ar' ? 'المقاس:' : 'Size:'} <span style={{ background: 'rgba(212,175,55,0.2)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>{item.size}</span>
+                    <div style={{ fontSize: '0.8rem', color: '#FFDF73', fontWeight: 800 }}>
+                      {lang === 'ar' ? 'المقاس:' : 'Size:'} <span style={{ background: 'rgba(212,175,55,0.25)', color: '#FFDF73', border: '1px solid rgba(255,223,115,0.4)', padding: '0.15rem 0.55rem', borderRadius: '4px', marginInlineStart: '4px' }}>{item.size}</span>
                     </div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#FFFFFF' }}>
-                      {itemPrice} {currency} x {item.quantity} = <span style={{ color: 'var(--gold-primary)' }}>{itemTotal} {currency}</span>
+                      <span style={{ color: '#CBD5E1' }}>{itemPrice} {currency} x {item.quantity} = </span>
+                      <span style={{ color: '#FFDF73', fontWeight: 900 }}>{itemTotal} {currency}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.5rem' }}>
                       <button 
                         type="button"
                         onClick={() => updateQuantity(item.id, item.size, -1)}
-                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 800 }}
+                        style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.3)', width: '28px', height: '28px', borderRadius: '4px', fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         -
                       </button>
-                      <span style={{ fontWeight: 800, color: '#fff' }}>{item.quantity}</span>
+                      <span style={{ fontWeight: 900, color: '#FFFFFF', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
                       <button 
                         type="button"
                         onClick={() => updateQuantity(item.id, item.size, 1)}
-                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 800 }}
+                        style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.3)', width: '28px', height: '28px', borderRadius: '4px', fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         +
                       </button>
@@ -128,19 +129,19 @@ export const CartDrawer = () => {
             flexDirection: 'column', 
             gap: '0.75rem' 
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <span>{t('cartSubtotal')}</span>
-              <span style={{ fontWeight: 800, color: '#FFF' }}>{subtotal} {currency}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.92rem' }}>
+              <span style={{ color: '#CBD5E1', fontWeight: 700 }}>{t('cartSubtotal')}</span>
+              <span style={{ fontWeight: 800, color: '#FFFFFF' }}>{subtotal} {currency}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <span>{t('cartShipping')}</span>
-              <span style={{ fontWeight: 800, color: 'var(--gold-primary)' }}>+ {estimatedShipping} {currency}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.92rem' }}>
+              <span style={{ color: '#CBD5E1', fontWeight: 700 }}>{t('cartShipping')}</span>
+              <span style={{ fontWeight: 800, color: '#FFDF73' }}>+ {estimatedShipping} {currency}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#FFFFFF', paddingTop: '0.5rem', borderTop: '1px solid var(--border-gold)' }}>
-              <span>{t('cartTotal')}</span>
-              <span style={{ color: 'var(--gold-primary)' }}>{totalAmount} {currency}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem', fontWeight: 900, color: '#FFFFFF', paddingTop: '0.75rem', borderTop: '1px solid rgba(212,175,55,0.35)' }}>
+              <span style={{ color: '#FFFFFF' }}>{t('cartTotal')}</span>
+              <span style={{ color: '#FFDF73', textShadow: '0 0 10px rgba(255,223,115,0.4)' }}>{totalAmount} {currency}</span>
             </div>
 
             <button type="button" className="btn-primary" onClick={handleCheckoutClick} style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', marginTop: '0.25rem' }}>
