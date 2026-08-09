@@ -4,7 +4,39 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 
-const STANDARD_SIZES = ['S', 'M', 'L', 'XL', '2XL'];
+// Helper to resolve exact database variants and sizes for a cart item
+function getAvailableSizesForItem(item) {
+  // 1. Check if product_variants or variants array exists
+  const variants = item.product_variants || item.variants || [];
+  if (Array.isArray(variants) && variants.length > 0) {
+    return variants.map(v => ({
+      size: typeof v === 'string' ? v : v.size,
+      stock: typeof v === 'object' && v !== null ? Number(v.stock_quantity ?? v.stock ?? 50) : 50
+    }));
+  }
+
+  // 2. Check if item.sizes exists
+  if (Array.isArray(item.sizes) && item.sizes.length > 0) {
+    return item.sizes.map(s => {
+      if (typeof s === 'object' && s !== null) {
+        return { size: s.size, stock: Number(s.stock ?? s.stock_quantity ?? 50) };
+      }
+      return { size: s, stock: 50 };
+    });
+  }
+
+  // 3. Fallback to the item's own selected size if no other variants are defined
+  if (item.size) {
+    return [{ size: item.size, stock: 50 }];
+  }
+
+  return [
+    { size: 'M', stock: 50 },
+    { size: 'L', stock: 50 },
+    { size: 'XL', stock: 50 },
+    { size: 'XXL', stock: 50 }
+  ];
+}
 
 export const CartDrawer = () => {
   const { 
@@ -15,6 +47,7 @@ export const CartDrawer = () => {
     updateQuantity, 
     updateItemSize, 
     removeFromCart, 
+    showToast,
     t 
   } = useApp();
   const router = useRouter();
@@ -202,28 +235,47 @@ export const CartDrawer = () => {
                     </span>
 
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {availableSizes.map((sz) => {
-                        const isCurrent = item.size === sz;
+                      {availableSizes.map((szObj) => {
+                        const szName = szObj.size;
+                        const isOutOfStock = szObj.stock <= 0;
+                        const isCurrent = item.size === szName;
+
                         return (
                           <button
-                            key={sz}
+                            key={szName}
                             type="button"
-                            onClick={() => updateItemSize(item.id, item.size, sz)}
+                            disabled={isOutOfStock}
+                            onClick={() => {
+                              if (isOutOfStock) {
+                                showToast(lang === 'ar' ? `⚠️ مقاس (${szName}) منتهي الكمية حالياً` : `⚠️ Size (${szName}) is out of stock`);
+                                return;
+                              }
+                              updateItemSize(item.id, item.size, szName);
+                            }}
                             style={{
                               padding: '0.25rem 0.65rem',
                               borderRadius: '4px',
-                              border: isCurrent ? '1.5px solid var(--gold-primary)' : '1px solid var(--border-color)',
-                              background: isCurrent ? 'var(--gold-gradient)' : 'var(--bg-card)',
-                              color: isCurrent ? '#000000' : 'var(--text-secondary)',
+                              border: isCurrent 
+                                ? '1.5px solid var(--gold-primary)' 
+                                : (isOutOfStock ? '1px dashed rgba(244,63,94,0.4)' : '1px solid var(--border-color)'),
+                              background: isCurrent 
+                                ? 'var(--gold-gradient)' 
+                                : (isOutOfStock ? 'rgba(244,63,94,0.08)' : 'var(--bg-card)'),
+                              color: isCurrent 
+                                ? '#000000' 
+                                : (isOutOfStock ? '#F43F5E' : 'var(--text-secondary)'),
                               fontWeight: 900,
                               fontSize: '0.78rem',
-                              cursor: 'pointer',
+                              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                              opacity: isOutOfStock ? 0.45 : 1,
+                              textDecoration: isOutOfStock ? 'line-through' : 'none',
                               fontFamily: 'var(--font-en)',
                               transition: 'all 0.15s ease',
                               boxShadow: isCurrent ? '0 2px 8px var(--gold-glow)' : 'none'
                             }}
+                            title={isOutOfStock ? (lang === 'ar' ? 'المقاس منتهي الكمية' : 'Out of stock') : undefined}
                           >
-                            {sz}
+                            {szName}
                           </button>
                         );
                       })}

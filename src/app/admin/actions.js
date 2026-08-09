@@ -3,6 +3,7 @@
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
 import { processAndUploadProductImage } from '../../lib/image-uploader.js';
 import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
+import { getDirectCustomerMessageEmailHtml } from '../../lib/email-templates.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
@@ -1023,24 +1024,13 @@ export async function sendDirectCustomerEmailAction({ orderId, recipientEmail, s
     const cleanSubject = (subject && String(subject).trim()) || `تحديث بشأن طلبك رقم #${orderId} - KEMET`;
     const cleanMessage = String(message).trim();
 
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0F19; color: #FFFFFF; padding: 25px; border-radius: 12px; border: 1px solid #D4AF37; direction: rtl; text-align: right;">
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(212,175,55,0.3); padding-bottom: 15px;">
-          <h1 style="color: #D4AF37; margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 2px;">KEMET</h1>
-          <p style="color: #A3A3A3; font-size: 13px; margin-top: 5px;">Build Your Legacy</p>
-        </div>
-        
-        <div style="background: rgba(255,255,255,0.04); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-right: 4px solid #D4AF37;">
-          <h2 style="color: #D4AF37; font-size: 18px; margin-top: 0;">رسالة خاصة بشأن الطلب #${orderId} 📩</h2>
-          <div style="color: #E5E5E5; font-size: 15px; line-height: 1.8; white-space: pre-wrap; margin-top: 10px;">${cleanMessage}</div>
-        </div>
-
-        <div style="font-size: 13px; color: #A3A3A3; text-align: center; margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-          <p style="margin: 0;">رقم الطلب المرجعي: <strong style="color: #FFF;">#${orderId}</strong></p>
-          <p style="margin: 5px 0 0 0;">شكراً لتسوقك من KEMET - لخدمة العملاء يسعدنا التواصل معك دائماً.</p>
-        </div>
-      </div>
-    `;
+    // Generate Official KEMET Pixel-Perfect Branded HTML Email matching Reference Design
+    const emailHtml = getDirectCustomerMessageEmailHtml({
+      orderId,
+      customerName: 'عزيزنا العميل',
+      subject: cleanSubject,
+      message: cleanMessage
+    });
 
     const { data, error } = await resend.emails.send({
       from: SENDER_EMAIL,
