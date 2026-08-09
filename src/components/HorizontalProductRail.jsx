@@ -33,86 +33,37 @@ export function HorizontalProductRail({
   };
 
   return (
-    <section className="section horizontal-rail-section" style={{ padding: '3.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
-      <div className="container">
+    <section className="section horizontal-rail-section">
+      <div className="container rail-container">
         
-        {/* Rail Header with Title, Subtitle, and Quick Links / Scroll Arrows */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          marginBottom: '2rem',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-              {badge && (
-                <span style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'rgba(212,175,55,0.15)',
-                  border: '1px solid var(--border-gold)',
-                  color: 'var(--gold-primary)'
-                }}>
-                  {badge}
-                </span>
-              )}
-            </div>
-            <h2 style={{ fontSize: '1.9rem', fontWeight: 900, margin: 0 }}>
+        {/* Rail Header with Title & Quick View All Link */}
+        <div className="rail-header-row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <h2 className="rail-title">
               <span className="brand-glow">{title}</span>
             </h2>
-            {subtitle && (
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.35rem', margin: 0 }}>
-                {subtitle}
-              </p>
+            {badge && (
+              <span className="rail-badge">
+                {badge}
+              </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <Link
               href={categoryHref}
-              style={{
-                fontSize: '0.9rem',
-                fontWeight: 800,
-                color: 'var(--gold-primary)',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.45rem 0.9rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'rgba(212,175,55,0.08)',
-                border: '1px solid rgba(212,175,55,0.25)',
-                transition: 'all 0.3s ease'
-              }}
+              className="btn-rail-view-all"
             >
               <span>{lang === 'ar' ? 'عرض الكل' : 'View All'}</span>
-              <span style={{ fontSize: '1.1rem' }}>{lang === 'ar' ? '←' : '→'}</span>
+              <span style={{ fontSize: '0.9rem' }}>{lang === 'ar' ? '←' : '→'}</span>
             </Link>
 
             {/* Desktop Navigation Arrows */}
-            <div className="rail-desktop-arrows" style={{ display: 'flex', gap: '0.4rem' }}>
+            <div className="rail-desktop-arrows">
               <button
                 type="button"
                 onClick={() => handleScroll('prev')}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-gold)',
-                  color: 'var(--gold-primary)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1rem',
-                  fontWeight: 800,
-                  transition: 'all 0.2s ease'
-                }}
+                className="rail-arrow-btn"
                 title={lang === 'ar' ? 'السابق' : 'Previous'}
               >
                 {lang === 'ar' ? '→' : '←'}
@@ -121,21 +72,7 @@ export function HorizontalProductRail({
               <button
                 type="button"
                 onClick={() => handleScroll('next')}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-gold)',
-                  color: 'var(--gold-primary)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1rem',
-                  fontWeight: 800,
-                  transition: 'all 0.2s ease'
-                }}
+                className="rail-arrow-btn"
                 title={lang === 'ar' ? 'التالي' : 'Next'}
               >
                 {lang === 'ar' ? '←' : '→'}
@@ -147,19 +84,7 @@ export function HorizontalProductRail({
         {/* Swipeable Scroll Container */}
         <div
           ref={scrollContainerRef}
-          style={{
-            display: 'flex',
-            gap: '1.5rem',
-            overflowX: 'auto',
-            scrollSnapType: 'x mandatory',
-            scrollBehavior: 'smooth',
-            paddingBottom: '1.5rem',
-            paddingTop: '0.5rem',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          }}
-          className="hide-scrollbar"
+          className="rail-scroll-container hide-scrollbar"
         >
           {displayProducts.map((product) => (
             <div

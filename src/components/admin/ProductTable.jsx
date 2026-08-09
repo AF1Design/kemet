@@ -507,6 +507,12 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     );
   };
 
+  const handleUpdateSectionField = (secId, field, value) => {
+    setHomepageSections(prev =>
+      prev.map(s => s.id === secId ? { ...s, [field]: value } : s)
+    );
+  };
+
   const handleAddCategoryToHomepage = (cat) => {
     if (homepageSections.some(s => s.categoryId === cat.id)) {
       alert('هذا القسم مضاف بالفعل في قائمة أقسام الواجهة');
@@ -532,7 +538,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     try {
       const res = await saveHomepageSectionsAction(homepageSections);
       if (res.success) {
-        alert('✅ تم حفظ وتحديث ترتيب وأقسام الصفحة الرئيسية بنجاح 🎠');
+        alert('✅ تم حفظ وتحديث عناوين وترتيب أقسام الصفحة الرئيسية بنجاح 🎠');
         setIsSectionsModalOpen(false);
       } else {
         alert(`⚠️ فشل حفظ الإعدادات: ${res.error}`);
@@ -1054,7 +1060,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
             </p>
 
             {/* Sections List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
               {homepageSections.map((sec, idx) => (
                 <div
                   key={sec.id}
@@ -1062,108 +1068,157 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     background: sec.enabled ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)',
                     border: sec.enabled ? '1px solid var(--border-gold)' : '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-md)',
-                    padding: '1rem',
+                    padding: '1.1rem',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '0.75rem',
-                    opacity: sec.enabled ? 1 : 0.6
+                    flexDirection: 'column',
+                    gap: '0.85rem',
+                    opacity: sec.enabled ? 1 : 0.65,
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {/* Reorder Buttons */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleMoveSection(idx, 'up')}
-                        disabled={idx === 0}
-                        style={{
-                          background: 'rgba(0,0,0,0.4)',
-                          border: '1px solid var(--border-color)',
-                          color: idx === 0 ? 'var(--text-secondary)' : 'var(--gold-primary)',
-                          borderRadius: '4px',
-                          padding: '2px 6px',
-                          fontSize: '0.7rem',
-                          cursor: idx === 0 ? 'not-allowed' : 'pointer'
-                        }}
-                        title="تحريك لأعلى"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMoveSection(idx, 'down')}
-                        disabled={idx === homepageSections.length - 1}
-                        style={{
-                          background: 'rgba(0,0,0,0.4)',
-                          border: '1px solid var(--border-color)',
-                          color: idx === homepageSections.length - 1 ? 'var(--text-secondary)' : 'var(--gold-primary)',
-                          borderRadius: '4px',
-                          padding: '2px 6px',
-                          fontSize: '0.7rem',
-                          cursor: idx === homepageSections.length - 1 ? 'not-allowed' : 'pointer'
-                        }}
-                        title="تحريك لأسفل"
-                      >
-                        ▼
-                      </button>
+                  {/* Top Bar: Reorder, Controls & Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {/* Reorder Buttons */}
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSection(idx, 'up')}
+                          disabled={idx === 0}
+                          style={{
+                            background: 'rgba(0,0,0,0.4)',
+                            border: '1px solid var(--border-color)',
+                            color: idx === 0 ? 'var(--text-secondary)' : 'var(--gold-primary)',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                          }}
+                          title="تحريك لأعلى"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSection(idx, 'down')}
+                          disabled={idx === homepageSections.length - 1}
+                          style={{
+                            background: 'rgba(0,0,0,0.4)',
+                            border: '1px solid var(--border-color)',
+                            color: idx === homepageSections.length - 1 ? 'var(--text-secondary)' : 'var(--gold-primary)',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            cursor: idx === homepageSections.length - 1 ? 'not-allowed' : 'pointer'
+                          }}
+                          title="تحريك لأسفل"
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      <span style={{ color: 'var(--gold-primary)', fontWeight: 900, fontSize: '0.9rem' }}>
+                        القسم #{idx + 1}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        ({sec.filterType === 'best_seller' ? 'الأكثر مبيعاً' : `فئة: ${sec.categoryId}`})
+                      </span>
                     </div>
 
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: sec.enabled ? '#FFF' : 'var(--text-secondary)' }}>
-                        <span style={{ color: 'var(--gold-primary)', marginLeft: '0.4rem' }}>#{idx + 1}</span>
-                        {sec.titleAr || sec.title}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      {/* Limit Selector */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>العدد:</span>
+                        <select
+                          value={sec.limit || 6}
+                          onChange={e => handleChangeLimit(sec.id, e.target.value)}
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(0,0,0,0.5)',
+                            border: '1px solid var(--border-color)',
+                            color: 'var(--gold-primary)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {[4, 6, 8, 10, 12].map(n => (
+                            <option key={n} value={n} style={{ background: '#0B0F19', color: '#FFF' }}>
+                              {n} منتجات
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        {sec.filterType === 'best_seller' ? 'منتجات الأكثر مبيعاً' : `قسم: ${sec.categoryId}`}
-                      </div>
-                    </div>
-                  </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {/* Limit Selector */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>العدد:</span>
-                      <select
-                        value={sec.limit || 6}
-                        onChange={e => handleChangeLimit(sec.id, e.target.value)}
+                      {/* Enable / Disable Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection(sec.id)}
                         style={{
-                          padding: '0.35rem 0.6rem',
-                          fontSize: '0.8rem',
+                          padding: '0.35rem 0.85rem',
+                          fontSize: '0.78rem',
                           fontWeight: 800,
-                          borderRadius: 'var(--radius-sm)',
-                          background: 'rgba(0,0,0,0.5)',
-                          border: '1px solid var(--border-color)',
-                          color: 'var(--gold-primary)',
+                          borderRadius: 'var(--radius-md)',
+                          border: sec.enabled ? '1px solid #10B981' : '1px solid #F43F5E',
+                          background: sec.enabled ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
+                          color: sec.enabled ? '#10B981' : '#F43F5E',
                           cursor: 'pointer'
                         }}
                       >
-                        {[4, 6, 8, 10, 12].map(n => (
-                          <option key={n} value={n} style={{ background: '#0B0F19', color: '#FFF' }}>
-                            {n} منتجات
-                          </option>
-                        ))}
-                      </select>
+                        {sec.enabled ? 'ظاهر بالواجهة ✅' : 'مخفي ❌'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Editable Titles Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                        عنوان القسم في الواجهة (عربي):
+                      </label>
+                      <input
+                        type="text"
+                        value={sec.titleAr || ''}
+                        onChange={e => handleUpdateSectionField(sec.id, 'titleAr', e.target.value)}
+                        placeholder="مثال: أفضل المنتجات 🔥"
+                        style={{
+                          width: '100%',
+                          padding: '0.45rem 0.75rem',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-color)',
+                          background: 'rgba(0,0,0,0.4)',
+                          color: '#FFFFFF'
+                        }}
+                      />
                     </div>
 
-                    {/* Enable / Disable Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleSection(sec.id)}
-                      style={{
-                        padding: '0.4rem 0.85rem',
-                        fontSize: '0.8rem',
-                        fontWeight: 800,
-                        borderRadius: 'var(--radius-md)',
-                        border: sec.enabled ? '1px solid #10B981' : '1px solid #F43F5E',
-                        background: sec.enabled ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-                        color: sec.enabled ? '#10B981' : '#F43F5E',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {sec.enabled ? 'ظاهر بالواجهة ✅' : 'مخفي ❌'}
-                    </button>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                        Section Title (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={sec.titleEn || ''}
+                        onChange={e => handleUpdateSectionField(sec.id, 'titleEn', e.target.value)}
+                        placeholder="e.g. Best Sellers 🔥"
+                        style={{
+                          width: '100%',
+                          padding: '0.45rem 0.75rem',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-color)',
+                          background: 'rgba(0,0,0,0.4)',
+                          color: '#FFFFFF',
+                          fontFamily: 'var(--font-en)'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
