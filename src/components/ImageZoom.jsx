@@ -1,13 +1,19 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export const ImageZoom = ({ src, alt }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalScale, setModalScale] = useState(1.5);
+  const [mounted, setMounted] = useState(false);
   const containerRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Desktop Mouse Move Handler with Clamped Boundaries (0% to 100%)
   const handleMouseMove = (e) => {
@@ -105,15 +111,17 @@ export const ImageZoom = ({ src, alt }) => {
         </div>
       </div>
 
-      {/* Fullscreen Mobile & Desktop Lightbox Modal */}
-      {isModalOpen && (
+      {/* Fullscreen Mobile & Desktop Lightbox Modal via Portal to Body */}
+      {isModalOpen && mounted && typeof document !== 'undefined' && createPortal(
         <div 
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 999999,
-            backgroundColor: 'rgba(0, 0, 0, 0.95)',
-            backdropFilter: 'blur(12px)',
+            width: '100vw',
+            height: '100vh',
+            zIndex: 99999999,
+            backgroundColor: 'rgba(3, 4, 7, 0.97)',
+            backdropFilter: 'blur(16px)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -127,26 +135,26 @@ export const ImageZoom = ({ src, alt }) => {
           <div 
             style={{
               position: 'fixed',
-              top: 'max(12px, env(safe-area-inset-top, 12px))',
-              left: '12px',
-              right: '12px',
+              top: 'max(14px, env(safe-area-inset-top, 14px))',
+              left: '14px',
+              right: '14px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              zIndex: 1000001,
+              zIndex: 100000000,
               pointerEvents: 'auto',
-              background: 'rgba(11, 15, 25, 0.92)',
+              background: 'rgba(11, 15, 25, 0.95)',
               border: '1px solid var(--border-gold-bright)',
               borderRadius: 'var(--radius-lg)',
-              padding: '0.6rem 1rem',
-              backdropFilter: 'blur(12px)',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.8)',
+              padding: '0.65rem 1.1rem',
+              backdropFilter: 'blur(16px)',
+              boxShadow: '0 10px 35px rgba(0, 0, 0, 0.9)',
               gap: '0.5rem',
               flexWrap: 'wrap'
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ color: '#D4AF37', fontWeight: 900, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ color: '#D4AF37', fontWeight: 900, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <span>🔍</span>
               <span>زوم ({Math.round(modalScale * 100)}%)</span>
             </div>
@@ -198,9 +206,10 @@ export const ImageZoom = ({ src, alt }) => {
               height: '85vh', 
               display: 'flex', 
               alignItems: 'center', 
-              justify: 'center', 
+              justifyContent: 'center', 
               overflow: 'auto',
-              WebkitOverflowScrolling: 'touch'
+              WebkitOverflowScrolling: 'touch',
+              paddingTop: '3rem'
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -208,8 +217,8 @@ export const ImageZoom = ({ src, alt }) => {
               src={src} 
               alt={alt} 
               style={{
-                maxWidth: '90%',
-                maxHeight: '90%',
+                maxWidth: '92%',
+                maxHeight: '85%',
                 objectFit: 'contain',
                 transform: `scale(${modalScale})`,
                 transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -219,10 +228,11 @@ export const ImageZoom = ({ src, alt }) => {
             />
           </div>
 
-          <div style={{ position: 'absolute', bottom: '1rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', textAlign: 'center' }}>
+          <div style={{ position: 'absolute', bottom: '1.2rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', textAlign: 'center', pointerEvents: 'none' }}>
             💡 اضغط على الصورة للتكبير التلقائي أو استخدم الأزرار بأعلى الشاشة
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
