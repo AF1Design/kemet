@@ -1,26 +1,30 @@
-/**
- * Meta (Facebook/Instagram) Pixel & Conversions API (CAPI) Client Adapter
- * Standard Meta Pixel Events:
- * https://developers.facebook.com/docs/meta-pixel/reference
- */
-
-function isFbqAvailable() {
-  return typeof window !== 'undefined' && typeof window.fbq === 'function';
+function getFbq() {
+  if (typeof window !== 'undefined') {
+    if (typeof window.fbq === 'function') {
+      return window.fbq;
+    }
+    if (typeof fbq === 'function') {
+      return fbq;
+    }
+  }
+  return null;
 }
 
 export const metaAdapter = {
   pageView() {
-    if (isFbqAvailable()) {
-      window.fbq('track', 'PageView');
+    const fbq = getFbq();
+    if (fbq) {
+      fbq('track', 'PageView');
     }
   },
 
   viewItem(product) {
     if (!product) return;
     const price = Number(product.price ?? 280);
+    const fbq = getFbq();
 
-    if (isFbqAvailable()) {
-      window.fbq('track', 'ViewContent', {
+    if (fbq) {
+      fbq('track', 'ViewContent', {
         content_name: product.nameAr || product.nameEn || product.name || 'منتج KEMET',
         content_category: product.category || 'Activewear',
         content_ids: [String(product.id || '')],
@@ -35,9 +39,10 @@ export const metaAdapter = {
     if (!product) return;
     const price = Number(product.price ?? 280);
     const qty = Number(quantity || 1);
+    const fbq = getFbq();
 
-    if (isFbqAvailable()) {
-      window.fbq('track', 'AddToCart', {
+    if (fbq) {
+      fbq('track', 'AddToCart', {
         content_name: product.nameAr || product.nameEn || product.name || 'منتج KEMET',
         content_category: product.category || 'Activewear',
         content_ids: [String(product.id || '')],
@@ -52,9 +57,10 @@ export const metaAdapter = {
   beginCheckout(cartItems = [], totalAmount = 0) {
     const contentIds = cartItems.map(item => String(item.id || ''));
     const totalQty = cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+    const fbq = getFbq();
 
-    if (isFbqAvailable()) {
-      window.fbq('track', 'InitiateCheckout', {
+    if (fbq) {
+      fbq('track', 'InitiateCheckout', {
         content_ids: contentIds,
         content_type: 'product',
         value: Number(totalAmount || 0),
@@ -69,9 +75,10 @@ export const metaAdapter = {
     const contentIds = (order.items || []).map(item => String(item.id || item.product_id || ''));
     const totalValue = Number(order.total ?? order.total_amount ?? order.totalAmount ?? 0);
     const totalQty = (order.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+    const fbq = getFbq();
 
-    if (isFbqAvailable()) {
-      window.fbq('track', 'Purchase', {
+    if (fbq) {
+      fbq('track', 'Purchase', {
         content_ids: contentIds,
         content_type: 'product',
         value: totalValue,
@@ -85,8 +92,9 @@ export const metaAdapter = {
   },
 
   signUp(method = 'email_otp') {
-    if (isFbqAvailable()) {
-      window.fbq('track', 'CompleteRegistration', {
+    const fbq = getFbq();
+    if (fbq) {
+      fbq('track', 'CompleteRegistration', {
         status: true,
         content_name: method
       });
@@ -95,8 +103,9 @@ export const metaAdapter = {
 
   search(searchTerm) {
     if (!searchTerm) return;
-    if (isFbqAvailable()) {
-      window.fbq('track', 'Search', {
+    const fbq = getFbq();
+    if (fbq) {
+      fbq('track', 'Search', {
         search_string: searchTerm,
         content_category: 'Product Search'
       });
