@@ -7,10 +7,13 @@ import { trackPageView } from './index';
 function NavigationTrackerInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const lastUrlRef = React.useRef('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`;
+      if (lastUrlRef.current === url) return;
+      lastUrlRef.current = url;
       trackPageView(url, document.title);
     }
   }, [pathname, searchParams]);
