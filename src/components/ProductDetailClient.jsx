@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import { ImageZoom } from './ImageZoom';
 import { Footer } from './Footer';
+import { trackViewItem, trackAddToCart } from '../lib/analytics';
 
 export const ProductDetailClient = ({ product, initialVariants }) => {
   const router = useRouter();
@@ -24,12 +25,20 @@ export const ProductDetailClient = ({ product, initialVariants }) => {
   const isSelectedOutOfStock = selectedSizeObj ? selectedSizeObj.stock <= 0 : false;
   const isAllOutOfStock = initialVariants.every(v => v.stock <= 0);
 
+  // Marketing Analytics: View Item
+  useEffect(() => {
+    if (product) {
+      trackViewItem(product);
+    }
+  }, [product]);
+
   const handleAddToCart = () => {
     if (isAllOutOfStock || isSelectedOutOfStock) {
       showToast(lang === 'ar' ? '⚠️ هذا المقاس غير متوفر حالياً (منتهي الكمية)' : '⚠️ Selected size is out of stock!');
       return;
     }
     addToCart(product, selectedSizeObj.size);
+    trackAddToCart(product, selectedSizeObj.size, 1);
   };
 
   const handleBuyNow = () => {
@@ -38,6 +47,7 @@ export const ProductDetailClient = ({ product, initialVariants }) => {
       return;
     }
     addToCart(product, selectedSizeObj.size);
+    trackAddToCart(product, selectedSizeObj.size, 1);
     router.push('/checkout');
   };
 

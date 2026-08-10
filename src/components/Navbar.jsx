@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext';
 import { AnimatedLogo } from './AnimatedLogo';
 import { CartIcon } from './CartIcon';
 import { supabase } from '../lib/supabase/client';
+import { trackSearch } from '../lib/analytics';
 
 // Helper text normalizer for intelligent search
 const normalizeText = (text = '') => {
@@ -104,6 +105,7 @@ export const Navbar = ({ onOpenMobileMenu }) => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      trackSearch(searchQuery.trim());
       router.push(`/category/all?search=${encodeURIComponent(searchQuery.trim())}`);
       setIsSearchFocused(false);
       setIsMobileSearchOpen(false);

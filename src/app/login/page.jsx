@@ -8,6 +8,7 @@ import { Footer } from '../../components/Footer';
 import { OtpModal } from '../../components/OtpModal';
 import { supabase } from '../../lib/supabase/client';
 import { customSignupAction, forgotPasswordOtpAction, getUserProfileAction, updateUserProfileAction } from '../actions/auth-actions';
+import { trackLogin, trackSignUp } from '../../lib/analytics';
 
 const EyeOfHorusOpen = () => (
   <svg className="eye-horus-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -171,6 +172,8 @@ export default function LoginPage() {
             governorate: profileData?.governorate || (lang === 'ar' ? 'القاهرة' : 'Cairo'),
             role: userRole
           });
+
+          trackLogin('password');
 
           showToast(userRole === 'admin' ? (lang === 'ar' ? 'تم تسجيل دخول المسؤول الإداري.' : 'Admin signed in successfully.') : (lang === 'ar' ? 'تم تسجيل الدخول بنجاح.' : 'Signed in successfully.'));
 
@@ -619,6 +622,12 @@ export default function LoginPage() {
             governorate: profileData?.governorate || governorate || (lang === 'ar' ? 'القاهرة' : 'Cairo'),
             role: profileData?.role || 'customer'
           });
+
+          if (otpModalMode === 'signup') {
+            trackSignUp('email_otp');
+          } else {
+            trackLogin('email_otp');
+          }
 
           showToast(
             otpModalMode === 'recovery'

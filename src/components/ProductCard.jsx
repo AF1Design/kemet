@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '../context/AppContext';
+import { trackAddToCart } from '../lib/analytics';
 
 export const ProductCard = ({ product }) => {
   const { lang, addToCart, showToast, t } = useApp();
@@ -58,6 +59,7 @@ export const ProductCard = ({ product }) => {
       return;
     }
     addToCart(product, selectedSizeObj.size);
+    trackAddToCart(product, selectedSizeObj.size, 1);
   };
 
   return (

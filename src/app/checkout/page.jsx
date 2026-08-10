@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
 import { createOrderAction } from '../admin/actions';
+import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 
 // Shipping rates by governorate in EGP
 const SHIPPING_RATES = {
@@ -62,6 +63,7 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponMsg, setCouponMsg] = useState(null);
   const [availableCoupons, setAvailableCoupons] = useState(INITIAL_COUPONS);
+  const hasTrackedBeginCheckout = useRef(false);
 
   useEffect(() => {
     // Clear legacy local coupons cache to enforce strict server-side validation
@@ -82,6 +84,14 @@ export default function CheckoutPage() {
     : 0;
 
   const totalAmount = Math.max(0, subtotal - discountAmount) + shippingFee;
+
+  // Marketing Analytics: Track Begin Checkout once on checkout page load
+  useEffect(() => {
+    if (cart.length > 0 && !hasTrackedBeginCheckout.current) {
+      hasTrackedBeginCheckout.current = true;
+      trackBeginCheckout(cart, totalAmount);
+    }
+  }, [cart, totalAmount]);
 
   // Handle Apply Coupon
   const handleApplyCoupon = () => {
@@ -182,6 +192,9 @@ export default function CheckoutPage() {
     createOrderAction(newOrder).catch(err => {
       console.warn('Background order save note:', err);
     });
+
+    // Marketing Analytics: Track Purchase Event (Idempotent by Order ID)
+    trackPurchase(newOrder);
 
     addOrder(newOrder);
     setCreatedOrder(newOrder);

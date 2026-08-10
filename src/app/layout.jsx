@@ -1,5 +1,7 @@
 import '../styles/global.css';
 import { Providers } from './providers';
+import { AnalyticsScripts } from '../lib/analytics/AnalyticsScripts';
+import { NavigationTracker } from '../lib/analytics/NavigationTracker';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kemetmisr.com';
 
@@ -116,6 +118,8 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        <AnalyticsScripts />
+        <NavigationTracker />
         <Providers>
           {children}
         </Providers>

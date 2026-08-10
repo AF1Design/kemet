@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
+import { trackRemoveFromCart, trackBeginCheckout } from '../lib/analytics';
 
 export const CartDrawer = () => {
   const { 
@@ -25,6 +26,7 @@ export const CartDrawer = () => {
   const totalAmount = subtotal + estimatedShipping;
 
   const handleCheckoutClick = () => {
+    trackBeginCheckout(cart, totalAmount);
     setIsCartOpen(false);
     router.push('/checkout');
   };
@@ -165,7 +167,10 @@ export const CartDrawer = () => {
                         {/* Delete / Remove Button */}
                         <button
                           type="button"
-                          onClick={() => removeFromCart(item.id, item.size)}
+                          onClick={() => {
+                            trackRemoveFromCart(item);
+                            removeFromCart(item.id, item.size);
+                          }}
                           title={lang === 'ar' ? 'حذف المنتج من السلة' : 'Remove from cart'}
                           style={{
                             background: 'rgba(239, 68, 68, 0.1)',
