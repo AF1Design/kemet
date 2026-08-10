@@ -3,7 +3,7 @@
 import React from 'react';
 import Script from 'next/script';
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-CSPVC65Z0V';
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const TIKTOK_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID;
