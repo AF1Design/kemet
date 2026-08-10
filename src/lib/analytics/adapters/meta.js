@@ -22,16 +22,18 @@ export const metaAdapter = {
     if (!product) return;
     const price = Number(product.price ?? 280);
     const fbq = getFbq();
+    const payload = {
+      content_name: product.nameAr || product.nameEn || product.name || 'منتج KEMET',
+      content_category: product.category || 'Activewear',
+      content_ids: [String(product.id || '')],
+      content_type: 'product',
+      value: price,
+      currency: 'EGP'
+    };
 
     if (fbq) {
-      fbq('track', 'ViewContent', {
-        content_name: product.nameAr || product.nameEn || product.name || 'منتج KEMET',
-        content_category: product.category || 'Activewear',
-        content_ids: [String(product.id || '')],
-        content_type: 'product',
-        value: price,
-        currency: 'EGP'
-      });
+      console.log('META EVENT: ViewContent', payload);
+      fbq('track', 'ViewContent', payload);
     }
   },
 
@@ -40,17 +42,19 @@ export const metaAdapter = {
     const price = Number(product.price ?? 280);
     const qty = Number(quantity || 1);
     const fbq = getFbq();
+    const payload = {
+      content_name: product.nameAr || product.nameEn || product.name || 'منتج KEMET',
+      content_category: product.category || 'Activewear',
+      content_ids: [String(product.id || '')],
+      content_type: 'product',
+      value: price * qty,
+      currency: 'EGP',
+      num_items: qty
+    };
 
     if (fbq) {
-      fbq('track', 'AddToCart', {
-        content_name: product.nameAr || product.nameEn || product.name || 'منتج KEMET',
-        content_category: product.category || 'Activewear',
-        content_ids: [String(product.id || '')],
-        content_type: 'product',
-        value: price * qty,
-        currency: 'EGP',
-        num_items: qty
-      });
+      console.log('META EVENT: AddToCart', payload);
+      fbq('track', 'AddToCart', payload);
     }
   },
 
@@ -58,15 +62,17 @@ export const metaAdapter = {
     const contentIds = cartItems.map(item => String(item.id || ''));
     const totalQty = cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
     const fbq = getFbq();
+    const payload = {
+      content_ids: contentIds,
+      content_type: 'product',
+      value: Number(totalAmount || 0),
+      currency: 'EGP',
+      num_items: totalQty
+    };
 
     if (fbq) {
-      fbq('track', 'InitiateCheckout', {
-        content_ids: contentIds,
-        content_type: 'product',
-        value: Number(totalAmount || 0),
-        currency: 'EGP',
-        num_items: totalQty
-      });
+      console.log('META EVENT: InitiateCheckout', payload);
+      fbq('track', 'InitiateCheckout', payload);
     }
   },
 
@@ -76,16 +82,18 @@ export const metaAdapter = {
     const totalValue = Number(order.total ?? order.total_amount ?? order.totalAmount ?? 0);
     const totalQty = (order.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
     const fbq = getFbq();
+    const payload = {
+      content_ids: contentIds,
+      content_type: 'product',
+      value: totalValue,
+      currency: 'EGP',
+      num_items: totalQty,
+      order_id: String(order.id || '')
+    };
 
     if (fbq) {
-      fbq('track', 'Purchase', {
-        content_ids: contentIds,
-        content_type: 'product',
-        value: totalValue,
-        currency: 'EGP',
-        num_items: totalQty,
-        order_id: String(order.id || '')
-      }, {
+      console.log('META EVENT: Purchase', payload);
+      fbq('track', 'Purchase', payload, {
         eventID: String(order.id || '') // For deduplication with Meta CAPI
       });
     }

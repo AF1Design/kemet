@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations } from '../data/translations';
 
 import { getCategoriesListAction } from '../app/admin/actions';
+import { trackAddToCart } from '../lib/analytics';
 
 const AppContext = createContext();
 
@@ -154,6 +155,7 @@ export const AppProvider = ({ children }) => {
       }
       return [...prev, { ...product, size: selectedSize, quantity: 1 }];
     });
+    trackAddToCart(product, selectedSize, 1);
     showToast(`تم إضافة ${product.nameAr || product.nameEn} مقاس (${selectedSize}) للسلة 🛍️`);
   };
 

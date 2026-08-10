@@ -12,19 +12,20 @@ const lastCartAddEvents = new Map();
  * @returns {boolean}
  */
 export function isPurchaseAlreadyTracked(orderId) {
-  if (!orderId) return true;
+  if (!orderId || typeof orderId !== 'string' || !orderId.trim()) return false;
+  const key = String(orderId).trim();
   
   // 1. Check in-memory session registry
-  if (inMemoryPurchases.has(String(orderId).trim())) {
+  if (inMemoryPurchases.has(key)) {
     return true;
   }
 
   // 2. Check browser sessionStorage
   if (typeof window !== 'undefined' && window.sessionStorage) {
     try {
-      const stored = sessionStorage.getItem(`kemet_tracked_purchase_${String(orderId).trim()}`);
+      const stored = sessionStorage.getItem(`kemet_tracked_purchase_${key}`);
       if (stored === '1') {
-        inMemoryPurchases.add(String(orderId).trim());
+        inMemoryPurchases.add(key);
         return true;
       }
     } catch (e) {

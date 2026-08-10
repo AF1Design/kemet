@@ -93,6 +93,13 @@ export default function CheckoutPage() {
     }
   }, [cart, totalAmount]);
 
+  // Marketing Analytics: Track Purchase upon verified successful order creation
+  useEffect(() => {
+    if (isSubmitted && createdOrder) {
+      trackPurchase(createdOrder);
+    }
+  }, [isSubmitted, createdOrder]);
+
   // Handle Apply Coupon
   const handleApplyCoupon = () => {
     const code = couponInput.trim().toUpperCase();
