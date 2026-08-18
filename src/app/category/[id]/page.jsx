@@ -29,6 +29,12 @@ export default function CategoryPage({ params }) {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [fetchError, setFetchError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [id, searchQueryParam]);
 
   useEffect(() => {
     async function loadCategoryProducts() {
@@ -222,11 +228,230 @@ export default function CategoryPage({ params }) {
 
           ) : (
             
-            /* Products Grid */
-            <div className="products-grid">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            /* Products Grid with Curva-style Pagination */
+            <div>
+              <div id="products-top-anchor" style={{ scrollMarginTop: '100px' }} />
+              
+              <div className="products-grid">
+                {(() => {
+                  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+                  const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+                  const startIndex = (activePage - 1) * ITEMS_PER_PAGE;
+                  const paginatedItems = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+                  
+                  return paginatedItems.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ));
+                })()}
+              </div>
+
+              {/* Pagination Bar */}
+              {filteredProducts.length > ITEMS_PER_PAGE && (() => {
+                const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+                const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+
+                const getPaginationItems = () => {
+                  if (totalPages <= 5) {
+                    return Array.from({ length: totalPages }, (_, i) => i + 1);
+                  }
+                  if (activePage <= 3) {
+                    return [1, 2, 3, '...', totalPages];
+                  }
+                  if (activePage >= totalPages - 2) {
+                    return [1, '...', totalPages - 2, totalPages - 1, totalPages];
+                  }
+                  return [1, '...', activePage, '...', totalPages];
+                };
+
+                const pagesToRender = getPaginationItems();
+
+                const handlePageChange = (p) => {
+                  if (p < 1 || p > totalPages || p === activePage) return;
+                  setCurrentPage(p);
+                  const anchor = document.getElementById('products-top-anchor');
+                  if (anchor) {
+                    anchor.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    window.scrollTo({ top: 200, behavior: 'smooth' });
+                  }
+                };
+
+                return (
+                  <div 
+                    className="kemet-pagination-bar"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                      marginTop: '3.5rem',
+                      marginBottom: '1rem',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    {/* First Page */}
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => handlePageChange(1)}
+                      disabled={activePage === 1}
+                      title="الصفحة الأولى"
+                      style={{
+                        minWidth: '38px',
+                        height: '38px',
+                        padding: '0 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        color: activePage === 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                        cursor: activePage === 1 ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: activePage === 1 ? 0.4 : 1,
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      «
+                    </button>
+
+                    {/* Prev Page */}
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => handlePageChange(activePage - 1)}
+                      disabled={activePage === 1}
+                      title="الصفحة السابقة"
+                      style={{
+                        minWidth: '38px',
+                        height: '38px',
+                        padding: '0 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        color: activePage === 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                        cursor: activePage === 1 ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: activePage === 1 ? 0.4 : 1,
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      ‹
+                    </button>
+
+                    {/* Page Numbers */}
+                    {pagesToRender.map((p, idx) => {
+                      if (p === '...') {
+                        return (
+                          <span 
+                            key={`ellipsis-${idx}`} 
+                            style={{ 
+                              color: 'var(--text-muted)', 
+                              padding: '0 0.4rem', 
+                              fontWeight: 900,
+                              fontSize: '1rem' 
+                            }}
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      const isActive = p === activePage;
+
+                      return (
+                        <button
+                          key={`page-${p}`}
+                          type="button"
+                          className={`pagination-btn ${isActive ? 'active' : ''}`}
+                          onClick={() => handlePageChange(p)}
+                          style={{
+                            minWidth: '38px',
+                            height: '38px',
+                            padding: '0 0.65rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: isActive ? 'var(--gold-gradient)' : 'var(--bg-card)',
+                            border: isActive ? '1px solid #FFE58F' : '1px solid var(--border-color)',
+                            color: isActive ? '#000000' : 'var(--text-primary)',
+                            cursor: isActive ? 'default' : 'pointer',
+                            fontSize: '0.95rem',
+                            fontWeight: 900,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: isActive ? '0 0 14px var(--gold-glow)' : 'none',
+                            transition: 'var(--transition)'
+                          }}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+
+                    {/* Next Page */}
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => handlePageChange(activePage + 1)}
+                      disabled={activePage === totalPages}
+                      title="الصفحة التالية"
+                      style={{
+                        minWidth: '38px',
+                        height: '38px',
+                        padding: '0 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        color: activePage === totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                        cursor: activePage === totalPages ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: activePage === totalPages ? 0.4 : 1,
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      ›
+                    </button>
+
+                    {/* Last Page */}
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={activePage === totalPages}
+                      title="الصفحة الأخيرة"
+                      style={{
+                        minWidth: '38px',
+                        height: '38px',
+                        padding: '0 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        color: activePage === totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                        cursor: activePage === totalPages ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: activePage === totalPages ? 0.4 : 1,
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      »
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
           )}

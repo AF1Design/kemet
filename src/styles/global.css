@@ -1897,12 +1897,85 @@ select option {
   }
 
   .products-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .product-card {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
   }
 
   .product-image-box {
-    height: 215px;
+    height: 360px;
+    background: rgba(3, 4, 7, 0.98);
+  }
+
+  .product-img {
+    object-position: center 22%;
+    transform: scale(1.05);
+  }
+
+  .product-info {
+    padding: 1.25rem 1.15rem;
+  }
+
+  .product-title {
+    font-size: 1.15rem;
+    line-height: 1.4;
+    min-height: auto;
+    margin-bottom: 0.65rem;
+  }
+
+  .sizes-selector {
+    margin: 0.85rem 0;
+  }
+
+  .sizes-label {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .sizes-list {
+    gap: 0.5rem;
+  }
+
+  .size-pill {
+    padding: 0.45rem 0;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .price-row {
+    padding-top: 0.85rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .price-current {
+    font-size: 1.35rem;
+  }
+
+  .price-old {
+    font-size: 0.95rem;
+  }
+
+  .btn-add-cart {
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 900;
+  }
+
+  .btn-secondary-link {
+    font-size: 0.92rem;
+    padding: 0.45rem;
+    margin-top: 0.35rem;
   }
 
   .zoom-image-wrapper {
@@ -1913,3 +1986,36 @@ select option {
     grid-template-columns: 1fr;
   }
 }
+
+/* Dynamic Island Drop Animation */
+@keyframes dynamicIslandDrop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(0.92);
+  }
+  60% {
+    transform: translate(-50%, 3px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* Pagination Button Hover Interactions */
+.pagination-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--gold-primary) !important;
+  color: var(--gold-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--gold-glow);
+}
+
+.pagination-btn.active:hover {
+  transform: none;
+  color: #000000 !important;
+}
+
