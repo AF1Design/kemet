@@ -11,7 +11,7 @@ export function HorizontalProductRail({
   categoryHref = '/category/all',
   products = [],
   limit = 8,
-  badge = '🔥 مميز'
+  badge = 'مميز'
 }) {
   const { lang, t } = useApp();
   const scrollContainerRef = useRef(null);
@@ -143,7 +143,7 @@ export function HorizontalProductRail({
               </p>
 
               <span className="btn-primary" style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem' }}>
-                {lang === 'ar' ? 'تصفح القسم بالكامل 🛍️' : 'Browse Category 🛍️'}
+                {lang === 'ar' ? 'تصفح القسم بالكامل' : 'Browse Full Category'}
               </span>
             </Link>
           </div>

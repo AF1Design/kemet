@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import { ImageZoom } from './ImageZoom';
+import { HorizontalProductRail } from './HorizontalProductRail';
 import { Footer } from './Footer';
 import { trackViewItem, trackAddToCart } from '../lib/analytics';
 
-export const ProductDetailClient = ({ product, initialVariants }) => {
+export const ProductDetailClient = ({ product, initialVariants, relatedData }) => {
   const router = useRouter();
   const { lang, addToCart, showToast, t } = useApp();
 
@@ -219,6 +220,17 @@ export const ProductDetailClient = ({ product, initialVariants }) => {
 
         </div>
       </section>
+
+      {/* Smart Club & Model Related Products Rail */}
+      {relatedData && relatedData.items && relatedData.items.length > 0 && (
+        <HorizontalProductRail
+          title={lang === 'ar' ? (relatedData.titleAr || 'منتجات ذات صلة') : (relatedData.titleEn || 'Related Products')}
+          badge={lang === 'ar' ? 'تشكيلة مختارة' : 'Featured Collection'}
+          categoryHref={relatedData.categoryHref || '/category/all'}
+          products={relatedData.items}
+          limit={10}
+        />
+      )}
 
       <Footer />
     </div>
