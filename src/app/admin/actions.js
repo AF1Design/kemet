@@ -554,6 +554,101 @@ export async function createOrderAction(orderData) {
 }
 
 /**
+ * Server Action: Customer updates their order items, sizes, quantities, and delivery details in Supabase DB
+ */
+export async function updateCustomerOrderAction({ orderId, customer, items = [] }) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    // 1. Fetch current order to check status
+    const { data: currOrder, error: fetchErr } = await supabaseAdmin
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchErr || !currOrder) {
+      return { success: false, error: 'الطلب غير موجود في قاعدة البيانات' };
+    }
+
+    if (currOrder.status === 'shipped' || currOrder.status === 'delivered' || currOrder.status === 'cancelled') {
+      return { success: false, error: 'عذراً، لا يمكن تعديل الطلب بعد شحنه أو إلغائه.' };
+    }
+
+    const rawItems = Array.isArray(items) ? items : [];
+    if (rawItems.length === 0) {
+      return { success: false, error: 'يجب أن يحتوي الطلب على منتج واحد على الأقل.' };
+    }
+
+    // Recompute total amount
+    const subtotal = rawItems.reduce((sum, item) => sum + (Number(item.price || item.unit_price || 0) * Number(item.quantity || 1)), 0);
+    const shippingFee = Number(currOrder.shipping_fee ?? 50);
+    const totalAmount = subtotal + shippingFee;
+
+    // 2. Update order customer details & total amount
+    const orderUpdatePayload = {
+      total_amount: totalAmount
+    };
+
+    if (customer) {
+      if (customer.fullName) orderUpdatePayload.customer_name = String(customer.fullName).trim();
+      if (customer.phone) orderUpdatePayload.customer_phone = String(customer.phone).trim();
+      if (customer.governorate) orderUpdatePayload.governorate = String(customer.governorate).trim();
+      if (customer.address) orderUpdatePayload.address = String(customer.address).trim();
+      if (customer.notes !== undefined) orderUpdatePayload.notes = String(customer.notes || '').trim();
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('orders')
+      .update(orderUpdatePayload)
+      .eq('id', orderId);
+
+    if (updateErr) throw updateErr;
+
+    // 3. Sync order_items: Delete old items and insert updated items
+    await supabaseAdmin
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId);
+
+    const { data: existingProducts } = await supabaseAdmin
+      .from('products')
+      .select('id');
+    
+    const validProductIds = new Set((existingProducts || []).map(p => String(p.id)));
+
+    const itemsToInsert = rawItems.map(item => {
+      const rawProdId = item.id || item.product_id ? String(item.id || item.product_id) : null;
+      const validProdId = validProductIds.has(rawProdId) ? rawProdId : null;
+
+      return {
+        order_id: orderId,
+        product_id: validProdId,
+        product_name_ar: item.nameAr || item.name_ar || item.title || 'منتج KEMET',
+        product_name_en: item.nameEn || item.name_en || '',
+        size: String(item.size || 'M').trim(),
+        unit_price: Number(item.price || item.unit_price || 0),
+        quantity: Number(item.quantity || 1),
+        total_price: Number(item.price || item.unit_price || 0) * Number(item.quantity || 1)
+      };
+    });
+
+    const { error: itemsErr } = await supabaseAdmin
+      .from('order_items')
+      .insert(itemsToInsert);
+
+    if (itemsErr) throw itemsErr;
+
+    triggerBackgroundRevalidate(['/admin/orders', '/my-orders', '/track-order']);
+
+    return { success: true };
+  } catch (err) {
+    console.error('updateCustomerOrderAction error:', err);
+    return { success: false, error: err.message || 'فشل تحديث بيانات الطلب' };
+  }
+}
+
+/**
  * Server Action: Updates order status in Supabase orders table & sends rich status email
  */
 export async function updateOrderStatusAction(orderId, newStatus, trackingNumber = null) {

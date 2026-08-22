@@ -6,13 +6,14 @@ import { useApp } from '../../context/AppContext';
 import { products as storeProducts } from '../../data/products';
 import { Footer } from '../../components/Footer';
 import { supabase } from '../../lib/supabase/client';
-import { updateOrderStatusAction, getCustomerOrdersAction } from '../admin/actions';
+import { updateOrderStatusAction, getCustomerOrdersAction, updateCustomerOrderAction } from '../admin/actions';
 import { updateUserProfileAction } from '../actions/auth-actions';
 
 export default function MyOrdersPage() {
   const { lang, user, orders, cancelOrder, updateFullOrder, logout, loginUser, showToast, t } = useApp();
   const [dbOrders, setDbOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'profile'
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const [profileName, setProfileName] = useState(user?.fullName || '');
   const [profilePhone, setProfilePhone] = useState(user?.phone || '');
@@ -226,17 +227,47 @@ export default function MyOrdersPage() {
     });
   };
 
-  const handleSaveEdit = (e, orderId) => {
+  const handleSaveEdit = async (e, orderId) => {
     e.preventDefault();
     if (editFormItems.length === 0) {
       alert(lang === 'ar' ? 'يجب أن يحتوي الطلب على منتج واحد على الأقل.' : 'Order must contain at least one item.');
       return;
     }
-    updateFullOrder(orderId, {
-      customer: editFormCustomer,
-      items: editFormItems
-    });
-    setEditingOrderId(null);
+    setIsSavingEdit(true);
+    try {
+      const res = await updateCustomerOrderAction({
+        orderId,
+        customer: editFormCustomer,
+        items: editFormItems
+      });
+
+      if (res.success) {
+        updateFullOrder(orderId, {
+          customer: editFormCustomer,
+          items: editFormItems
+        });
+        setDbOrders(prev => prev.map(o => {
+          if (o.id === orderId) {
+            const newTotal = editFormItems.reduce((s, it) => s + (Number(it.price || 0) * Number(it.quantity || 1)), 0) + (o.shipping_fee || 50);
+            return {
+              ...o,
+              customer: { ...o.customer, ...editFormCustomer },
+              items: editFormItems,
+              total: newTotal
+            };
+          }
+          return o;
+        }));
+        setEditingOrderId(null);
+        showToast(lang === 'ar' ? 'تم حفظ وتحديث مقاسات وبيانات الطلب بنجاح ✅' : 'Order and sizes updated successfully ✅');
+      } else {
+        alert(res.error || (lang === 'ar' ? 'فشل حفظ التعديلات' : 'Failed to save changes'));
+      }
+    } catch (err) {
+      alert(err.message || (lang === 'ar' ? 'حدث خطأ أثناء حفظ التعديلات' : 'Error updating order'));
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   const handleCancelClick = async (orderId) => {
@@ -712,79 +743,166 @@ export default function MyOrdersPage() {
                           </label>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {editFormItems.map((item, idx) => (
-                              <div 
-                                key={idx} 
-                                style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'space-between',
-                                  flexWrap: 'wrap', 
-                                  gap: '1rem',
-                                  background: 'rgba(212, 175, 55, 0.05)',
-                                  border: '1px solid var(--border-color)',
-                                  borderRadius: 'var(--radius-sm)',
-                                  padding: '0.85rem 1rem'
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                  <img src={item.image || '/assets/kemet-emblem-icon.png'} alt={item.nameAr} style={{ width: '48px', height: '48px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
-                                  <div>
-                                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                                      {lang === 'ar' ? item.nameAr : item.nameEn}
+                            {editFormItems.map((item, idx) => {
+                              const currentSizeUpper = String(item.size || 'M').trim().toUpperCase();
+                              const standardSizes = ['S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL', '6XL'];
+                              const allAvailableSizes = Array.from(new Set([
+                                ...standardSizes,
+                                ...(currentSizeUpper ? [currentSizeUpper] : [])
+                              ]));
+
+                              return (
+                                <div 
+                                  key={idx} 
+                                  style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column',
+                                    gap: '0.85rem',
+                                    background: 'rgba(212, 175, 55, 0.04)',
+                                    border: '1px solid var(--border-gold)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: '1rem',
+                                    boxSizing: 'border-box',
+                                    width: '100%',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  {/* Product Image + Title & Price */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', width: '100%' }}>
+                                    <img 
+                                      src={item.image || '/assets/kemet-emblem-icon.png'} 
+                                      alt={item.nameAr} 
+                                      style={{ 
+                                        width: '52px', 
+                                        height: '52px', 
+                                        objectFit: 'contain', 
+                                        background: '#000', 
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--border-color)',
+                                        flexShrink: 0
+                                      }} 
+                                    />
+                                    <div style={{ flexGrow: 1, minWidth: 0 }}>
+                                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                                        {lang === 'ar' ? item.nameAr : item.nameEn}
+                                      </div>
+                                      <div style={{ fontSize: '0.85rem', color: 'var(--gold-primary)', fontWeight: 800, marginTop: '0.2rem' }}>
+                                        {item.price} {t('currency')}
+                                      </div>
                                     </div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--gold-primary)', fontWeight: 700 }}>
-                                      {item.price} {t('currency')}
+                                  </div>
+
+                                  {/* Dynamic Size Selector with Auto-Wrapping Pills */}
+                                  <div style={{ 
+                                    background: 'rgba(0, 0, 0, 0.35)', 
+                                    border: '1px solid var(--border-color)', 
+                                    borderRadius: 'var(--radius-sm)', 
+                                    padding: '0.75rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.5rem'
+                                  }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 800 }}>
+                                        {lang === 'ar' ? 'المقاس المختار:' : 'Selected Size:'} <strong style={{ color: 'var(--gold-primary)', fontSize: '0.95rem' }}>{item.size}</strong>
+                                      </span>
+                                    </div>
+
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      flexWrap: 'wrap', 
+                                      gap: '0.4rem',
+                                      alignItems: 'center'
+                                    }}>
+                                      {allAvailableSizes.map(s => {
+                                        const isSelected = currentSizeUpper === s;
+                                        return (
+                                          <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => handleItemSizeChange(idx, s)}
+                                            style={{
+                                              padding: '0.35rem 0.65rem',
+                                              borderRadius: 'var(--radius-sm)',
+                                              border: isSelected ? '1.5px solid var(--gold-primary)' : '1px solid var(--border-color)',
+                                              background: isSelected ? 'var(--gold-gradient)' : 'var(--bg-card)',
+                                              color: isSelected ? '#000000' : 'var(--text-primary)',
+                                              fontWeight: 900,
+                                              fontSize: '0.82rem',
+                                              cursor: 'pointer',
+                                              minWidth: '38px',
+                                              textAlign: 'center',
+                                              boxShadow: isSelected ? '0 0 10px var(--gold-glow)' : 'none',
+                                              transition: 'var(--transition)'
+                                            }}
+                                          >
+                                            {s}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  {/* Quantity Selector */}
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    paddingTop: '0.5rem',
+                                    borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+                                  }}>
+                                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                                      {lang === 'ar' ? 'الكمية المطلوبة:' : 'Quantity:'}
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleItemQtyChange(idx, -1)}
+                                        style={{ 
+                                          width: '32px', 
+                                          height: '32px', 
+                                          borderRadius: 'var(--radius-sm)', 
+                                          border: '1px solid var(--border-color)', 
+                                          background: 'var(--bg-card)', 
+                                          color: '#FFF', 
+                                          fontWeight: 900, 
+                                          fontSize: '1rem',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center'
+                                        }}
+                                      >
+                                        -
+                                      </button>
+                                      <span style={{ fontWeight: 900, fontSize: '1rem', minWidth: '24px', textAlign: 'center', color: 'var(--gold-primary)' }}>
+                                        {item.quantity}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleItemQtyChange(idx, 1)}
+                                        style={{ 
+                                          width: '32px', 
+                                          height: '32px', 
+                                          borderRadius: 'var(--radius-sm)', 
+                                          border: '1px solid var(--border-color)', 
+                                          background: 'var(--bg-card)', 
+                                          color: '#FFF', 
+                                          fontWeight: 900, 
+                                          fontSize: '1rem',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center'
+                                        }}
+                                      >
+                                        +
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
-
-                                {/* Size selector */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                                    {lang === 'ar' ? 'المقاس:' : 'Size:'}
-                                  </span>
-                                  {['M', 'L', 'XL', 'XXL'].map(s => (
-                                    <button
-                                      key={s}
-                                      type="button"
-                                      onClick={() => handleItemSizeChange(idx, s)}
-                                      style={{
-                                        padding: '0.25rem 0.65rem',
-                                        borderRadius: 'var(--radius-sm)',
-                                        border: item.size === s ? '1px solid var(--border-gold-bright)' : '1px solid var(--border-color)',
-                                        background: item.size === s ? 'var(--gold-gradient)' : 'var(--bg-card)',
-                                        color: item.size === s ? '#000' : 'var(--text-primary)',
-                                        fontWeight: 800,
-                                        fontSize: '0.8rem',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      {s}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                {/* Quantity selector */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleItemQtyChange(idx, -1)}
-                                    style={{ width: '28px', height: '28px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: '#FFF', fontWeight: 900, cursor: 'pointer' }}
-                                  >
-                                    -
-                                  </button>
-                                  <span style={{ fontWeight: 800, fontSize: '0.95rem', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleItemQtyChange(idx, 1)}
-                                    style={{ width: '28px', height: '28px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: '#FFF', fontWeight: 900, cursor: 'pointer' }}
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -850,6 +968,7 @@ export default function MyOrdersPage() {
                           <button 
                             type="button" 
                             onClick={() => setEditingOrderId(null)} 
+                            disabled={isSavingEdit}
                             className="btn-secondary"
                             style={{ padding: '0.6rem 1.25rem', fontSize: '0.88rem' }}
                           >
@@ -858,10 +977,11 @@ export default function MyOrdersPage() {
 
                           <button 
                             type="submit" 
+                            disabled={isSavingEdit}
                             className="btn-primary"
                             style={{ padding: '0.6rem 1.6rem', fontSize: '0.88rem' }}
                           >
-                            {lang === 'ar' ? 'حفظ التعديلات 💾' : 'Save Changes 💾'}
+                            {isSavingEdit ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التعديلات 💾' : 'Save Changes 💾')}
                           </button>
                         </div>
                       </form>
