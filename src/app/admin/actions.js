@@ -227,7 +227,14 @@ export async function getCategoriesListAction() {
       .select('*');
 
     if (!error && data) {
-      const filtered = data.filter(c => !c.id.startsWith('_') && !c.id.includes('config'));
+      const filtered = data.filter(c => 
+        c.id && 
+        !c.id.startsWith('_') && 
+        !c.id.toLowerCase().includes('config') && 
+        !c.id.toLowerCase().includes('settings') &&
+        !String(c.name_ar || '').trim().startsWith('[') &&
+        !String(c.name_ar || '').trim().startsWith('{')
+      );
       return { success: true, categories: filtered };
     }
   } catch (err) {

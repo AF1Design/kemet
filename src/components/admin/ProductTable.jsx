@@ -23,6 +23,17 @@ export function ProductTable({ initialProducts, categories: initialCategories })
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
 
+  // Clean and validate real categories only (ignore internal json/config rows)
+  const cleanCategories = (categoriesList || []).filter(c => 
+    c &&
+    c.id && 
+    !c.id.startsWith('_') && 
+    !c.id.toLowerCase().includes('config') && 
+    !c.id.toLowerCase().includes('settings') &&
+    !String(c.name_ar || c.nameAr || '').trim().startsWith('[') &&
+    !String(c.name_ar || c.nameAr || '').trim().startsWith('{')
+  );
+
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null); // null = add new, object = edit
@@ -120,7 +131,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     setEditingProduct(null);
     setFormData({
       id: `kit-${Date.now()}`,
-      categoryId: categoriesList[0]?.id || 'kits',
+      categoryId: cleanCategories[0]?.id || 'kits',
       nameAr: '',
       nameEn: '',
       descriptionAr: '',
@@ -782,13 +793,33 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                   <select 
                     value={formData.categoryId} 
                     onChange={e => setFormData({ ...formData, categoryId: e.target.value })} 
-                    style={{ width: '100%', padding: '0.75rem', background: '#000', color: '#fff' }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 0.9rem', 
+                      background: '#0B0F19', 
+                      color: '#FFFFFF',
+                      border: '1px solid var(--border-gold)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      outline: 'none',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                      appearance: 'auto'
+                    }}
                   >
-                    {categoriesList.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name_ar || cat.name_en || cat.id} ({cat.id})
-                      </option>
-                    ))}
+                    {cleanCategories.map(cat => {
+                      const displayName = cat.name_ar || cat.nameAr || cat.name_en || cat.nameEn || cat.id;
+                      return (
+                        <option 
+                          key={cat.id} 
+                          value={cat.id}
+                          style={{ background: '#0B0F19', color: '#FFFFFF', padding: '8px' }}
+                        >
+                          {displayName} ({cat.id})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -1230,7 +1261,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 ➕ إضافة فئات الكتالوج الأخرى إلى الصفحة الرئيسية:
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {categoriesList.map(cat => {
+                {cleanCategories.map(cat => {
                   const isAlreadyAdded = homepageSections.some(s => s.categoryId === cat.id);
                   if (isAlreadyAdded) return null;
 

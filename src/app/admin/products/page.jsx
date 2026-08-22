@@ -22,7 +22,14 @@ export default async function AdminProductsPage() {
     ]);
 
     products = prodData || [];
-    categories = catData || [];
+    categories = (catData || []).filter(c => 
+      c.id && 
+      !c.id.startsWith('_') && 
+      !c.id.toLowerCase().includes('config') && 
+      !c.id.toLowerCase().includes('settings') &&
+      !String(c.name_ar || '').trim().startsWith('[') &&
+      !String(c.name_ar || '').trim().startsWith('{')
+    );
   } catch (err) {
     console.error('Error fetching admin products page SSR:', err);
   }
