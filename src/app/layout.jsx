@@ -117,7 +117,7 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
 
-        {/* Meta Pixel Base Code (Synchronous window.fbq creation & initialization) */}
+        {/* Meta Pixel Base Code (Multi-Pixel Setup: Pixel 1 & Pixel 2) */}
         <script
           id="meta-pixel-base"
           dangerouslySetInnerHTML={{
@@ -131,6 +131,7 @@ export default function RootLayout({ children }) {
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', '1768720384147304');
+              fbq('init', '37829276463383864');
             `
           }}
         />
@@ -140,6 +141,13 @@ export default function RootLayout({ children }) {
             width="1"
             style={{ display: 'none' }}
             src="https://www.facebook.com/tr?id=1768720384147304&ev=PageView&noscript=1"
+            alt=""
+          />
+          <img
+            height="1"
+            width="1"
+            style={{ display: 'none' }}
+            src="https://www.facebook.com/tr?id=37829276463383864&ev=PageView&noscript=1"
             alt=""
           />
         </noscript>
