@@ -124,14 +124,25 @@ export default function MyOrdersPage() {
             null;
         }
 
+        // 4. Resolve variants
+        const variants = 
+          item.product_variants || 
+          item.variants || 
+          localItem?.product_variants || 
+          localItem?.variants || 
+          catalogItem?.variants || 
+          [];
+
         return {
           id: itemId,
           nameAr: item.product_name_ar || item.nameAr || item.title || 'منتج KEMET',
           nameEn: item.product_name_en || item.nameEn || item.title || 'KEMET Product',
           size: item.size || 'M',
-          quantity: item.quantity || 1,
-          price: item.unit_price || item.price || 0,
-          image: resolvedImage || '/assets/kemet-emblem-icon.png'
+          quantity: Number(item.quantity || 1),
+          price: Number(item.unit_price || item.price || 0),
+          image: resolvedImage || '/assets/kemet-emblem-icon.png',
+          product_variants: variants,
+          variants: variants
         };
       });
 
@@ -182,22 +193,22 @@ export default function MyOrdersPage() {
   };
 
   const handleItemSizeChange = (index, newSize) => {
+    if (!newSize) return;
     setEditFormItems(prev => {
-      const updated = [...prev];
-      updated[index].size = newSize;
-      return updated;
+      return prev.map((item, i) => (i === index ? { ...item, size: newSize } : item));
     });
   };
 
   const handleItemQtyChange = (index, delta) => {
     setEditFormItems(prev => {
-      const updated = [...prev];
-      const newQty = updated[index].quantity + delta;
+      const targetItem = prev[index];
+      if (!targetItem) return prev;
+      const currentQty = Number(targetItem.quantity) || 1;
+      const newQty = currentQty + delta;
       if (newQty <= 0) {
-        return updated.filter((_, i) => i !== index);
+        return prev.filter((_, i) => i !== index);
       }
-      updated[index].quantity = newQty;
-      return updated;
+      return prev.map((item, i) => (i === index ? { ...item, quantity: newQty } : item));
     });
   };
 
@@ -756,7 +767,7 @@ export default function MyOrdersPage() {
                                   stock: Number(v.stock_quantity ?? 50)
                                 }));
                               } else {
-                                sizesList = [{ size: currentSize, stock: 50 }];
+                                sizesList = ['M', 'L', 'XL', 'XXL'].map(s => ({ size: s, stock: 50 }));
                               }
 
                               // Ensure current size is always in the list
