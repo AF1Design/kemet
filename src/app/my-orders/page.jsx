@@ -744,12 +744,25 @@ export default function MyOrdersPage() {
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {editFormItems.map((item, idx) => {
-                              const currentSizeUpper = String(item.size || 'M').trim().toUpperCase();
-                              const standardSizes = ['S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL', '6XL'];
-                              const allAvailableSizes = Array.from(new Set([
-                                ...standardSizes,
-                                ...(currentSizeUpper ? [currentSizeUpper] : [])
-                              ]));
+                              const currentSize = String(item.size || 'M').trim();
+                              
+                              // Extract exact product variants directly from Database
+                              const variants = item.product_variants || item.variants || [];
+                              let sizesList = [];
+
+                              if (variants.length > 0) {
+                                sizesList = variants.map(v => ({
+                                  size: v.size,
+                                  stock: Number(v.stock_quantity ?? 50)
+                                }));
+                              } else {
+                                sizesList = [{ size: currentSize, stock: 50 }];
+                              }
+
+                              // Ensure current size is always in the list
+                              if (!sizesList.some(s => s.size === currentSize)) {
+                                sizesList.unshift({ size: currentSize, stock: 50 });
+                              }
 
                               return (
                                 <div 
@@ -792,7 +805,7 @@ export default function MyOrdersPage() {
                                     </div>
                                   </div>
 
-                                  {/* Dynamic Size Selector with Auto-Wrapping Pills */}
+                                  {/* Dynamic Size Selector matching real product variants & stock */}
                                   <div style={{ 
                                     background: 'rgba(0, 0, 0, 0.35)', 
                                     border: '1px solid var(--border-color)', 
@@ -811,32 +824,48 @@ export default function MyOrdersPage() {
                                     <div style={{ 
                                       display: 'flex', 
                                       flexWrap: 'wrap', 
-                                      gap: '0.4rem',
+                                      gap: '0.45rem',
                                       alignItems: 'center'
                                     }}>
-                                      {allAvailableSizes.map(s => {
-                                        const isSelected = currentSizeUpper === s;
+                                      {sizesList.map(szObj => {
+                                        const isSelected = item.size === szObj.size;
+                                        const isOut = szObj.stock <= 0 && !isSelected;
+
                                         return (
                                           <button
-                                            key={s}
+                                            key={szObj.size}
                                             type="button"
-                                            onClick={() => handleItemSizeChange(idx, s)}
+                                            disabled={isOut}
+                                            onClick={() => {
+                                              if (!isOut) {
+                                                handleItemSizeChange(idx, szObj.size);
+                                              }
+                                            }}
                                             style={{
-                                              padding: '0.35rem 0.65rem',
+                                              padding: '0.35rem 0.75rem',
                                               borderRadius: 'var(--radius-sm)',
-                                              border: isSelected ? '1.5px solid var(--gold-primary)' : '1px solid var(--border-color)',
-                                              background: isSelected ? 'var(--gold-gradient)' : 'var(--bg-card)',
-                                              color: isSelected ? '#000000' : 'var(--text-primary)',
+                                              border: isSelected 
+                                                ? '1.5px solid var(--gold-primary)' 
+                                                : (isOut ? '1px solid rgba(244,63,94,0.3)' : '1px solid var(--border-color)'),
+                                              background: isSelected 
+                                                ? 'var(--gold-gradient)' 
+                                                : (isOut ? 'rgba(244,63,94,0.08)' : 'var(--bg-card)'),
+                                              color: isSelected 
+                                                ? '#000000' 
+                                                : (isOut ? '#F43F5E' : 'var(--text-primary)'),
                                               fontWeight: 900,
-                                              fontSize: '0.82rem',
-                                              cursor: 'pointer',
-                                              minWidth: '38px',
+                                              fontSize: '0.85rem',
+                                              cursor: isOut ? 'not-allowed' : 'pointer',
+                                              minWidth: '40px',
                                               textAlign: 'center',
+                                              opacity: isOut ? 0.45 : 1,
+                                              textDecoration: isOut ? 'line-through' : 'none',
                                               boxShadow: isSelected ? '0 0 10px var(--gold-glow)' : 'none',
                                               transition: 'var(--transition)'
                                             }}
+                                            title={isOut ? 'منتهي الكمية' : `المقاس: ${szObj.size}`}
                                           >
-                                            {s}
+                                            {szObj.size}
                                           </button>
                                         );
                                       })}

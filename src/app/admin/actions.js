@@ -398,10 +398,10 @@ export async function getCustomerOrdersAction({ email, phone, userId, orderIds =
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (!error && data) {
-      // Fetch all dynamic products from DB to resolve product images for order items
+      // Fetch all dynamic products from DB to resolve product images and real variants for order items
       const { data: dbProducts } = await supabaseAdmin
         .from('products')
-        .select('id, name_ar, name_en, main_image');
+        .select('id, name_ar, name_en, main_image, product_variants(*)');
 
       const enrichedOrders = data.map(order => {
         const rawItems = order.order_items || order.items || [];
@@ -415,12 +415,15 @@ export async function getCustomerOrdersAction({ email, phone, userId, orderIds =
           }
 
           const image = item.image || item.main_image || item.mainImage || matchedProd?.main_image || null;
+          const variants = matchedProd?.product_variants || item.product_variants || item.variants || [];
 
           return {
             ...item,
             image: image,
             main_image: image,
-            mainImage: image
+            mainImage: image,
+            product_variants: variants,
+            variants: variants
           };
         });
 
