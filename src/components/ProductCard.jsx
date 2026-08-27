@@ -55,11 +55,10 @@ export const ProductCard = ({ product }) => {
 
   const handleAddToCartClick = () => {
     if (isAllOutOfStock || isSelectedOutOfStock) {
-      showToast(lang === 'ar' ? '⚠️ هذا المقاس غير متوفر حالياً (منتهي الكمية)' : '⚠️ Selected size is out of stock!');
+      showToast(lang === 'ar' ? 'هذا المقاس غير متوفر حالياً' : 'Selected size is out of stock');
       return;
     }
     addToCart(product, selectedSizeObj.size);
-    trackAddToCart(product, selectedSizeObj.size, 1);
   };
 
   return (
@@ -133,8 +132,8 @@ export const ProductCard = ({ product }) => {
           }}
         >
           {isAllOutOfStock 
-            ? '⚠️ نَفَدَت الكَمّية بالكامل' 
-            : (isSelectedOutOfStock ? '⚠️ المقاس غير متوفر' : t('addToCart'))
+            ? 'نَفَدَت الكَمّية بالكامل' 
+            : (isSelectedOutOfStock ? 'المقاس غير متوفر' : t('addToCart'))
           }
         </button>
 

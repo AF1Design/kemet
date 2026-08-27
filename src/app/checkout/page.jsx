@@ -9,28 +9,34 @@ import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 
 // Shipping rates by governorate in EGP
 const SHIPPING_RATES = {
-  'القاهرة': 40,
-  'الجيزة': 40,
-  'الإسكندرية': 50,
-  'القليوبية': 45,
-  'الشرقية': 50,
-  'الدقهلية': 50,
-  'الغربية': 50,
-  'المنوفية': 50,
-  'البحيرة': 55,
-  'كفر الشيخ': 55,
-  'دمياط': 55,
-  'الإسماعيلية': 55,
-  'السويس': 55,
-  'بورسعيد': 55,
-  'بني سويف': 60,
-  'المنيا': 60,
-  'أسيوط': 65,
-  'سوهاج': 65,
-  'قنا': 70,
-  'الأقصر': 70,
-  'أسوان': 75,
-  'محافظة أخرى': 60
+  'القاهرة': 60,
+  'الجيزة': 60,
+  'القليوبية': 60,
+  'الإسكندرية': 60,
+  'الشرقية': 70,
+  'الدقهلية': 70,
+  'الغربية': 70,
+  'المنوفية': 70,
+  'البحيرة': 70,
+  'كفر الشيخ': 70,
+  'دمياط': 70,
+  'بورسعيد': 70,
+  'الإسماعيلية': 70,
+  'السويس': 70,
+  'بني سويف': 80,
+  'الفيوم': 80,
+  'المنيا': 80,
+  'أسيوط': 80,
+  'سوهاج': 90,
+  'قنا': 90,
+  'الأقصر': 90,
+  'أسوان': 90,
+  'البحر الأحمر': 110,
+  'جنوب سيناء': 110,
+  'شمال سيناء': 110,
+  'مطروح': 110,
+  'الوادي الجديد': 110,
+  'محافظة أخرى': 80
 };
 
 // Default registered coupons store
@@ -144,19 +150,33 @@ export default function CheckoutPage() {
     setCouponMsg(null);
   };
 
+  // Ensure user is logged in before accessing checkout
+  useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      window.location.href = '/login?redirect=/checkout';
+    }
+  }, [user]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (cart.length === 0 || isSubmitting) return;
 
+    if (!user) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login?redirect=/checkout';
+      }
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const orderId = `KM-2027-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderId = `KT-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder = {
       id: orderId,
       userId: user?.id || null,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-      status: 'جديد 📦',
+      status: 'جديد',
       items: [...cart],
       subtotal: subtotal,
       shipping: shippingFee,
@@ -224,9 +244,9 @@ export default function CheckoutPage() {
               padding: '3rem 2rem',
               boxShadow: 'var(--shadow-glow)'
             }}>
-              <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🎉</div>
+              <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>✓</div>
               <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '0.75rem' }}>
-                تم تأكيد طلبك بنجاح!
+                تم تأكيد طلبك بنجاح
               </h1>
               <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
                 شكراً لثقتك بـ KEMET. تم استلام طلبك برقم <strong style={{ color: '#FFF' }}>#{createdOrder.id}</strong> وجاري تجهيزه للشحن فوراً.
@@ -242,10 +262,10 @@ export default function CheckoutPage() {
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/my-orders" className="btn-primary" style={{ padding: '0.85rem 2rem' }}>
-                  📋 متابعة طلباتي
+                  متابعة طلباتي
                 </Link>
                 <Link href="/" className="btn-secondary" style={{ padding: '0.85rem 2rem' }}>
-                  🏠 العودة للمتجر
+                  العودة للمتجر
                 </Link>
               </div>
             </div>
@@ -263,7 +283,7 @@ export default function CheckoutPage() {
           
           <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '0.5rem' }}>
-              <span className="brand-glow">🛍️ {t('checkoutTitle')}</span>
+              <span className="brand-glow">{t('checkoutTitle')}</span>
             </h1>
             <p style={{ color: 'var(--text-secondary)' }}>
               أدخل بيانات الشحن والتسليم لتأكيد الطلب والدفع عند الاستلام
@@ -275,7 +295,7 @@ export default function CheckoutPage() {
             {/* Customer Form */}
             <form onSubmit={handleSubmit} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-lg)', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--gold-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-                📋 بيانات الشحن والتسليم
+                بيانات الشحن والتسليم
               </h3>
 
               <div>
@@ -357,7 +377,7 @@ export default function CheckoutPage() {
               </label>
 
               <button type="submit" disabled={isSubmitting || cart.length === 0} className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
-                {isSubmitting ? 'جاري تأكيد الطلب فورياً...' : `تأكيد الطلب بدفع ${totalAmount} ج.م 🛍️`}
+                {isSubmitting ? 'جاري تأكيد الطلب فورياً...' : `تأكيد الطلب بدفع ${totalAmount} ج.م`}
               </button>
             </form>
 

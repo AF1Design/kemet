@@ -35,21 +35,21 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
 
   const handleAddToCart = () => {
     if (isAllOutOfStock || isSelectedOutOfStock) {
-      showToast(lang === 'ar' ? '⚠️ هذا المقاس غير متوفر حالياً (منتهي الكمية)' : '⚠️ Selected size is out of stock!');
+      showToast(lang === 'ar' ? 'هذا المقاس غير متوفر حالياً' : 'Selected size is out of stock');
       return;
     }
     addToCart(product, selectedSizeObj.size);
-    trackAddToCart(product, selectedSizeObj.size, 1);
   };
 
   const handleBuyNow = () => {
     if (isAllOutOfStock || isSelectedOutOfStock) {
-      showToast(lang === 'ar' ? '⚠️ هذا المقاس غير متوفر حالياً (منتهي الكمية)' : '⚠️ Selected size is out of stock!');
+      showToast(lang === 'ar' ? 'هذا المقاس غير متوفر حالياً' : 'Selected size is out of stock');
       return;
     }
-    addToCart(product, selectedSizeObj.size);
-    trackAddToCart(product, selectedSizeObj.size, 1);
-    router.push('/checkout');
+    const added = addToCart(product, selectedSizeObj.size);
+    if (added) {
+      router.push('/checkout');
+    }
   };
 
   return (
@@ -161,7 +161,7 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        {item.size} {isOut ? (lang === 'ar' ? '(منتهي ❌)' : '(Out ❌)') : ''}
+                        {item.size} {isOut ? (lang === 'ar' ? '(منتهي)' : '(Out)') : ''}
                       </button>
                     );
                   })}
@@ -182,7 +182,7 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                     cursor: (isAllOutOfStock || isSelectedOutOfStock) ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  🛒 {isSelectedOutOfStock ? (lang === 'ar' ? 'غير متوفر حالياً' : 'Out of Stock') : t('addToCart')}
+                  {isSelectedOutOfStock ? (lang === 'ar' ? 'غير متوفر حالياً' : 'Out of Stock') : t('addToCart')}
                 </button>
                 
                 <button
@@ -197,7 +197,7 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                     cursor: (isAllOutOfStock || isSelectedOutOfStock) ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  ⚡ {lang === 'ar' ? 'شراء فوري' : 'Buy Now'}
+                  {lang === 'ar' ? 'شراء فوري' : 'Buy Now'}
                 </button>
               </div>
 

@@ -25,28 +25,34 @@ export const AppProvider = ({ children }) => {
     promoTextEn: '',
     isFreeShippingPromo: false,
     shippingRates: {
-      'القاهرة': 40,
-      'الجيزة': 40,
-      'الإسكندرية': 50,
-      'القليوبية': 45,
-      'الشرقية': 50,
-      'الدقهلية': 50,
-      'الغربية': 50,
-      'المنوفية': 50,
-      'البحيرة': 55,
-      'كفر الشيخ': 55,
-      'دمياط': 55,
-      'الإسماعيلية': 55,
-      'السويس': 55,
-      'بورسعيد': 55,
-      'بني سويف': 60,
-      'المنيا': 60,
-      'أسيوط': 65,
-      'سوهاج': 65,
-      'قنا': 70,
-      'الأقصر': 70,
-      'أسوان': 75,
-      'محافظة أخرى': 60
+      'القاهرة': 60,
+      'الجيزة': 60,
+      'القليوبية': 60,
+      'الإسكندرية': 60,
+      'الشرقية': 70,
+      'الدقهلية': 70,
+      'الغربية': 70,
+      'المنوفية': 70,
+      'البحيرة': 70,
+      'كفر الشيخ': 70,
+      'دمياط': 70,
+      'بورسعيد': 70,
+      'الإسماعيلية': 70,
+      'السويس': 70,
+      'بني سويف': 80,
+      'الفيوم': 80,
+      'المنيا': 80,
+      'أسيوط': 80,
+      'سوهاج': 90,
+      'قنا': 90,
+      'الأقصر': 90,
+      'أسوان': 90,
+      'البحر الأحمر': 110,
+      'جنوب سيناء': 110,
+      'شمال سيناء': 110,
+      'مطروح': 110,
+      'الوادي الجديد': 110,
+      'محافظة أخرى': 80
     }
   };
 
@@ -146,6 +152,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const addToCart = (product, selectedSize = 'L') => {
+    if (!user) {
+      showToast(lang === 'ar' ? 'يرجى تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني أولاً لإضافة المنتجات إلى السلة' : 'Please log in or create an account with email first to add items to your cart');
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname + window.location.search;
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      }
+      return false;
+    }
+
     setCart(prev => {
       const existingIndex = prev.findIndex(item => item.id === product.id && item.size === selectedSize);
       if (existingIndex > -1) {
@@ -156,7 +171,8 @@ export const AppProvider = ({ children }) => {
       return [...prev, { ...product, size: selectedSize, quantity: 1 }];
     });
     trackAddToCart(product, selectedSize, 1);
-    showToast(`تم إضافة ${product.nameAr || product.nameEn} مقاس (${selectedSize}) للسلة 🛍️`);
+    showToast(lang === 'ar' ? `تم إضافة ${product.nameAr || product.nameEn} مقاس (${selectedSize}) إلى السلة بنجاح` : `Added ${product.nameEn || product.nameAr} size (${selectedSize}) to cart`);
+    return true;
   };
 
   const removeFromCart = (id, size) => {
