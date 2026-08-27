@@ -117,7 +117,7 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
 
-        {/* Meta Pixel Base Code (Multi-Pixel Setup: Pixel 1 & Pixel 2) */}
+        {/* Meta Pixel Base Code */}
         <script
           id="meta-pixel-base"
           dangerouslySetInnerHTML={{
@@ -130,8 +130,7 @@ export default function RootLayout({ children }) {
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '1768720384147304');
-              fbq('init', '37829276463383864');
+              fbq('init', '1787832289174633');
             `
           }}
         />
@@ -140,14 +139,7 @@ export default function RootLayout({ children }) {
             height="1"
             width="1"
             style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=1768720384147304&ev=PageView&noscript=1"
-            alt=""
-          />
-          <img
-            height="1"
-            width="1"
-            style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=37829276463383864&ev=PageView&noscript=1"
+            src="https://www.facebook.com/tr?id=1787832289174633&ev=PageView&noscript=1"
             alt=""
           />
         </noscript>
