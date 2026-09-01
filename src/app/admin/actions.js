@@ -921,36 +921,58 @@ export async function sendMassPromoEmailAction(params) {
       rawText = params.promoTextAr || params.textAr || params.promoText || '';
     }
 
-    const promoContent = rawText ? String(rawText).trim() : '🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
+    const promoContent = rawText ? String(rawText).trim() : 'خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
+    
+    // Format promo paragraphs with bold, clear typography and perfect line spacing
+    const normalizedPromo = promoContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const promoParagraphs = normalizedPromo.split(/\n\s*\n/);
+    const formattedPromoHtml = promoParagraphs.map(p => {
+      const lines = p.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      return `<div style="font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 700; line-height: 1.85; color: #0F172A; margin: 0 0 12px 0; text-align: right; direction: rtl; word-break: break-word;">${lines.join('<br />')}</div>`;
+    }).join('');
 
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 8px; background-color: #FFFFFF;" dir="rtl">
-        <div style="text-align: right; margin-bottom: 20px;">
-          <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px;" />
-        </div>
-        
-        <h2 style="color: #0F172A; font-size: 18px; margin-bottom: 16px;">🔥 عرض ترويجي حصري من KEMET</h2>
-        
-        <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 18px; border-radius: 6px; font-size: 15px; color: #0F172A; margin: 16px 0; line-height: 1.7;">
-          ${promoContent}
-        </div>
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>عرض خاص من KEMET</title>
+      </head>
+      <body style="margin: 0; padding: 15px 0; background-color: #F1F5F9; font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; direction: rtl; text-align: right;">
+        <div style="font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 26px 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF; box-shadow: 0 4px 12px rgba(0,0,0,0.05); direction: rtl; text-align: right;">
+          <div style="text-align: left; margin-bottom: 20px; border-bottom: 1px solid #F1F5F9; padding-bottom: 14px;">
+            <a href="https://kemetmisr.com" target="_blank" style="text-decoration: none;">
+              <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px; border: 0;" />
+            </a>
+          </div>
+          
+          <h2 style="color: #0F172A; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; font-size: 20px; font-weight: 900; margin: 0 0 16px 0; line-height: 1.4; text-align: right;">
+            عرض ترويجي حصري من KEMET
+          </h2>
+          
+          <div style="background: #F8FAFC; border: 1px solid #D4AF37; border-right: 5px solid #D4AF37; padding: 20px 22px; border-radius: 8px; margin: 18px 0 24px 0; direction: rtl; text-align: right;">
+            ${formattedPromoHtml}
+          </div>
 
-        <div style="text-align: center; margin: 24px 0 16px 0;">
-          <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: linear-gradient(90deg, #D4AF37, #FFDF73); color: #000000; font-weight: bold; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 15px; box-shadow: 0 2px 4px rgba(212,175,55,0.25);">
-            🛒 تصفّح المتجر واستفد بالعرض الآن
-          </a>
+          <div style="text-align: center; margin: 26px 0 20px 0;">
+            <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: linear-gradient(90deg, #D4AF37, #FFDF73); color: #000000; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; font-weight: 900; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; box-shadow: 0 4px 10px rgba(212,175,55,0.3); letter-spacing: 0.5px;">
+              تصفّح المتجر واستفد بالعرض الآن
+            </a>
+          </div>
+
+          <p style="color: #64748B; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: 600; text-align: right; margin-top: 20px; line-height: 1.6;">
+            وصلك هذا البريد لأنك مسجّل في متجر KEMET الرسمي.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
+          
+          <p style="color: #94A3B8; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; text-align: center; margin: 0;">
+            KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
+          </p>
         </div>
-
-        <p style="color: #64748B; font-size: 13px; text-align: right; margin-top: 20px;">
-          وصلك هذا البريد لأنك مسجّل في متجر KEMET الرسمي.
-        </p>
-
-        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
-        
-        <p style="color: #94A3B8; font-size: 12px; text-align: center; margin: 0;">
-          KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
-        </p>
-      </div>
+      </body>
+      </html>
     `;
 
     const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
@@ -1181,39 +1203,61 @@ export async function sendDirectCustomerEmailAction({ orderId, recipientEmail, s
       </div>
     ` : '';
 
+    // Format direct message paragraphs with bold, clear typography and perfect line spacing
+    const normalizedMessage = cleanMessage.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const messageParagraphs = normalizedMessage.split(/\n\s*\n/);
+    const formattedMessageHtml = messageParagraphs.map(p => {
+      const lines = p.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      return `<div style="font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 700; line-height: 1.85; color: #0F172A; margin: 0 0 12px 0; text-align: right; direction: rtl; word-break: break-word;">${lines.join('<br />')}</div>`;
+    }).join('');
+
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 22px; border: 1px solid #E2E8F0; border-radius: 10px; background-color: #FFFFFF; direction: rtl; text-align: right;">
-        <div style="text-align: left; margin-bottom: 20px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
-          <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px;" />
-        </div>
-        
-        <h2 style="color: #0F172A; font-size: 20px; margin-bottom: 16px;">رسالة خاصة بشأن طلبك رقم #${orderId} 📩</h2>
-        
-        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 12px;">
-          عزيزنا العميل <strong>${customerName}</strong>،
-        </p>
-        
-        <div style="background: #F8FAFC; border: 1px solid #D4AF37; border-right: 5px solid #D4AF37; padding: 18px 20px; border-radius: 8px; font-size: 15px; line-height: 1.8; color: #0F172A; margin: 18px 0; white-space: pre-wrap; font-weight: 500;">
-          ${cleanMessage}
-        </div>
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>رسالة خاصة بشأن طلبك - KEMET</title>
+      </head>
+      <body style="margin: 0; padding: 15px 0; background-color: #F1F5F9; font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; direction: rtl; text-align: right;">
+        <div style="font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 26px 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF; box-shadow: 0 4px 12px rgba(0,0,0,0.05); direction: rtl; text-align: right;">
+          <div style="text-align: left; margin-bottom: 20px; border-bottom: 1px solid #F1F5F9; padding-bottom: 14px;">
+            <a href="https://kemetmisr.com" target="_blank" style="text-decoration: none;">
+              <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px; border: 0;" />
+            </a>
+          </div>
+          
+          <h2 style="color: #0F172A; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; font-size: 20px; font-weight: 900; margin: 0 0 16px 0; line-height: 1.4; text-align: right;">
+            رسالة خاصة بشأن طلبك رقم #${orderId}
+          </h2>
+          
+          <p style="color: #475569; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 700; line-height: 1.6; margin-bottom: 16px; text-align: right;">
+            عزيزنا العميل <strong>${customerName}</strong>،
+          </p>
+          
+          <div style="background: #F8FAFC; border: 1px solid #D4AF37; border-right: 5px solid #D4AF37; padding: 20px 22px; border-radius: 8px; margin: 18px 0 24px 0; direction: rtl; text-align: right;">
+            ${formattedMessageHtml}
+          </div>
 
-        ${orderDetailsSection}
+          ${orderDetailsSection}
 
-        <div style="text-align: center; margin-top: 24px; margin-bottom: 16px;">
-          <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; text-decoration: none; padding: 11px 22px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
-            🛒 زيارة موقع KEMET
-          </a>
-          <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، بخصوص رسالتكم عن طلبي رقم: #${orderId}`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; text-decoration: none; padding: 11px 22px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
-            💬 تواصل معنا واتساب
-          </a>
+          <div style="text-align: center; margin-top: 26px; margin-bottom: 18px;">
+            <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 800; margin: 6px;">
+              زيارة موقع KEMET
+            </a>
+            <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، بخصوص رسالتكم عن طلبي رقم: #${orderId}`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Arial, sans-serif; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 800; margin: 6px;">
+              تواصل معنا واتساب
+            </a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+          
+          <p style="color: #94A3B8; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; text-align: center; margin: 0;">
+            KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
+          </p>
         </div>
-
-        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
-        
-        <p style="color: #94A3B8; font-size: 12px; text-align: center; margin: 0;">
-          KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
-        </p>
-      </div>
+      </body>
+      </html>
     `;
 
     const { data, error } = await resend.emails.send({

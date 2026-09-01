@@ -60,18 +60,19 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect');
       if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
-        return redirect;
+        if (redirect.includes('openCart=true')) return redirect;
+        return redirect.includes('?') ? `${redirect}&openCart=true` : `${redirect}?openCart=true`;
       }
       try {
         const savedCart = localStorage.getItem('kemet_cart');
         const cartItems = savedCart ? JSON.parse(savedCart) : [];
         const pendingItem = localStorage.getItem('kemet_pending_cart_item');
         if (pendingItem || (Array.isArray(cartItems) && cartItems.length > 0)) {
-          return '/checkout';
+          return '/?openCart=true';
         }
       } catch (e) {}
     }
-    return '/';
+    return '/?openCart=true';
   };
 
   React.useEffect(() => {

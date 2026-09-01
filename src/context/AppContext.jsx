@@ -90,6 +90,18 @@ export const AppProvider = ({ children }) => {
       }
     }
     syncCategories();
+
+    // Auto-open Cart Drawer if requested via URL param (e.g. after login)
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('openCart') === 'true') {
+          setTimeout(() => {
+            setIsCartOpen(true);
+          }, 300);
+        }
+      } catch (e) {}
+    }
   }, []);
 
   // Sync lang & dir
