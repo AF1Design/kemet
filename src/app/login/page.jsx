@@ -53,6 +53,27 @@ export default function LoginPage() {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpModalMode, setOtpModalMode] = useState('signup');
 
+  // Smart safe redirect resolver
+  const getDestinationUrl = (userRole) => {
+    if (userRole === 'admin') return '/admin';
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+        return redirect;
+      }
+      try {
+        const savedCart = localStorage.getItem('kemet_cart');
+        const cartItems = savedCart ? JSON.parse(savedCart) : [];
+        const pendingItem = localStorage.getItem('kemet_pending_cart_item');
+        if (pendingItem || (Array.isArray(cartItems) && cartItems.length > 0)) {
+          return '/checkout';
+        }
+      } catch (e) {}
+    }
+    return '/';
+  };
+
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -72,7 +93,7 @@ export default function LoginPage() {
     document.cookie = 'supabase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     
     logoutUser();
-    showToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح 👋' : 'Signed out successfully 👋');
+    showToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح' : 'Signed out successfully');
   };
 
   const handleUpdateProfile = async (e) => {
@@ -177,11 +198,8 @@ export default function LoginPage() {
 
           showToast(userRole === 'admin' ? (lang === 'ar' ? 'تم تسجيل دخول المسؤول الإداري.' : 'Admin signed in successfully.') : (lang === 'ar' ? 'تم تسجيل الدخول بنجاح.' : 'Signed in successfully.'));
 
-          if (userRole === 'admin') {
-            window.location.href = '/admin';
-          } else {
-            window.location.href = '/my-orders';
-          }
+          const destination = getDestinationUrl(userRole);
+          window.location.href = destination;
         }
       } catch (err) {
         setAuthError(err.message || (lang === 'ar' ? 'حدث خطأ في الاتصال بالخادم' : 'Server error occurred'));
@@ -294,7 +312,7 @@ export default function LoginPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button type="submit" className="btn-primary" disabled={isLoading} style={{ flex: 1, padding: '0.65rem' }}>
-                        {isLoading ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التعديلات 💾' : 'Save Changes 💾')}
+                        {isLoading ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes')}
                       </button>
                       <button type="button" className="btn-secondary" onClick={() => setIsEditingProfile(false)} style={{ padding: '0.65rem' }}>
                         {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -306,12 +324,12 @@ export default function LoginPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   {user.role === 'admin' && (
                     <Link href="/admin" className="btn-primary" style={{ textAlign: 'center', padding: '0.85rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
-                      👑 {lang === 'ar' ? 'الدخول للوحة التحكم الإدارية (/admin)' : 'Open Admin Dashboard (/admin)'}
+                      {lang === 'ar' ? 'الدخول للوحة التحكم الإدارية' : 'Open Admin Dashboard'}
                     </Link>
                   )}
                   
                   <Link href="/my-orders" className="btn-secondary" style={{ textAlign: 'center', padding: '0.85rem' }}>
-                    📦 {t('viewOrdersBtn')}
+                    {t('viewOrdersBtn')}
                   </Link>
 
                   {!isEditingProfile && (
@@ -326,7 +344,7 @@ export default function LoginPage() {
                       className="btn-secondary" 
                       style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.05)' }}
                     >
-                      ⚙️ {lang === 'ar' ? 'تعديل بيانات الحساب' : 'Edit Account Details'}
+                      {lang === 'ar' ? 'تعديل بيانات الحساب' : 'Edit Account Details'}
                     </button>
                   )}
 
@@ -336,7 +354,7 @@ export default function LoginPage() {
                     className="btn-secondary" 
                     style={{ padding: '0.85rem', background: 'rgba(244,63,94,0.1)', color: '#F43F5E', border: '1px solid rgba(244,63,94,0.3)' }}
                   >
-                    🚪 {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
+                    {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
                   </button>
                 </div>
               </div>
@@ -634,9 +652,10 @@ export default function LoginPage() {
               ? (lang === 'ar' ? 'تم إعادة ضبط كلمة المرور وتسجيل الدخول بنجاح.' : 'Password reset and signed in successfully.')
               : (lang === 'ar' ? 'تم تفعيل البريد الإلكتروني وتسجيل الدخول بنجاح.' : 'Email verified and signed in successfully.')
           );
+          const destination = getDestinationUrl(profileData?.role || 'customer');
           setTimeout(() => {
-            window.location.href = '/my-orders';
-          }, 800);
+            window.location.href = destination;
+          }, 600);
         }}
       />
 

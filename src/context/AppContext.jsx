@@ -140,7 +140,32 @@ export const AppProvider = ({ children }) => {
 
   const loginUser = (userData) => {
     setUser(userData);
-    showToast(`مرحباً بك ${userData.fullName || 'عزيزنا العميل'} في KEMET 👑`);
+    showToast(lang === 'ar' ? `مرحباً بك ${userData.fullName || 'عزيزنا العميل'} في KEMET` : `Welcome ${userData.fullName || 'Customer'} to KEMET`);
+
+    // Check if there is a pending cart item to restore automatically
+    try {
+      const pendingStr = localStorage.getItem('kemet_pending_cart_item');
+      if (pendingStr) {
+        const pendingItem = JSON.parse(pendingStr);
+        if (pendingItem?.product) {
+          const prod = pendingItem.product;
+          const sz = pendingItem.selectedSize || 'L';
+          setCart(prev => {
+            const existingIndex = prev.findIndex(item => item.id === prod.id && item.size === sz);
+            if (existingIndex > -1) {
+              const updated = [...prev];
+              updated[existingIndex].quantity += 1;
+              return updated;
+            }
+            return [...prev, { ...prod, size: sz, quantity: 1 }];
+          });
+          trackAddToCart(prod, sz, 1);
+        }
+        localStorage.removeItem('kemet_pending_cart_item');
+      }
+    } catch (e) {
+      console.warn('Pending cart restore note:', e);
+    }
   };
 
   const logoutUser = () => {
@@ -148,11 +173,16 @@ export const AppProvider = ({ children }) => {
     setOrders([]);
     localStorage.removeItem('kemet_user');
     localStorage.removeItem('kemet_orders');
-    showToast('تم تسجيل الخروج بنجاح 👋');
+    showToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح' : 'Signed out successfully');
   };
 
   const addToCart = (product, selectedSize = 'L') => {
     if (!user) {
+      // Save pending item to localStorage so it's restored right after login
+      try {
+        localStorage.setItem('kemet_pending_cart_item', JSON.stringify({ product, selectedSize }));
+      } catch (e) {}
+
       showToast(lang === 'ar' ? 'يرجى تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني أولاً لإضافة المنتجات إلى السلة' : 'Please log in or create an account with email first to add items to your cart');
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname + window.location.search;
