@@ -472,6 +472,13 @@ export async function createOrderAction(orderData) {
     const rawTotal = orderData.total ?? orderData.total_amount ?? orderData.totalAmount;
     const calcTotal = rawTotal != null && Number(rawTotal) > 0 ? Number(rawTotal) : Math.max(0, calcSubtotal - calcDiscount) + calcShipping;
 
+    const couponCode = orderData.coupon_code || orderData.couponCode || null;
+    let finalDeliveryNotes = orderData.customer?.notes || orderData.notes || '';
+    if (couponCode) {
+      const couponTag = `[كود الخصم: ${String(couponCode).trim().toUpperCase()}${calcDiscount > 0 ? ` | خصم: ${calcDiscount} ج.م` : ''}]`;
+      finalDeliveryNotes = finalDeliveryNotes ? `${couponTag} ${finalDeliveryNotes}` : couponTag;
+    }
+
     const orderPayload = {
       id: orderData.id,
       user_id: validUserId,
@@ -479,7 +486,7 @@ export async function createOrderAction(orderData) {
       customer_phone: orderData.customer?.phone || orderData.customerPhone || '',
       governorate: orderData.customer?.governorate || orderData.governorate || 'القاهرة',
       address: orderData.customer?.address || orderData.address || '',
-      delivery_notes: orderData.customer?.notes || orderData.notes || '',
+      delivery_notes: finalDeliveryNotes,
       subtotal: calcSubtotal,
       shipping_fee: calcShipping,
       total_amount: calcTotal,
@@ -1567,9 +1574,9 @@ export async function toggleCouponStatusAction(couponCode) {
 }
 
 /**
- * Server Action: Records coupon usage upon successful checkout order creation
+ * Server Action: Records coupon usage and logs order statistics upon successful checkout
  */
-export async function recordCouponUsageAction(couponCode, userIdentifier) {
+export async function recordCouponUsageAction(couponCode, userIdentifier, orderData = null) {
   try {
     const res = await getCouponsAction();
     const coupons = res.coupons || DEFAULT_COUPONS;
@@ -1577,6 +1584,25 @@ export async function recordCouponUsageAction(couponCode, userIdentifier) {
     const cleanUser = String(userIdentifier || 'guest').trim().toLowerCase();
 
     if (!cleanCode) return { success: true };
+
+    const orderRecord = orderData ? {
+      orderId: orderData.id,
+      date: orderData.date || new Date().toISOString().split('T')[0],
+      time: orderData.time || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      customerName: orderData.customer?.fullName || orderData.customerName || 'عميل KEMET',
+      customerPhone: orderData.customer?.phone || orderData.customerPhone || '',
+      governorate: orderData.customer?.governorate || '',
+      itemsCount: (orderData.items || []).reduce((s, i) => s + Number(i.quantity || 1), 0),
+      items: (orderData.items || []).map(i => ({
+        name: i.nameAr || i.name_ar || i.title || 'منتج KEMET',
+        size: i.size || 'M',
+        quantity: Number(i.quantity || 1),
+        price: Number(i.price || 0)
+      })),
+      discountAmount: Number(orderData.discount || 0),
+      totalAmount: Number(orderData.total ?? orderData.total_amount ?? orderData.totalAmount ?? 0),
+      status: orderData.status || 'جديد'
+    } : null;
 
     const updated = coupons.map(c => {
       if (c.code.toUpperCase() === cleanCode) {
@@ -1586,11 +1612,26 @@ export async function recordCouponUsageAction(couponCode, userIdentifier) {
         if (!usedByList.includes(cleanUser)) {
           usedByList.push(cleanUser);
         }
+
+        const currentOrders = Array.isArray(c.orders) ? [...c.orders] : [];
+        if (orderRecord && !currentOrders.some(o => o.orderId === orderRecord.orderId)) {
+          currentOrders.unshift(orderRecord);
+        }
+
+        const totalItemsSold = currentOrders.reduce((sum, o) => sum + Number(o.itemsCount || 0), 0);
+        const totalSalesRevenue = currentOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+        const totalDiscountGiven = currentOrders.reduce((sum, o) => sum + Number(o.discountAmount || 0), 0);
+
         return {
           ...c,
           remainingUses: newRemaining,
           isActive: newRemaining > 0 ? c.isActive : false,
-          usedBy: usedByList
+          usedBy: usedByList,
+          orders: currentOrders,
+          totalOrdersCount: currentOrders.length,
+          totalItemsSold: totalItemsSold,
+          totalSalesRevenue: totalSalesRevenue,
+          totalDiscountGiven: totalDiscountGiven
         };
       }
       return c;
@@ -1601,5 +1642,94 @@ export async function recordCouponUsageAction(couponCode, userIdentifier) {
   } catch (err) {
     console.warn('recordCouponUsageAction error:', err);
     return { success: false };
+  }
+}
+
+/**
+ * Server Action: Fetches comprehensive analytics and orders history for a specific coupon code
+ */
+export async function getCouponAnalyticsAction(couponCode) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanCode = String(couponCode || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false, error: 'كود الخصم مطلوب' };
+    }
+
+    // 1. Fetch coupon config
+    const res = await getCouponsAction();
+    const coupons = res.coupons || DEFAULT_COUPONS;
+    const coupon = coupons.find(c => c.code.toUpperCase() === cleanCode) || null;
+
+    // 2. Query Supabase orders table for all orders referencing this coupon in delivery_notes
+    const { data: dbOrders, error: ordersErr } = await supabaseAdmin
+      .from('orders')
+      .select('*, order_items(*)')
+      .ilike('delivery_notes', `%${cleanCode}%`)
+      .order('created_at', { ascending: false });
+
+    // 3. Merge stored orders from coupon config and dbOrders
+    const ordersMap = new Map();
+
+    // From coupon config
+    if (coupon && Array.isArray(coupon.orders)) {
+      coupon.orders.forEach(o => {
+        if (o.orderId) ordersMap.set(String(o.orderId).trim(), o);
+      });
+    }
+
+    // From Supabase DB orders
+    if (!ordersErr && Array.isArray(dbOrders)) {
+      dbOrders.forEach(dbo => {
+        const orderId = String(dbo.id).trim();
+        const items = (dbo.order_items || []).map(i => ({
+          name: i.product_name_ar || 'منتج KEMET',
+          size: i.size || 'M',
+          quantity: Number(i.quantity || 1),
+          price: Number(i.unit_price || 0)
+        }));
+        const totalItemsCount = items.reduce((s, i) => s + Number(i.quantity || 1), 0);
+
+        // Try to parse discount from delivery_notes
+        const discountMatch = dbo.delivery_notes?.match(/خصم:\s*(\d+)/i);
+        const parsedDiscount = discountMatch ? Number(discountMatch[1]) : 0;
+
+        const existing = ordersMap.get(orderId) || {};
+        ordersMap.set(orderId, {
+          orderId: orderId,
+          date: dbo.created_at ? dbo.created_at.split('T')[0] : (existing.date || ''),
+          time: dbo.created_at ? new Date(dbo.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : (existing.time || ''),
+          customerName: dbo.customer_name || existing.customerName || 'عميل KEMET',
+          customerPhone: dbo.customer_phone || existing.customerPhone || '',
+          governorate: dbo.governorate || existing.governorate || '',
+          itemsCount: totalItemsCount || existing.itemsCount || 1,
+          items: items.length > 0 ? items : (existing.items || []),
+          discountAmount: parsedDiscount || existing.discountAmount || 0,
+          totalAmount: Number(dbo.total_amount || existing.totalAmount || 0),
+          status: dbo.status || existing.status || 'جديد'
+        });
+      });
+    }
+
+    const mergedOrders = Array.from(ordersMap.values());
+    const totalOrdersCount = mergedOrders.length;
+    const totalItemsSold = mergedOrders.reduce((s, o) => s + Number(o.itemsCount || 0), 0);
+    const totalSalesRevenue = mergedOrders.reduce((s, o) => s + Number(o.totalAmount || 0), 0);
+    const totalDiscountGiven = mergedOrders.reduce((s, o) => s + Number(o.discountAmount || 0), 0);
+
+    return {
+      success: true,
+      coupon: coupon || { code: cleanCode, type: 'fixed_price', value: 220 },
+      stats: {
+        totalOrdersCount,
+        totalItemsSold,
+        totalSalesRevenue,
+        totalDiscountGiven
+      },
+      orders: mergedOrders
+    };
+  } catch (err) {
+    console.error('getCouponAnalyticsAction error:', err);
+    return { success: false, error: err.message || 'فشل جلب إحصائيات الكود' };
   }
 }

@@ -211,6 +211,15 @@ export default function CheckoutPage() {
       total: totalAmount,
       total_amount: totalAmount,
       totalAmount: totalAmount,
+      coupon_code: appliedCoupon ? appliedCoupon.code : null,
+      couponCode: appliedCoupon ? appliedCoupon.code : null,
+      coupon_details: appliedCoupon ? {
+        code: appliedCoupon.code,
+        type: appliedCoupon.type,
+        targetPrice: appliedCoupon.targetPrice || null,
+        value: appliedCoupon.value || null,
+        discountAmount: discountAmount
+      } : null,
       customer: {
         ...formData,
         email: user?.email || formData.email || null
@@ -218,11 +227,11 @@ export default function CheckoutPage() {
       customer_email: user?.email || formData.email || null
     };
 
-    // Update coupon usage & decrement remaining uses in database
+    // Update coupon usage & record order statistics in database
     if (appliedCoupon) {
       try {
         const userEmail = (user?.email || formData.phone || 'guest').toLowerCase().trim();
-        recordCouponUsageAction(appliedCoupon.code, userEmail).catch(err => {
+        recordCouponUsageAction(appliedCoupon.code, userEmail, newOrder).catch(err => {
           console.warn('Coupon usage record note:', err);
         });
       } catch (err) {

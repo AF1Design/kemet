@@ -30,6 +30,17 @@ function formatOrderDate(dateString) {
   }
 }
 
+function extractCouponCode(order) {
+  if (!order) return null;
+  if (order.coupon_code) return String(order.coupon_code).trim().toUpperCase();
+  if (order.couponCode) return String(order.couponCode).trim().toUpperCase();
+  if (order.delivery_notes) {
+    const match = order.delivery_notes.match(/\[كود الخصم:\s*([^\]|]+)/i);
+    if (match) return match[1].trim().toUpperCase();
+  }
+  return null;
+}
+
 export function AdminOrdersTable({ initialOrders }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,21 +200,17 @@ export function AdminOrdersTable({ initialOrders }) {
   };
 
   const filteredOrders = orders.filter(order => {
-    if (statusFilter !== 'ALL') {
-      const statusStr = String(order.status || '').toLowerCase();
-      const filterStr = statusFilter.toLowerCase();
-      if (!statusStr.includes(filterStr)) {
-        return false;
-      }
-    }
-
+    if (statusFilter !== 'ALL' && order.status !== statusFilter) return false;
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
+    const cCode = extractCouponCode(order);
     return (
       (order.id && String(order.id).toLowerCase().includes(q)) ||
       (order.customer_name && String(order.customer_name).toLowerCase().includes(q)) ||
       (order.customer_phone && String(order.customer_phone).includes(q)) ||
-      (order.governorate && String(order.governorate).toLowerCase().includes(q))
+      (order.governorate && String(order.governorate).toLowerCase().includes(q)) ||
+      (cCode && cCode.toLowerCase().includes(q)) ||
+      (order.delivery_notes && String(order.delivery_notes).toLowerCase().includes(q))
     );
   });
 
@@ -215,7 +222,7 @@ export function AdminOrdersTable({ initialOrders }) {
           
           <input
             type="text"
-            placeholder="🔍 ابحث برقم الطلب (KM-2027)، اسم العميل، أو الهاتف..."
+            placeholder="ابحث برقم الطلب (KT-2027)، اسم العميل، الهاتف، أو كود الخصم..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             style={{ padding: '0.8rem 1.25rem', flexGrow: 1, maxWidth: '400px', fontSize: '0.95rem' }}
@@ -269,7 +276,7 @@ export function AdminOrdersTable({ initialOrders }) {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.4)' }}>
               <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>رقم الطلب</th>
-              <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>تاريخ ووقت الطلب 📅</th>
+              <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>تاريخ ووقت الطلب</th>
               <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>الاسم</th>
               <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>رقم الهاتف</th>
               <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>العنوان</th>
@@ -296,12 +303,30 @@ export function AdminOrdersTable({ initialOrders }) {
 
                 const productNames = itemsList.map(i => i.product_name_ar || i.nameAr || i.title || 'منتج KEMET').join(' + ');
                 const productSizes = Array.from(new Set(itemsList.map(i => i.size || 'M'))).join(', ');
+                const orderCoupon = extractCouponCode(order);
 
                 return (
                   <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                     {/* 1. رقم الطلب */}
                     <td style={{ padding: '1rem', fontWeight: 900, color: 'var(--gold-primary)', fontSize: '0.9rem' }}>
-                      #{order.id}
+                      <div>#{order.id}</div>
+                      {orderCoupon && (
+                        <div style={{ marginTop: '0.35rem' }}>
+                          <span style={{ 
+                            display: 'inline-block', 
+                            padding: '0.15rem 0.45rem', 
+                            background: 'rgba(212,175,55,0.15)', 
+                            border: '1px solid var(--border-gold)', 
+                            color: 'var(--gold-primary)', 
+                            borderRadius: '4px', 
+                            fontSize: '0.72rem', 
+                            fontWeight: 800,
+                            letterSpacing: '0.5px'
+                          }}>
+                            كود: {orderCoupon}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     
                     {/* 2. تاريخ ووقت الطلب */}
@@ -479,17 +504,24 @@ export function AdminOrdersTable({ initialOrders }) {
             boxShadow: 'var(--shadow-glow)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>📦 تفاصيل الطلب #{selectedOrderDetails.id}</span>
+              <span>تفاصيل الطلب #{selectedOrderDetails.id}</span>
               <button type="button" onClick={() => setSelectedOrderDetails(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </h3>
 
+            {extractCouponCode(selectedOrderDetails) && (
+              <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'rgba(212,175,55,0.12)', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-md)' }}>
+                <span style={{ color: 'var(--gold-primary)', fontWeight: 800, fontSize: '0.88rem' }}>كود الخصم المستخدم: </span>
+                <strong style={{ color: '#FFF', fontSize: '1rem', letterSpacing: '1px' }}>{extractCouponCode(selectedOrderDetails)}</strong>
+              </div>
+            )}
+
             <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <div>📅 تاريخ الطلب: <strong style={{ color: '#FFF' }}>{formatOrderDate(selectedOrderDetails.created_at)}</strong></div>
-              <div>👤 العميل: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.customer_name || selectedOrderDetails.customer?.fullName}</strong></div>
-              <div>📱 رقم الهاتف: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.customer_phone || selectedOrderDetails.customer?.phone}</strong></div>
-              <div>📧 البريد الإلكتروني: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.customer_email || selectedOrderDetails.customer?.email || 'غير مسجل'}</strong></div>
-              <div>📍 المحافظة والعنوان: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.governorate} ({selectedOrderDetails.address})</strong></div>
-              {selectedOrderDetails.delivery_notes && <div>📝 ملاحظات التوصيل: <strong style={{ color: 'var(--gold-primary)' }}>{selectedOrderDetails.delivery_notes}</strong></div>}
+              <div>تاريخ الطلب: <strong style={{ color: '#FFF' }}>{formatOrderDate(selectedOrderDetails.created_at)}</strong></div>
+              <div>العميل: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.customer_name || selectedOrderDetails.customer?.fullName}</strong></div>
+              <div>رقم الهاتف: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.customer_phone || selectedOrderDetails.customer?.phone}</strong></div>
+              <div>البريد الإلكتروني: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.customer_email || selectedOrderDetails.customer?.email || 'غير مسجل'}</strong></div>
+              <div>المحافظة والعنوان: <strong style={{ color: '#FFF' }}>{selectedOrderDetails.governorate} ({selectedOrderDetails.address})</strong></div>
+              {selectedOrderDetails.delivery_notes && <div>ملاحظات التوصيل: <strong style={{ color: 'var(--gold-primary)' }}>{selectedOrderDetails.delivery_notes}</strong></div>}
             </div>
 
             <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.75rem' }}>المنتجات المطلوبة:</h4>
