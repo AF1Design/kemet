@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { getAdminSupabase } from '../../lib/supabase/admin';
 import { PromoEmailControl } from '../../components/admin/PromoEmailControl';
+import { CouponsControl } from '../../components/admin/CouponsControl';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export default async function AdminDashboardPage() {
           <span className="brand-glow">مرحباً بك في لوحة تحكم KEMET 👑</span>
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-          نظام الإدارة المركزي لكتالوج المنتجات والمخزون والطلبات
+          نظام الإدارة المركزي لكتالوج المنتجات والمخزون والطلبات وأكواد الخصم
         </p>
       </div>
 
@@ -68,6 +69,11 @@ export default async function AdminDashboardPage() {
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>أطقم / جيم / شورتات</span>
         </div>
 
+      </div>
+
+      {/* Coupons / Promo Codes Management */}
+      <div id="coupons">
+        <CouponsControl />
       </div>
 
       {/* Mass Promo Email Control & Stats Section */}

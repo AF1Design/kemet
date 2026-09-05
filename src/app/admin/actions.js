@@ -3,6 +3,7 @@
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
 import { processAndUploadProductImage } from '../../lib/image-uploader.js';
 import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
+import { DEFAULT_COUPONS } from '../../lib/coupons.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
@@ -1395,5 +1396,210 @@ export async function saveHomepageSectionsAction(sectionsList) {
   }
 }
 
+/**
+ * Server Action: Fetches all coupons from Supabase DB
+ */
+export async function getCouponsAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .select('*')
+      .eq('id', 'coupons_config')
+      .single();
 
+    if (!error && data && data.name_ar) {
+      const parsed = JSON.parse(data.name_ar);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure KEMETFAMILY code exists in the store
+        const hasFamily = parsed.some(c => c.code.toUpperCase() === 'KEMETFAMILY');
+        if (!hasFamily) {
+          parsed.unshift(DEFAULT_COUPONS[0]);
+        }
+        return { success: true, coupons: parsed };
+      }
+    }
+  } catch (err) {
+    console.warn('getCouponsAction note:', err);
+  }
+  return { success: true, coupons: DEFAULT_COUPONS };
+}
 
+/**
+ * Server Action: Saves complete coupons list to Supabase DB
+ */
+export async function saveCouponsListAction(couponsList) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanJson = JSON.stringify(couponsList);
+
+    const { error } = await supabaseAdmin
+      .from('categories')
+      .upsert({
+        id: 'coupons_config',
+        name_ar: cleanJson,
+        name_en: 'COUPONS_CONFIG',
+        description_ar: 'active',
+        description_en: 'JSON_CONFIG'
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.error('saveCouponsListAction DB error:', error);
+      return { success: false, error: error.message };
+    }
+
+    triggerBackgroundRevalidate(['/checkout', '/admin']);
+    return { success: true };
+  } catch (err) {
+    console.error('saveCouponsListAction exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Adds or updates a single coupon
+ */
+export async function addOrUpdateCouponAction(couponData) {
+  try {
+    const res = await getCouponsAction();
+    const currentCoupons = res.coupons || DEFAULT_COUPONS;
+    const cleanCode = String(couponData.code || '').trim().toUpperCase();
+
+    if (!cleanCode) {
+      return { success: false, error: 'كود الخصم مطلوب.' };
+    }
+
+    const type = couponData.type || 'fixed_price';
+    const targetPrice = type === 'fixed_price' ? Number(couponData.targetPrice || couponData.value || 220) : null;
+    const value = type === 'fixed_price' ? targetPrice : Number(couponData.value || 0);
+
+    const newCoupon = {
+      code: cleanCode,
+      type: type,
+      targetPrice: targetPrice,
+      value: value,
+      description: couponData.description ? String(couponData.description).trim() : '',
+      isActive: couponData.isActive !== false,
+      totalMaxUses: Number(couponData.totalMaxUses || 1000),
+      remainingUses: Number(couponData.remainingUses ?? couponData.totalMaxUses ?? 1000),
+      usedBy: Array.isArray(couponData.usedBy) ? couponData.usedBy : []
+    };
+
+    const existingIndex = currentCoupons.findIndex(c => c.code.toUpperCase() === cleanCode);
+    let updatedList = [];
+
+    if (existingIndex > -1) {
+      updatedList = currentCoupons.map((c, idx) => {
+        if (idx === existingIndex) {
+          return {
+            ...c,
+            ...newCoupon,
+            usedBy: c.usedBy || []
+          };
+        }
+        return c;
+      });
+    } else {
+      updatedList = [newCoupon, ...currentCoupons];
+    }
+
+    const saveRes = await saveCouponsListAction(updatedList);
+    if (!saveRes.success) {
+      return { success: false, error: saveRes.error || 'فشل حفظ كود الخصم' };
+    }
+
+    return { success: true, coupons: updatedList };
+  } catch (err) {
+    console.error('addOrUpdateCouponAction error:', err);
+    return { success: false, error: err.message || 'حدث خطأ أثناء حفظ كود الخصم' };
+  }
+}
+
+/**
+ * Server Action: Deletes a coupon by its code
+ */
+export async function deleteCouponAction(couponCode) {
+  try {
+    const res = await getCouponsAction();
+    const currentCoupons = res.coupons || DEFAULT_COUPONS;
+    const cleanCode = String(couponCode).trim().toUpperCase();
+
+    const filtered = currentCoupons.filter(c => c.code.toUpperCase() !== cleanCode);
+    const saveRes = await saveCouponsListAction(filtered);
+
+    if (!saveRes.success) {
+      return { success: false, error: saveRes.error || 'فشل حذف كود الخصم' };
+    }
+
+    return { success: true, coupons: filtered };
+  } catch (err) {
+    console.error('deleteCouponAction error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Toggles a coupon's active status
+ */
+export async function toggleCouponStatusAction(couponCode) {
+  try {
+    const res = await getCouponsAction();
+    const currentCoupons = res.coupons || DEFAULT_COUPONS;
+    const cleanCode = String(couponCode).trim().toUpperCase();
+
+    const updated = currentCoupons.map(c => {
+      if (c.code.toUpperCase() === cleanCode) {
+        return { ...c, isActive: !c.isActive };
+      }
+      return c;
+    });
+
+    const saveRes = await saveCouponsListAction(updated);
+    if (!saveRes.success) {
+      return { success: false, error: saveRes.error || 'فشل تعديل حالة الكود' };
+    }
+
+    return { success: true, coupons: updated };
+  } catch (err) {
+    console.error('toggleCouponStatusAction error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Records coupon usage upon successful checkout order creation
+ */
+export async function recordCouponUsageAction(couponCode, userIdentifier) {
+  try {
+    const res = await getCouponsAction();
+    const coupons = res.coupons || DEFAULT_COUPONS;
+    const cleanCode = String(couponCode || '').trim().toUpperCase();
+    const cleanUser = String(userIdentifier || 'guest').trim().toLowerCase();
+
+    if (!cleanCode) return { success: true };
+
+    const updated = coupons.map(c => {
+      if (c.code.toUpperCase() === cleanCode) {
+        const currentRemaining = c.remainingUses ?? ((c.totalMaxUses || 1000) - (c.usedBy || []).length);
+        const newRemaining = Math.max(0, currentRemaining - 1);
+        const usedByList = Array.isArray(c.usedBy) ? [...c.usedBy] : [];
+        if (!usedByList.includes(cleanUser)) {
+          usedByList.push(cleanUser);
+        }
+        return {
+          ...c,
+          remainingUses: newRemaining,
+          isActive: newRemaining > 0 ? c.isActive : false,
+          usedBy: usedByList
+        };
+      }
+      return c;
+    });
+
+    await saveCouponsListAction(updated);
+    return { success: true };
+  } catch (err) {
+    console.warn('recordCouponUsageAction error:', err);
+    return { success: false };
+  }
+}

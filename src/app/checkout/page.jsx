@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
-import { createOrderAction } from '../admin/actions';
+import { createOrderAction, getCouponsAction, recordCouponUsageAction } from '../admin/actions';
+import { DEFAULT_COUPONS } from '../../lib/coupons';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 
 // Shipping rates by governorate in EGP
@@ -39,13 +40,6 @@ const SHIPPING_RATES = {
   'محافظة أخرى': 80
 };
 
-// Default registered coupons store
-const INITIAL_COUPONS = [
-  { code: 'KEMET10', type: 'percentage', value: 10, isActive: true, totalMaxUses: 1000, remainingUses: 1000, maxUsesPerUser: 1, usedBy: [] },
-  { code: 'OFF50', type: 'fixed', value: 50, isActive: true, totalMaxUses: 500, remainingUses: 500, maxUsesPerUser: 1, usedBy: [] },
-  { code: 'LEGACY2027', type: 'percentage', value: 15, isActive: true, totalMaxUses: 100, remainingUses: 100, maxUsesPerUser: 1, usedBy: [] }
-];
-
 export default function CheckoutPage() {
   const { cart, clearCart, addOrder, user, cmsSettings, t } = useApp();
 
@@ -68,7 +62,7 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponMsg, setCouponMsg] = useState(null);
-  const [availableCoupons, setAvailableCoupons] = useState(INITIAL_COUPONS);
+  const [availableCoupons, setAvailableCoupons] = useState(DEFAULT_COUPONS || []);
   const hasTrackedBeginCheckout = useRef(false);
 
   useEffect(() => {
@@ -76,17 +70,37 @@ export default function CheckoutPage() {
     try {
       localStorage.removeItem('kemet_coupons');
     } catch (e) {}
+
+    // Load active coupons dynamically from database
+    async function loadCoupons() {
+      try {
+        const res = await getCouponsAction();
+        if (res.success && res.coupons && res.coupons.length > 0) {
+          setAvailableCoupons(res.coupons);
+        }
+      } catch (err) {
+        console.warn('Coupons load note:', err);
+      }
+    }
+    loadCoupons();
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
   const rawShippingFee = rates[formData.governorate] ?? 50;
   const shippingFee = isFreeShippingPromo ? 0 : rawShippingFee;
 
-  // Calculate discount amount
+  // Calculate discount amount (shipping is strictly NON-discountable and added on top)
   const discountAmount = appliedCoupon 
-    ? (appliedCoupon.type === 'percentage' 
-        ? Math.round((subtotal * Number(appliedCoupon.value)) / 100) 
-        : Math.min(subtotal, Number(appliedCoupon.value)))
+    ? (appliedCoupon.type === 'fixed_price'
+        ? cart.reduce((sum, item) => {
+            const itemPrice = Number(item.price) || 450;
+            const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
+            const discountPerPiece = Math.max(0, itemPrice - target);
+            return sum + (discountPerPiece * item.quantity);
+          }, 0)
+        : (appliedCoupon.type === 'percentage' 
+            ? Math.round((subtotal * Number(appliedCoupon.value)) / 100) 
+            : Math.min(subtotal, Number(appliedCoupon.value))))
     : 0;
 
   const totalAmount = Math.max(0, subtotal - discountAmount) + shippingFee;
@@ -114,12 +128,12 @@ export default function CheckoutPage() {
     const coupon = availableCoupons.find(c => c.code.toUpperCase() === code);
 
     if (!coupon) {
-      setCouponMsg({ type: 'error', text: '⚠️ كود الخصم غير صحيح أو غير موجود' });
+      setCouponMsg({ type: 'error', text: 'كود الخصم غير صحيح أو غير موجود' });
       return;
     }
 
     if (!coupon.isActive) {
-      setCouponMsg({ type: 'error', text: '⚠️ تم إيقاف هذا البروموكود وغير مفعّل حالياً' });
+      setCouponMsg({ type: 'error', text: 'تم إيقاف هذا البروموكود وغير مفعّل حالياً' });
       return;
     }
 
@@ -128,7 +142,7 @@ export default function CheckoutPage() {
     const hasAlreadyUsed = usedList.includes(userEmail);
 
     if (hasAlreadyUsed) {
-      setCouponMsg({ type: 'error', text: '⚠️ لقد استخدمت هذا البروموكود من قبل' });
+      setCouponMsg({ type: 'error', text: 'لقد استخدمت هذا البروموكود من قبل' });
       return;
     }
 
@@ -136,12 +150,24 @@ export default function CheckoutPage() {
     const remaining = coupon.remainingUses ?? (totalMax - (coupon.usedBy || []).length);
 
     if (remaining <= 0 || (coupon.usedBy || []).length >= totalMax) {
-      setCouponMsg({ type: 'error', text: '⚠️ تم الوصول الحد الاقصي لعدد استخدامات هذا الكود وتم انتهاء صلاحيته' });
+      setCouponMsg({ type: 'error', text: 'تم الوصول للحد الأقصى لعدد استخدامات هذا الكود وانتهت صلاحيته' });
       return;
     }
 
     setAppliedCoupon(coupon);
-    setCouponMsg({ type: 'success', text: `✅ تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`}!` });
+
+    if (coupon.type === 'fixed_price') {
+      const target = coupon.targetPrice || coupon.value || 220;
+      setCouponMsg({ 
+        type: 'success', 
+        text: `تم تطبيق كود (${coupon.code}) بنجاح! أصبح سعر التيشيرت ${target} ج.م بدلاً من السعر الأصلي + مصاريف الشحن` 
+      });
+    } else {
+      setCouponMsg({ 
+        type: 'success', 
+        text: `تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`} على المنتجات + مصاريف الشحن` 
+      });
+    }
   };
 
   const handleRemoveCoupon = () => {
@@ -192,24 +218,13 @@ export default function CheckoutPage() {
       customer_email: user?.email || formData.email || null
     };
 
-    // Update coupon usage & decrement remaining uses
+    // Update coupon usage & decrement remaining uses in database
     if (appliedCoupon) {
       try {
         const userEmail = (user?.email || formData.phone || 'guest').toLowerCase().trim();
-        const updatedCoupons = availableCoupons.map(c => {
-          if (c.code.toUpperCase() === appliedCoupon.code.toUpperCase()) {
-            const currentRemaining = c.remainingUses ?? ((c.totalMaxUses || 1000) - (c.usedBy || []).length);
-            const newRemaining = Math.max(0, currentRemaining - 1);
-            return {
-              ...c,
-              remainingUses: newRemaining,
-              isActive: newRemaining > 0 ? c.isActive : false,
-              usedBy: [...(c.usedBy || []), userEmail]
-            };
-          }
-          return c;
+        recordCouponUsageAction(appliedCoupon.code, userEmail).catch(err => {
+          console.warn('Coupon usage record note:', err);
         });
-        setAvailableCoupons(updatedCoupons);
       } catch (err) {
         console.warn('Coupon usage save note:', err);
       }
@@ -411,12 +426,12 @@ export default function CheckoutPage() {
               {/* Coupon Code Input Area */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginBottom: '1rem' }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                  🎟️ هل لديك كود خصم / كوبون؟
+                  هل لديك كود خصم أو بروموكود؟
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input 
                     type="text"
-                    placeholder="أدخل كود الخصم (مثال: KEMET10)"
+                    placeholder="أدخل كود الخصم (مثال: KEMETFAMILY)"
                     value={couponInput}
                     onChange={e => setCouponInput(e.target.value.toUpperCase())}
                     disabled={appliedCoupon !== null}
@@ -428,7 +443,7 @@ export default function CheckoutPage() {
                       onClick={handleRemoveCoupon}
                       style={{ background: '#F43F5E', color: '#FFF', border: 'none', padding: '0.65rem 1rem', borderRadius: 'var(--radius-md)', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}
                     >
-                      إلغاء ✕
+                      إلغاء
                     </button>
                   ) : (
                     <button 
@@ -437,7 +452,7 @@ export default function CheckoutPage() {
                       className="btn-secondary"
                       style={{ padding: '0.65rem 1rem', fontSize: '0.85rem', fontWeight: 800 }}
                     >
-                      تطبيق الخصم ✨
+                      تطبيق الخصم
                     </button>
                   )}
                 </div>

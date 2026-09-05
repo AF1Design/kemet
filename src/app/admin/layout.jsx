@@ -88,6 +88,9 @@ export default async function AdminLayout({ children }) {
             <Link href="/admin" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
               📊 الإحصائيات
             </Link>
+            <Link href="/admin#coupons" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+              🏷️ أكواد الخصم
+            </Link>
             <Link href="/admin/products" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
               ⚽ المنتجات والمخزون
             </Link>
