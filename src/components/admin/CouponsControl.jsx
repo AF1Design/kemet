@@ -16,6 +16,7 @@ export function CouponsControl() {
   const [isPending, startTransition] = useTransition();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
   const [statusMsg, setStatusMsg] = useState(null);
 
   // Form State
@@ -26,6 +27,8 @@ export function CouponsControl() {
   const [fixedAmountValue, setFixedAmountValue] = useState(50);
   const [description, setDescription] = useState('');
   const [totalMaxUses, setTotalMaxUses] = useState(1000);
+  const [maxUsesPerUser, setMaxUsesPerUser] = useState(1);
+  const [maxDiscountedPieces, setMaxDiscountedPieces] = useState(1);
 
   // Analytics & Partner Commission State
   const [selectedAnalyticsCode, setSelectedAnalyticsCode] = useState('KEMETFAMILY');
@@ -82,7 +85,20 @@ export function CouponsControl() {
     handleFetchAnalytics('KEMETFAMILY');
   }, []);
 
+  // Lock body scroll when modal is open to prevent background scrolling
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen]);
+
   const openAddModal = () => {
+    setModalMode('add');
     setCode('');
     setType('fixed_price');
     setTargetPrice(220);
@@ -90,6 +106,23 @@ export function CouponsControl() {
     setFixedAmountValue(50);
     setDescription('سعر خاص للتيشيرت 220 ج.م بدلاً من 450 ج.م');
     setTotalMaxUses(1000);
+    setMaxUsesPerUser(1);
+    setMaxDiscountedPieces(1);
+    setStatusMsg(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditCoupon = (c) => {
+    setModalMode('edit');
+    setCode(c.code);
+    setType(c.type || 'fixed_price');
+    setTargetPrice(c.targetPrice || c.value || 220);
+    setPercentageValue(c.type === 'percentage' ? (c.value || 10) : 10);
+    setFixedAmountValue(c.type === 'fixed' ? (c.value || 50) : 50);
+    setDescription(c.description || '');
+    setTotalMaxUses(c.totalMaxUses || 1000);
+    setMaxUsesPerUser(c.maxUsesPerUser != null ? c.maxUsesPerUser : 1);
+    setMaxDiscountedPieces(c.maxDiscountedPieces != null ? c.maxDiscountedPieces : '');
     setStatusMsg(null);
     setIsModalOpen(true);
   };
@@ -111,9 +144,10 @@ export function CouponsControl() {
         value: val,
         description: description.trim(),
         totalMaxUses: Number(totalMaxUses) || 1000,
-        remainingUses: Number(totalMaxUses) || 1000,
-        isActive: true,
-        usedBy: []
+        remainingUses: modalMode === 'edit' ? undefined : (Number(totalMaxUses) || 1000),
+        maxUsesPerUser: Number(maxUsesPerUser) > 0 ? Number(maxUsesPerUser) : 1,
+        maxDiscountedPieces: maxDiscountedPieces && Number(maxDiscountedPieces) > 0 ? Number(maxDiscountedPieces) : null,
+        isActive: true
       };
 
       const res = await addOrUpdateCouponAction(payload);
@@ -207,6 +241,8 @@ export function CouponsControl() {
               <tr style={{ background: 'rgba(212, 175, 55, 0.08)', borderBottom: '1px solid var(--border-gold)' }}>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>كود الخصم</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>نوع الخصم والسعر</th>
+                <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحد للحساب</th>
+                <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>القطع بالخصم</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الوصف / الملاحظات</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الاستخدامات المتبقية</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحالة</th>
@@ -226,7 +262,24 @@ export function CouponsControl() {
                     <td style={{ padding: '1rem', fontWeight: 800, color: '#FFF' }}>
                       {getDiscountLabel(c)}
                     </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                    <td style={{ padding: '1rem', color: '#FFF', fontWeight: 700 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.08)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.82rem' }}>
+                        {c.maxUsesPerUser || 1} مرة لكل عميل
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 800 }}>
+                      <span style={{ 
+                        display: 'inline-block',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '4px',
+                        fontSize: '0.82rem',
+                        background: c.maxDiscountedPieces ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
+                        color: c.maxDiscountedPieces ? 'var(--gold-primary)' : 'var(--text-secondary)'
+                      }}>
+                        {c.maxDiscountedPieces ? `${c.maxDiscountedPieces} قطعة كحد أقصى` : 'جميع القطع'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', maxWidth: '200px' }}>
                       {c.description || '-'}
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -248,7 +301,15 @@ export function CouponsControl() {
                       </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleEditCoupon(c)}
+                          className="btn-secondary"
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', fontWeight: 800, background: 'rgba(212,175,55,0.15)', color: 'var(--gold-primary)', border: '1px solid var(--border-gold)' }}
+                        >
+                          تعديل
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -258,7 +319,7 @@ export function CouponsControl() {
                             if (el) el.scrollIntoView({ behavior: 'smooth' });
                           }}
                           className="btn-primary"
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 800 }}
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', fontWeight: 800 }}
                         >
                           تقرير المبيعات
                         </button>
@@ -267,7 +328,7 @@ export function CouponsControl() {
                           onClick={() => handleToggleStatus(c.code)}
                           disabled={isPending}
                           className="btn-secondary"
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 700 }}
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', fontWeight: 700 }}
                         >
                           {c.isActive ? 'إيقاف' : 'تفعيل'}
                         </button>
@@ -276,7 +337,7 @@ export function CouponsControl() {
                           onClick={() => handleDeleteCoupon(c.code)}
                           disabled={isPending}
                           style={{
-                            padding: '0.35rem 0.75rem',
+                            padding: '0.35rem 0.65rem',
                             fontSize: '0.8rem',
                             fontWeight: 700,
                             borderRadius: 'var(--radius-md)',
@@ -489,35 +550,58 @@ export function CouponsControl() {
 
       {/* Add / Edit Coupon Modal */}
       {isModalOpen && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '1.25rem'
-        }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsModalOpen(false);
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '2rem 1rem',
+            overflowY: 'auto'
+          }}
+        >
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '2.2rem',
-            maxWidth: '520px',
+            padding: '1.75rem 2rem',
+            maxWidth: '560px',
             width: '100%',
+            maxHeight: '85vh',
+            overflowY: 'auto',
             boxShadow: 'var(--shadow-glow)',
-            direction: 'rtl'
+            direction: 'rtl',
+            margin: 'auto',
+            position: 'relative'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1.25rem', 
+              borderBottom: '1px solid var(--border-color)', 
+              paddingBottom: '0.75rem',
+              position: 'sticky',
+              top: '-1.75rem',
+              background: 'var(--bg-card)',
+              zIndex: 20,
+              paddingTop: '0.35rem'
+            }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
-                إضافة كود بروموكود جديد
+                {modalMode === 'edit' ? `تعديل إعدادات كود الخصم (${code})` : 'إضافة كود بروموكود جديد'}
               </h3>
               <button 
                 type="button" 
                 onClick={() => setIsModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.3rem', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.4rem', cursor: 'pointer', padding: '0.25rem 0.5rem', lineHeight: 1 }}
+                title="إغلاق النافذة"
               >
                 ✕
               </button>
@@ -537,11 +621,26 @@ export function CouponsControl() {
                 <input
                   type="text"
                   required
+                  disabled={modalMode === 'edit'}
                   placeholder="مثال: KEMETFAMILY"
                   value={code}
                   onChange={e => setCode(e.target.value.toUpperCase())}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.95rem', textTransform: 'uppercase', direction: 'ltr', textAlign: 'left' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    fontSize: '0.95rem', 
+                    textTransform: 'uppercase', 
+                    direction: 'ltr', 
+                    textAlign: 'left',
+                    opacity: modalMode === 'edit' ? 0.7 : 1,
+                    cursor: modalMode === 'edit' ? 'not-allowed' : 'text'
+                  }}
                 />
+                {modalMode === 'edit' && (
+                  <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.78rem' }}>
+                    رمز الكود ثابت ولا يمكن تغييره للحفاظ على سجل وتحليلات المبيعات السابقة.
+                  </small>
+                )}
               </div>
 
               <div>
@@ -573,7 +672,7 @@ export function CouponsControl() {
                     onChange={e => setTargetPrice(e.target.value)}
                     style={{ width: '100%', padding: '0.75rem', fontSize: '0.95rem' }}
                   />
-                  <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem' }}>
+                  <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem' }}>
                     أي عميل يدخل هذا الكود، سيتم حساب التيشيرت بسعر {targetPrice} ج.م بدلاً من السعر الأصلي + مصاريف الشحن للمحافظة.
                   </small>
                 </div>
@@ -614,6 +713,43 @@ export function CouponsControl() {
                 </div>
               )}
 
+              {/* Setting 1: Max Uses Per User / Account */}
+              <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.35rem' }}>
+                  الحد الأقصى لاستخدام الكود لكل عميل / حساب:
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  placeholder="1"
+                  value={maxUsesPerUser}
+                  onChange={e => setMaxUsesPerUser(e.target.value)}
+                  style={{ width: '100%', padding: '0.7rem', fontSize: '0.95rem', fontWeight: 800 }}
+                />
+                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  عدد المرات المسموح بها لنفس العميل أو رقم الهاتف لاستخدام هذا الكود لمنع استغلال العرض أكثر من مرة (الافتراضي: 1 مرة لكل حساب).
+                </small>
+              </div>
+
+              {/* Setting 2: Max Discounted Pieces per Order */}
+              <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.35rem' }}>
+                  الحد الأقصى لعدد القطع المشمولة بالخصم في الطلب الواحد:
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="مثال: 1 (اتركه فارغاً إذا كان الخصم يشمل جميع القطع)"
+                  value={maxDiscountedPieces}
+                  onChange={e => setMaxDiscountedPieces(e.target.value)}
+                  style={{ width: '100%', padding: '0.7rem', fontSize: '0.95rem', fontWeight: 800 }}
+                />
+                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  إذا اختار العميل قطعاً متعددة في السلة، يُطبق الخصم على هذا العدد فقط وتُحسب أي قطع إضافية بسعرها الأصلي لمنع شراء كميات بالخصم.
+                </small>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
                   وصف الكود / ملاحظة (تظهر للمسؤول والعميل):
@@ -629,7 +765,7 @@ export function CouponsControl() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                  الحد الأقصى لعدد الاستخدامات:
+                  إجمالي الحد الأقصى لعدد الاستخدامات لجميع العملاء:
                 </label>
                 <input
                   type="number"
@@ -641,7 +777,19 @@ export function CouponsControl() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <div style={{ 
+                display: 'flex', 
+                gap: '0.75rem', 
+                justifyContent: 'flex-end', 
+                marginTop: '1.5rem',
+                position: 'sticky',
+                bottom: '-1.75rem',
+                background: 'var(--bg-card)',
+                paddingTop: '0.85rem',
+                paddingBottom: '0.5rem',
+                borderTop: '1px solid var(--border-color)',
+                zIndex: 20
+              }}>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -656,7 +804,7 @@ export function CouponsControl() {
                   className="btn-primary"
                   style={{ padding: '0.75rem 1.75rem', fontWeight: 900 }}
                 >
-                  {isPending ? 'جاري الحفظ...' : 'حفظ وتفعيل الكود'}
+                  {isPending ? 'جاري الحفظ...' : (modalMode === 'edit' ? 'حفظ التعديلات' : 'حفظ وتفعيل الكود')}
                 </button>
               </div>
             </form>

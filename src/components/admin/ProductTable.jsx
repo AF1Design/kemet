@@ -420,39 +420,54 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     const parsedOldPrice = formData.oldPrice ? Number(formData.oldPrice) : null;
 
     startTransition(async () => {
-      const productPayload = {
-        id: editingProduct ? editingProduct.id : formData.id,
-        categoryId: formData.categoryId,
-        nameAr: formData.nameAr,
-        nameEn: formData.nameEn,
-        descriptionAr: formData.descriptionAr,
-        descriptionEn: formData.descriptionEn,
-        price: Number(formData.price),
-        oldPrice: parsedOldPrice,
-        mainImage: formData.mainImage,
-        galleryImages: galleryImages,
-        isBestSeller: formData.isBestSeller,
-        isFeatured: formData.isFeatured,
-        isNew: formData.isNew,
-        isActive: formData.isActive
-      };
+      try {
+        const productPayload = {
+          id: editingProduct ? editingProduct.id : formData.id,
+          categoryId: formData.categoryId,
+          nameAr: formData.nameAr,
+          nameEn: formData.nameEn,
+          descriptionAr: formData.descriptionAr,
+          descriptionEn: formData.descriptionEn,
+          price: Number(formData.price),
+          oldPrice: parsedOldPrice,
+          mainImage: formData.mainImage,
+          galleryImages: galleryImages,
+          isBestSeller: formData.isBestSeller,
+          isFeatured: formData.isFeatured,
+          isNew: formData.isNew,
+          isActive: formData.isActive
+        };
 
-      const res = await saveProductBatchAction(productPayload, formData.sizeVariants, Boolean(editingProduct));
+        const res = await saveProductBatchAction(productPayload, formData.sizeVariants, Boolean(editingProduct));
 
-      if (res.success) {
-        const updatedVariants = formData.sizeVariants.map(v => ({
-          product_id: productPayload.id,
-          size: v.size,
-          stock_quantity: Number(v.stockQuantity)
-        }));
+        if (res.success) {
+          const updatedVariants = formData.sizeVariants.map(v => ({
+            product_id: productPayload.id,
+            size: v.size,
+            stock_quantity: Number(v.stockQuantity)
+          }));
 
-        const returnedMainImage = res.product?.main_image || formData.mainImage;
-        const returnedGalleryImages = res.product?.gallery_images || galleryImages;
+          const returnedMainImage = res.product?.main_image || formData.mainImage;
+          const returnedGalleryImages = res.product?.gallery_images || galleryImages;
 
-        if (editingProduct) {
-          setProducts(prev =>
-            prev.map(p => p.id === editingProduct.id ? { 
-              ...p, 
+          if (editingProduct) {
+            setProducts(prev =>
+              prev.map(p => p.id === editingProduct.id ? { 
+                ...p, 
+                ...res.product, 
+                main_image: returnedMainImage,
+                gallery_images: returnedGalleryImages,
+                price: Number(formData.price),
+                old_price: parsedOldPrice,
+                is_best_seller: formData.isBestSeller,
+                is_featured: formData.isFeatured,
+                isFeatured: formData.isFeatured,
+                is_new: formData.isNew,
+                product_variants: updatedVariants 
+              } : p)
+            );
+          } else {
+            setProducts(prev => [{ 
               ...res.product, 
               main_image: returnedMainImage,
               gallery_images: returnedGalleryImages,
@@ -463,25 +478,15 @@ export function ProductTable({ initialProducts, categories: initialCategories })
               isFeatured: formData.isFeatured,
               is_new: formData.isNew,
               product_variants: updatedVariants 
-            } : p)
-          );
+            }, ...prev]);
+          }
+          setIsModalOpen(false);
         } else {
-          setProducts(prev => [{ 
-            ...res.product, 
-            main_image: returnedMainImage,
-            gallery_images: returnedGalleryImages,
-            price: Number(formData.price),
-            old_price: parsedOldPrice,
-            is_best_seller: formData.isBestSeller,
-            is_featured: formData.isFeatured,
-            isFeatured: formData.isFeatured,
-            is_new: formData.isNew,
-            product_variants: updatedVariants 
-          }, ...prev]);
+          setFormError(res.error || 'حدث خطأ في حفظ البيانات');
         }
-        setIsModalOpen(false);
-      } else {
-        setFormError(res.error || 'حدث خطأ في حفظ البيانات');
+      } catch (err) {
+        console.error('Error in handleSubmitForm:', err);
+        setFormError('حدث خطأ أثناء معالجة وحفظ المنتج على السيرفر. يرجى إعادة المحاولة.');
       }
     });
   };

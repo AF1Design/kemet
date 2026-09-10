@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { updateOrderStatusAction, deleteOrderAction, sendDirectCustomerEmailAction } from '../../app/admin/actions';
 
 const STATUS_OPTIONS = [
@@ -59,6 +59,19 @@ export function AdminOrdersTable({ initialOrders }) {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const [isPending, startTransition] = useTransition();
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder]);
 
   const handleStatusChange = (orderId, newStatus) => {
     const currentOrder = orders.find(o => o.id === orderId);
@@ -483,17 +496,21 @@ export function AdminOrdersTable({ initialOrders }) {
 
       {/* Details Modal */}
       {selectedOrderDetails && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.85)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1.5rem'
-        }}>
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedOrderDetails(null); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1.5rem',
+            overflowY: 'auto'
+          }}
+        >
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-gold-bright)',
@@ -501,7 +518,10 @@ export function AdminOrdersTable({ initialOrders }) {
             padding: '2rem',
             maxWidth: '600px',
             width: '100%',
-            boxShadow: 'var(--shadow-glow)'
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            boxShadow: 'var(--shadow-glow)',
+            margin: 'auto'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>تفاصيل الطلب #{selectedOrderDetails.id}</span>

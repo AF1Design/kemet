@@ -42,18 +42,31 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
       suffix: 'main'
     });
 
-    // Process and Upload Gallery Images to Supabase Storage as clean .webp URLs
-    const rawGallery = productData.galleryImages || [productData.mainImage];
+    // Process and Upload Gallery Images to Supabase Storage as clean .webp URLs (deduplicating main image)
+    const rawGallery = Array.isArray(productData.galleryImages) ? productData.galleryImages : [productData.mainImage];
     const galleryUrls = [];
+    if (mainImageUrl) {
+      galleryUrls.push(mainImageUrl);
+    }
+
+    let galleryIdx = 1;
     for (let i = 0; i < rawGallery.length; i++) {
+      const item = rawGallery[i];
+      if (!item) continue;
+      // Skip if this gallery item is identical to mainImage to prevent redundant upload
+      if (item === productData.mainImage || item === mainImageUrl) {
+        continue;
+      }
       const gUrl = await processAndUploadProductImage({
-        imageInput: rawGallery[i],
+        imageInput: item,
         productName: productData.nameAr || 'kemet-product',
         nameEn: productData.nameEn || '',
         productId: productData.id || '',
-        suffix: `gallery-${i + 1}`
+        suffix: `gallery-${galleryIdx++}`
       });
-      if (gUrl) galleryUrls.push(gUrl);
+      if (gUrl && !galleryUrls.includes(gUrl)) {
+        galleryUrls.push(gUrl);
+      }
     }
 
     const payload = {
@@ -1480,6 +1493,14 @@ export async function addOrUpdateCouponAction(couponData) {
     const targetPrice = type === 'fixed_price' ? Number(couponData.targetPrice || couponData.value || 220) : null;
     const value = type === 'fixed_price' ? targetPrice : Number(couponData.value || 0);
 
+    const maxUsesPerUser = couponData.maxUsesPerUser != null && Number(couponData.maxUsesPerUser) > 0
+      ? Number(couponData.maxUsesPerUser)
+      : 1;
+
+    const maxDiscountedPieces = couponData.maxDiscountedPieces != null && Number(couponData.maxDiscountedPieces) > 0
+      ? Number(couponData.maxDiscountedPieces)
+      : null;
+
     const newCoupon = {
       code: cleanCode,
       type: type,
@@ -1489,19 +1510,28 @@ export async function addOrUpdateCouponAction(couponData) {
       isActive: couponData.isActive !== false,
       totalMaxUses: Number(couponData.totalMaxUses || 1000),
       remainingUses: Number(couponData.remainingUses ?? couponData.totalMaxUses ?? 1000),
-      usedBy: Array.isArray(couponData.usedBy) ? couponData.usedBy : []
+      maxUsesPerUser: maxUsesPerUser,
+      maxDiscountedPieces: maxDiscountedPieces,
+      usedBy: Array.isArray(couponData.usedBy) ? couponData.usedBy : [],
+      userUsage: couponData.userUsage || {}
     };
 
     const existingIndex = currentCoupons.findIndex(c => c.code.toUpperCase() === cleanCode);
     let updatedList = [];
 
     if (existingIndex > -1) {
+      const existing = currentCoupons[existingIndex];
       updatedList = currentCoupons.map((c, idx) => {
         if (idx === existingIndex) {
           return {
             ...c,
             ...newCoupon,
-            usedBy: c.usedBy || []
+            usedBy: c.usedBy || [],
+            userUsage: c.userUsage || {},
+            orders: c.orders || [],
+            remainingUses: typeof couponData.remainingUses === 'number' 
+              ? couponData.remainingUses 
+              : (c.remainingUses ?? newCoupon.remainingUses)
           };
         }
         return c;
@@ -1582,6 +1612,9 @@ export async function recordCouponUsageAction(couponCode, userIdentifier, orderD
     const coupons = res.coupons || DEFAULT_COUPONS;
     const cleanCode = String(couponCode || '').trim().toUpperCase();
     const cleanUser = String(userIdentifier || 'guest').trim().toLowerCase();
+    const customerPhone = String(orderData?.customer?.phone || orderData?.customerPhone || '').trim();
+    const customerEmail = String(orderData?.customer?.email || orderData?.customer_email || cleanUser).trim().toLowerCase();
+    const userId = String(orderData?.userId || '').trim();
 
     if (!cleanCode) return { success: true };
 
@@ -1590,7 +1623,9 @@ export async function recordCouponUsageAction(couponCode, userIdentifier, orderD
       date: orderData.date || new Date().toISOString().split('T')[0],
       time: orderData.time || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
       customerName: orderData.customer?.fullName || orderData.customerName || 'عميل KEMET',
-      customerPhone: orderData.customer?.phone || orderData.customerPhone || '',
+      customerPhone: customerPhone,
+      customerEmail: customerEmail,
+      userId: userId || null,
       governorate: orderData.customer?.governorate || '',
       itemsCount: (orderData.items || []).reduce((s, i) => s + Number(i.quantity || 1), 0),
       items: (orderData.items || []).map(i => ({
@@ -1608,9 +1643,29 @@ export async function recordCouponUsageAction(couponCode, userIdentifier, orderD
       if (c.code.toUpperCase() === cleanCode) {
         const currentRemaining = c.remainingUses ?? ((c.totalMaxUses || 1000) - (c.usedBy || []).length);
         const newRemaining = Math.max(0, currentRemaining - 1);
+
+        // Track legacy usedBy
         const usedByList = Array.isArray(c.usedBy) ? [...c.usedBy] : [];
-        if (!usedByList.includes(cleanUser)) {
+        if (cleanUser && !usedByList.includes(cleanUser)) {
           usedByList.push(cleanUser);
+        }
+        if (customerPhone && !usedByList.includes(customerPhone)) {
+          usedByList.push(customerPhone);
+        }
+
+        // Track userUsage dictionary
+        const userUsage = { ...(c.userUsage || {}) };
+        if (cleanUser && cleanUser !== 'guest') {
+          userUsage[cleanUser] = (userUsage[cleanUser] || 0) + 1;
+        }
+        if (customerEmail && customerEmail !== 'guest' && customerEmail !== cleanUser) {
+          userUsage[customerEmail] = (userUsage[customerEmail] || 0) + 1;
+        }
+        if (customerPhone) {
+          userUsage[customerPhone] = (userUsage[customerPhone] || 0) + 1;
+        }
+        if (userId) {
+          userUsage[userId] = (userUsage[userId] || 0) + 1;
         }
 
         const currentOrders = Array.isArray(c.orders) ? [...c.orders] : [];
@@ -1627,6 +1682,7 @@ export async function recordCouponUsageAction(couponCode, userIdentifier, orderD
           remainingUses: newRemaining,
           isActive: newRemaining > 0 ? c.isActive : false,
           usedBy: usedByList,
+          userUsage: userUsage,
           orders: currentOrders,
           totalOrdersCount: currentOrders.length,
           totalItemsSold: totalItemsSold,

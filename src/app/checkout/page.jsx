@@ -86,24 +86,103 @@ export default function CheckoutPage() {
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
+  const totalCartPieces = cart.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
   const rawShippingFee = rates[formData.governorate] ?? 50;
   const shippingFee = isFreeShippingPromo ? 0 : rawShippingFee;
 
   // Calculate discount amount (shipping is strictly NON-discountable and added on top)
-  const discountAmount = appliedCoupon 
-    ? (appliedCoupon.type === 'fixed_price'
-        ? cart.reduce((sum, item) => {
-            const itemPrice = Number(item.price) || 450;
-            const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
-            const discountPerPiece = Math.max(0, itemPrice - target);
-            return sum + (discountPerPiece * item.quantity);
-          }, 0)
-        : (appliedCoupon.type === 'percentage' 
-            ? Math.round((subtotal * Number(appliedCoupon.value)) / 100) 
-            : Math.min(subtotal, Number(appliedCoupon.value))))
-    : 0;
+  // Respects maxDiscountedPieces limit if configured for the coupon
+  let discountAmount = 0;
+  let discountedPiecesCount = 0;
+
+  if (appliedCoupon) {
+    const maxPieces = (appliedCoupon.maxDiscountedPieces && Number(appliedCoupon.maxDiscountedPieces) > 0)
+      ? Number(appliedCoupon.maxDiscountedPieces)
+      : Infinity;
+
+    if (appliedCoupon.type === 'fixed_price') {
+      let remainingAllowed = maxPieces;
+      const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
+
+      for (const item of cart) {
+        if (remainingAllowed <= 0) break;
+        const itemPrice = Number(item.price) || 450;
+        const discountPerPiece = Math.max(0, itemPrice - target);
+        const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
+
+        discountAmount += (discountPerPiece * piecesToApply);
+        discountedPiecesCount += piecesToApply;
+        remainingAllowed -= piecesToApply;
+      }
+    } else if (appliedCoupon.type === 'percentage') {
+      let remainingAllowed = maxPieces;
+      let eligibleSubtotal = 0;
+
+      for (const item of cart) {
+        if (remainingAllowed <= 0) break;
+        const itemPrice = Number(item.price) || 450;
+        const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
+
+        eligibleSubtotal += (itemPrice * piecesToApply);
+        discountedPiecesCount += piecesToApply;
+        remainingAllowed -= piecesToApply;
+      }
+
+      discountAmount = Math.round((eligibleSubtotal * Number(appliedCoupon.value)) / 100);
+    } else {
+      // Fixed amount discount
+      discountAmount = Math.min(subtotal, Number(appliedCoupon.value));
+      discountedPiecesCount = Math.min(totalCartPieces, maxPieces === Infinity ? totalCartPieces : maxPieces);
+    }
+  }
 
   const totalAmount = Math.max(0, subtotal - discountAmount) + shippingFee;
+
+  // Helper: Computes how many times a user / phone / account has used this specific coupon
+  const checkCouponUserUsage = (coupon, email, phone, uid) => {
+    if (!coupon) return 0;
+    const cleanEmail = String(email || '').toLowerCase().trim();
+    const cleanPhone = String(phone || '').trim();
+    const cleanUid = String(uid || '').trim();
+
+    let count = 0;
+
+    // 1. From userUsage object
+    if (coupon.userUsage && typeof coupon.userUsage === 'object') {
+      if (cleanEmail && coupon.userUsage[cleanEmail]) {
+        count = Math.max(count, Number(coupon.userUsage[cleanEmail]) || 0);
+      }
+      if (cleanPhone && coupon.userUsage[cleanPhone]) {
+        count = Math.max(count, Number(coupon.userUsage[cleanPhone]) || 0);
+      }
+      if (cleanUid && coupon.userUsage[cleanUid]) {
+        count = Math.max(count, Number(coupon.userUsage[cleanUid]) || 0);
+      }
+    }
+
+    // 2. From orders history array
+    if (Array.isArray(coupon.orders)) {
+      const matchingOrders = coupon.orders.filter(o => {
+        const oEmail = String(o.customerEmail || o.customer?.email || '').toLowerCase().trim();
+        const oPhone = String(o.customerPhone || o.customer?.phone || '').trim();
+        const oUid = String(o.userId || '').trim();
+        return (cleanEmail && oEmail && oEmail === cleanEmail) ||
+               (cleanPhone && oPhone && oPhone === cleanPhone) ||
+               (cleanUid && oUid && oUid === cleanUid);
+      });
+      count = Math.max(count, matchingOrders.length);
+    }
+
+    // 3. Fallback to legacy usedBy list
+    if (count === 0 && Array.isArray(coupon.usedBy)) {
+      const cleanUsedList = coupon.usedBy.map(e => String(e).toLowerCase().trim());
+      if ((cleanEmail && cleanUsedList.includes(cleanEmail)) || (cleanPhone && cleanUsedList.includes(cleanPhone))) {
+        count = 1;
+      }
+    }
+
+    return count;
+  };
 
   // Marketing Analytics: Track Begin Checkout once on checkout page load
   useEffect(() => {
@@ -137,15 +216,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    const userEmail = (user?.email || formData.phone || 'guest').toLowerCase().trim();
-    const usedList = (coupon.usedBy || []).map(e => String(e).toLowerCase().trim());
-    const hasAlreadyUsed = usedList.includes(userEmail);
-
-    if (hasAlreadyUsed) {
-      setCouponMsg({ type: 'error', text: 'لقد استخدمت هذا البروموكود من قبل' });
-      return;
-    }
-
+    // 1. Check total max uses for the entire store
     const totalMax = coupon.totalMaxUses ?? 1000;
     const remaining = coupon.remainingUses ?? (totalMax - (coupon.usedBy || []).length);
 
@@ -154,18 +225,36 @@ export default function CheckoutPage() {
       return;
     }
 
+    // 2. Check max uses per account / user
+    const maxPerUser = Number(coupon.maxUsesPerUser) > 0 ? Number(coupon.maxUsesPerUser) : 1;
+    const userUses = checkCouponUserUsage(coupon, user?.email || formData.email, formData.phone, user?.id);
+
+    if (userUses >= maxPerUser) {
+      setCouponMsg({ 
+        type: 'error', 
+        text: `لقد استنفدت الحد الأقصى المسموح به لاستخدام هذا الكود لحسابك (${maxPerUser} مرة)` 
+      });
+      return;
+    }
+
     setAppliedCoupon(coupon);
+
+    const piecesLimit = (coupon.maxDiscountedPieces && Number(coupon.maxDiscountedPieces) > 0)
+      ? Number(coupon.maxDiscountedPieces)
+      : null;
+
+    const piecesNotice = piecesLimit ? ` (يسري الخصم على حتى ${piecesLimit} قطعة في الطلب)` : '';
 
     if (coupon.type === 'fixed_price') {
       const target = coupon.targetPrice || coupon.value || 220;
       setCouponMsg({ 
         type: 'success', 
-        text: `تم تطبيق كود (${coupon.code}) بنجاح! أصبح سعر التيشيرت ${target} ج.م بدلاً من السعر الأصلي + مصاريف الشحن` 
+        text: `تم تطبيق كود (${coupon.code}) بنجاح! أصبح سعر التيشيرت ${target} ج.م بدلاً من السعر الأصلي${piecesNotice} + مصاريف الشحن` 
       });
     } else {
       setCouponMsg({ 
         type: 'success', 
-        text: `تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`} على المنتجات + مصاريف الشحن` 
+        text: `تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`} على المنتجات${piecesNotice} + مصاريف الشحن` 
       });
     }
   };
@@ -192,6 +281,20 @@ export default function CheckoutPage() {
         window.location.href = '/login?redirect=/checkout';
       }
       return;
+    }
+
+    // Safety re-check: Verify user usage limits on final submission to prevent bypassing
+    if (appliedCoupon) {
+      const maxPerUser = Number(appliedCoupon.maxUsesPerUser) > 0 ? Number(appliedCoupon.maxUsesPerUser) : 1;
+      const userUses = checkCouponUserUsage(appliedCoupon, user?.email || formData.email, formData.phone, user?.id);
+      if (userUses >= maxPerUser) {
+        setCouponMsg({ 
+          type: 'error', 
+          text: `عذراً، تم استنفاد الحد الأقصى المسموح لاستخدام هذا الكود لهذا الحساب أو رقم الهاتف (${maxPerUser} مرة).` 
+        });
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -480,9 +583,16 @@ export default function CheckoutPage() {
                 </div>
 
                 {appliedCoupon && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#10B981', fontWeight: 800 }}>
-                    <span>خصم الكوبون ({appliedCoupon.code}):</span>
-                    <span>- {discountAmount} ج.م</span>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#10B981', fontWeight: 800 }}>
+                      <span>خصم الكوبون ({appliedCoupon.code}):</span>
+                      <span>- {discountAmount} ج.م</span>
+                    </div>
+                    {appliedCoupon.maxDiscountedPieces && totalCartPieces > discountedPiecesCount && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--gold-primary)', background: 'rgba(212, 175, 55, 0.08)', padding: '0.35rem 0.6rem', borderRadius: '4px', marginTop: '0.35rem', border: '1px solid rgba(212, 175, 55, 0.25)', lineHeight: '1.4' }}>
+                        ملاحظة: يسري الخصم على ({discountedPiecesCount}) قطعة فقط وفق شروط الكود، والقطع الإضافية ({totalCartPieces - discountedPiecesCount}) بسعرها الطبيعي.
+                      </div>
+                    )}
                   </div>
                 )}
 

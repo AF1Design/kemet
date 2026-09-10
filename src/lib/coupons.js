@@ -5,11 +5,14 @@ export const DEFAULT_COUPONS = [
     type: 'fixed_price',
     targetPrice: 220,
     value: 220,
-    description: 'سعر خاص للتيشيرت 220 ج.م بدلاً من 450 ج.م لجميع المقاسات',
+    description: 'سعر خاص للتيشيرت 220 ج.م بدلاً من 450 ج.م (بحد أقصى قطعة واحدة لكل عميل)',
     isActive: true,
     totalMaxUses: 1000,
     remainingUses: 1000,
-    usedBy: []
+    maxUsesPerUser: 1,
+    maxDiscountedPieces: 1,
+    usedBy: [],
+    userUsage: {}
   },
   {
     code: 'KEMET10',
@@ -20,7 +23,10 @@ export const DEFAULT_COUPONS = [
     isActive: true,
     totalMaxUses: 1000,
     remainingUses: 1000,
-    usedBy: []
+    maxUsesPerUser: 1,
+    maxDiscountedPieces: null,
+    usedBy: [],
+    userUsage: {}
   },
   {
     code: 'OFF50',
@@ -31,6 +37,9 @@ export const DEFAULT_COUPONS = [
     isActive: true,
     totalMaxUses: 500,
     remainingUses: 500,
-    usedBy: []
+    maxUsesPerUser: 1,
+    maxDiscountedPieces: null,
+    usedBy: [],
+    userUsage: {}
   }
 ];
