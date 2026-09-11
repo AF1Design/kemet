@@ -77,13 +77,23 @@ export const ProductCard = ({ product }) => {
           </Link>
         </h3>
 
-        {/* Sizes Selector with Out-of-Stock Status */}
+        {/* Sizes Selector with Out-of-Stock and Low-Stock Status */}
         <div className="sizes-selector">
           <span className="sizes-label">{t('sizesTitle')}</span>
           <div className="sizes-list">
             {sizesList.map(item => {
               const isOut = item.stock <= 0;
               const isSelected = selectedSizeObj?.size === item.size;
+              const isLowStock = item.stock > 0 && item.stock <= 2;
+
+              let titleText = `متوفر: ${item.stock}`;
+              if (isOut) {
+                titleText = 'منتهي الكمية';
+              } else if (item.stock === 1) {
+                titleText = 'متبقي آخر قطعة فقط';
+              } else if (item.stock === 2) {
+                titleText = 'متبقي آخر قطعتين فقط';
+              }
 
               return (
                 <button
@@ -94,16 +104,28 @@ export const ProductCard = ({ product }) => {
                   style={{
                     opacity: isOut ? 0.45 : 1,
                     textDecoration: isOut ? 'line-through' : 'none',
-                    borderColor: isOut ? 'rgba(244,63,94,0.4)' : undefined,
+                    borderColor: isOut ? 'rgba(244,63,94,0.4)' : (isLowStock ? 'rgba(212, 175, 55, 0.6)' : undefined),
                     color: isOut ? '#F43F5E' : undefined
                   }}
-                  title={isOut ? 'منتهي الكمية' : `متوفر: ${item.stock}`}
+                  title={titleText}
                 >
                   {item.size}
                 </button>
               );
             })}
           </div>
+
+          {selectedSizeObj && selectedSizeObj.stock > 0 && selectedSizeObj.stock <= 2 && (
+            <div style={{
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              color: selectedSizeObj.stock === 1 ? '#EF4444' : 'var(--gold-primary)',
+              marginTop: '0.35rem',
+              marginBottom: '0.2rem'
+            }}>
+              {selectedSizeObj.stock === 1 ? 'متبقي آخر قطعة من هذا المقاس' : 'متبقي آخر قطعتين من هذا المقاس'}
+            </div>
+          )}
         </div>
 
         {/* Price Row */}

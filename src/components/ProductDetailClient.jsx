@@ -125,7 +125,7 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                 {description}
               </p>
 
-              {/* Sizes Selection with Out-of-Stock Handling */}
+              {/* Sizes Selection with Out-of-Stock and Low-Stock Handling */}
               <div style={{ marginBottom: '2rem' }}>
                 <div style={{ fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
                   {t('selectSizeLabel')}
@@ -135,6 +135,16 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                   {initialVariants.map((item) => {
                     const isOut = item.stock <= 0;
                     const isSelected = selectedSizeObj?.size === item.size;
+                    const isLowStock = item.stock > 0 && item.stock <= 2;
+
+                    let stockSuffix = '';
+                    if (isOut) {
+                      stockSuffix = lang === 'ar' ? ' (منتهي)' : ' (Out)';
+                    } else if (item.stock === 1) {
+                      stockSuffix = lang === 'ar' ? ' (آخر قطعة)' : ' (Last piece)';
+                    } else if (item.stock === 2) {
+                      stockSuffix = lang === 'ar' ? ' (آخر قطعتين)' : ' (Last 2 pieces)';
+                    }
 
                     return (
                       <button
@@ -142,7 +152,7 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                         type="button"
                         onClick={() => {
                           if (isOut) {
-                            showToast(lang === 'ar' ? `⚠️ مقاس (${item.size}) نفد من المخزن وغير متاح للطلب` : `⚠️ Size (${item.size}) is out of stock!`);
+                            showToast(lang === 'ar' ? `مقاس (${item.size}) نفد من المخزن وغير متاح للطلب` : `Size (${item.size}) is out of stock`);
                             return;
                           }
                           setSelectedSizeObj(item);
@@ -150,8 +160,12 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                         style={{
                           padding: '0.55rem 1.1rem',
                           borderRadius: 'var(--radius-md)',
-                          border: isSelected ? '2px solid var(--gold-primary)' : '1px solid var(--border-color)',
-                          background: isSelected ? 'rgba(212, 175, 55, 0.15)' : (isOut ? 'rgba(244, 63, 94, 0.05)' : 'var(--bg-card)'),
+                          border: isSelected 
+                            ? '2px solid var(--gold-primary)' 
+                            : (isOut ? '1px solid rgba(244, 63, 94, 0.3)' : (isLowStock ? '1px solid rgba(212, 175, 55, 0.45)' : '1px solid var(--border-color)')),
+                          background: isSelected 
+                            ? 'rgba(212, 175, 55, 0.15)' 
+                            : (isOut ? 'rgba(244, 63, 94, 0.05)' : (isLowStock ? 'rgba(212, 175, 55, 0.04)' : 'var(--bg-card)')),
                           color: isOut ? '#F43F5E' : (isSelected ? 'var(--gold-primary)' : 'var(--text-primary)'),
                           fontWeight: 800,
                           fontSize: '0.95rem',
@@ -161,11 +175,34 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        {item.size} {isOut ? (lang === 'ar' ? '(منتهي)' : '(Out)') : ''}
+                        {item.size}{stockSuffix}
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Low Stock Warning Banner */}
+                {selectedSizeObj && selectedSizeObj.stock > 0 && selectedSizeObj.stock <= 2 && (
+                  <div style={{
+                    marginTop: '0.85rem',
+                    padding: '0.75rem 1.1rem',
+                    borderRadius: 'var(--radius-md)',
+                    background: selectedSizeObj.stock === 1 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(212, 175, 55, 0.08)',
+                    border: selectedSizeObj.stock === 1 ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid var(--border-gold)',
+                    color: selectedSizeObj.stock === 1 ? '#EF4444' : 'var(--gold-primary)',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    lineHeight: 1.5
+                  }}>
+                    {lang === 'ar'
+                      ? (selectedSizeObj.stock === 1
+                          ? `تنبيه: متبقي آخر قطعة فقط من مقاس (${selectedSizeObj.size}) في المخزن`
+                          : `تنبيه: متبقي آخر قطعتين فقط من مقاس (${selectedSizeObj.size}) في المخزن`)
+                      : (selectedSizeObj.stock === 1
+                          ? `Notice: Only 1 piece left in stock for size (${selectedSizeObj.size})`
+                          : `Notice: Only 2 pieces left in stock for size (${selectedSizeObj.size})`)}
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}

@@ -203,11 +203,37 @@ export const AppProvider = ({ children }) => {
       return false;
     }
 
+    // Determine variant stock limit if available
+    let availableStock = 50;
+    const variants = product.product_variants || product.variants || [];
+    if (variants.length > 0) {
+      const matched = variants.find(v => v.size === selectedSize);
+      if (matched && matched.stock_quantity !== undefined && matched.stock_quantity !== null) {
+        availableStock = Number(matched.stock_quantity);
+      }
+    } else if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      const matched = product.sizes.find(s => (typeof s === 'object' ? s.size : s) === selectedSize);
+      if (matched && typeof matched === 'object' && (matched.stock !== undefined || matched.stock_quantity !== undefined)) {
+        availableStock = Number(matched.stock ?? matched.stock_quantity);
+      }
+    }
+
+    if (availableStock <= 0) {
+      showToast(lang === 'ar' ? `مقاس (${selectedSize}) غير متوفر حالياً في المخزن` : `Size (${selectedSize}) is currently out of stock`);
+      return false;
+    }
+
+    const existingIndex = cart.findIndex(item => item.id === product.id && item.size === selectedSize);
+    if (existingIndex > -1 && cart[existingIndex].quantity >= availableStock) {
+      showToast(lang === 'ar' ? `عذراً، لا يمكن إضافة المزيد. أقصى كمية متوفرة من مقاس (${selectedSize}) هي ${availableStock} قطعة فقط` : `Maximum available quantity for size (${selectedSize}) is ${availableStock}`);
+      return false;
+    }
+
     setCart(prev => {
-      const existingIndex = prev.findIndex(item => item.id === product.id && item.size === selectedSize);
-      if (existingIndex > -1) {
+      const idx = prev.findIndex(item => item.id === product.id && item.size === selectedSize);
+      if (idx > -1) {
         const updated = [...prev];
-        updated[existingIndex].quantity += 1;
+        updated[idx].quantity += 1;
         return updated;
       }
       return [...prev, { ...product, size: selectedSize, quantity: 1 }];
@@ -251,7 +277,25 @@ export const AppProvider = ({ children }) => {
       return prev.map(item => {
         if (item.id === id && item.size === size) {
           const newQty = item.quantity + delta;
-          return newQty > 0 ? { ...item, quantity: newQty } : null;
+          if (newQty <= 0) return null;
+
+          // Check available stock if incrementing
+          if (delta > 0) {
+            const variants = item.product_variants || item.variants || [];
+            let stockLimit = 50;
+            if (variants.length > 0) {
+              const matched = variants.find(v => v.size === size);
+              if (matched && matched.stock_quantity !== undefined && matched.stock_quantity !== null) {
+                stockLimit = Number(matched.stock_quantity);
+              }
+            }
+            if (newQty > stockLimit) {
+              showToast(lang === 'ar' ? `عذراً، أقصى كمية متوفرة من هذا المقاس هي ${stockLimit} قطعة فقط` : `Maximum available quantity is ${stockLimit}`);
+              return item;
+            }
+          }
+
+          return { ...item, quantity: newQty };
         }
         return item;
       }).filter(Boolean);
@@ -268,7 +312,7 @@ export const AppProvider = ({ children }) => {
 
   const cancelOrder = (orderId) => {
     setOrders(prev => prev.filter(order => order.id !== orderId));
-    showToast('تم إلغاء الطلب بنجاح 🗑️');
+    showToast('تم إلغاء الطلب بنجاح');
   };
 
   const updateFullOrder = (orderId, { customer, items }) => {
@@ -291,7 +335,7 @@ export const AppProvider = ({ children }) => {
       }
       return order;
     }));
-    showToast('تم تعديل تفاصيل ومحتويات الطلب بنجاح ✏️');
+    showToast('تم تعديل تفاصيل ومحتويات الطلب بنجاح');
   };
 
   const t = (key) => {

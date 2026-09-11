@@ -566,9 +566,44 @@ export async function createOrderAction(orderData) {
         .insert(itemsToInsert);
 
       if (itemsErr) console.error('Error inserting order items:', itemsErr);
-    }
 
-    triggerBackgroundRevalidate(['/admin/orders', '/my-orders']);
+      // Decrement inventory stock automatically in product_variants
+      const affectedProductIds = new Set();
+      for (const item of itemsToInsert) {
+        if (!item.product_id || !item.size) continue;
+        try {
+          const itemSize = String(item.size).trim();
+          const itemQty = Number(item.quantity || 1);
+
+          const { data: variantData } = await supabaseAdmin
+            .from('product_variants')
+            .select('stock_quantity')
+            .eq('product_id', item.product_id)
+            .eq('size', itemSize)
+            .maybeSingle();
+
+          if (variantData && variantData.stock_quantity !== null && variantData.stock_quantity !== undefined) {
+            const currentStock = Number(variantData.stock_quantity);
+            const newStock = Math.max(0, currentStock - itemQty);
+            await supabaseAdmin
+              .from('product_variants')
+              .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
+              .eq('product_id', item.product_id)
+              .eq('size', itemSize);
+
+            affectedProductIds.add(item.product_id);
+          }
+        } catch (stockErr) {
+          console.error('Failed to decrement inventory for item:', item, stockErr);
+        }
+      }
+
+      const revalPaths = ['/admin/orders', '/my-orders', '/category/all', '/', '/admin/products'];
+      for (const pId of affectedProductIds) {
+        revalPaths.push(`/product/${pId}`);
+      }
+      triggerBackgroundRevalidate(revalPaths);
+    }
 
     return { success: true, order: newOrder };
   } catch (err) {
@@ -681,8 +716,9 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
     const isOutForDelivery = typeof newStatus === 'string' && (newStatus.includes('مندوب') || newStatus.toLowerCase() === 'out_for_delivery');
     const dbStatus = toDbStatus(newStatus);
 
-    const { data: curr } = await supabaseAdmin.from('orders').select('delivery_notes').eq('id', orderId).single();
+    const { data: curr } = await supabaseAdmin.from('orders').select('delivery_notes, status').eq('id', orderId).single();
     let existingNotes = curr?.delivery_notes || '';
+    const prevDbStatus = curr?.status;
 
     if (isOutForDelivery) {
       if (!existingNotes.includes('[OUT_FOR_DELIVERY]')) {
@@ -710,6 +746,75 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
       .single();
 
     if (error) throw error;
+
+    // Automatic inventory sync on status change (Restoring when cancelled, deducting when uncancelled)
+    if (dbStatus === 'cancelled' && prevDbStatus !== 'cancelled') {
+      const orderItems = updated?.order_items || [];
+      const affectedProductIds = new Set();
+      for (const item of orderItems) {
+        if (!item.product_id || !item.size) continue;
+        try {
+          const { data: variant } = await supabaseAdmin
+            .from('product_variants')
+            .select('stock_quantity')
+            .eq('product_id', item.product_id)
+            .eq('size', item.size)
+            .maybeSingle();
+
+          if (variant && variant.stock_quantity !== null && variant.stock_quantity !== undefined) {
+            const currentStock = Number(variant.stock_quantity ?? 0);
+            const restoredStock = currentStock + Number(item.quantity || 1);
+            await supabaseAdmin
+              .from('product_variants')
+              .update({ stock_quantity: restoredStock, updated_at: new Date().toISOString() })
+              .eq('product_id', item.product_id)
+              .eq('size', item.size);
+
+            affectedProductIds.add(item.product_id);
+          }
+        } catch (err) {
+          console.error('Failed to restore stock on cancellation:', err);
+        }
+      }
+      const revalPaths = ['/admin/orders', '/my-orders', '/category/all', '/', '/admin/products'];
+      for (const pId of affectedProductIds) {
+        revalPaths.push(`/product/${pId}`);
+      }
+      triggerBackgroundRevalidate(revalPaths);
+    } else if (prevDbStatus === 'cancelled' && dbStatus !== 'cancelled') {
+      const orderItems = updated?.order_items || [];
+      const affectedProductIds = new Set();
+      for (const item of orderItems) {
+        if (!item.product_id || !item.size) continue;
+        try {
+          const { data: variant } = await supabaseAdmin
+            .from('product_variants')
+            .select('stock_quantity')
+            .eq('product_id', item.product_id)
+            .eq('size', item.size)
+            .maybeSingle();
+
+          if (variant && variant.stock_quantity !== null && variant.stock_quantity !== undefined) {
+            const currentStock = Number(variant.stock_quantity ?? 0);
+            const newStock = Math.max(0, currentStock - Number(item.quantity || 1));
+            await supabaseAdmin
+              .from('product_variants')
+              .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
+              .eq('product_id', item.product_id)
+              .eq('size', item.size);
+
+            affectedProductIds.add(item.product_id);
+          }
+        } catch (err) {
+          console.error('Failed to deduct stock on un-cancelling:', err);
+        }
+      }
+      const revalPaths = ['/admin/orders', '/my-orders', '/category/all', '/', '/admin/products'];
+      for (const pId of affectedProductIds) {
+        revalPaths.push(`/product/${pId}`);
+      }
+      triggerBackgroundRevalidate(revalPaths);
+    }
 
     // Send email notification to customer if email is available
     try {

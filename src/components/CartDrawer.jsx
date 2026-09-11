@@ -14,6 +14,7 @@ export const CartDrawer = () => {
     updateQuantity, 
     updateItemSize, 
     removeFromCart, 
+    showToast,
     t 
   } = useApp();
   const router = useRouter();
@@ -219,13 +220,27 @@ export const CartDrawer = () => {
                       gap: '0.5rem'
                     }}>
                       <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        🏷️ {lang === 'ar' ? 'المقاس المتاح:' : 'Available Size:'}
+                        {lang === 'ar' ? 'المقاس المتاح:' : 'Available Size:'}
                       </span>
 
                       <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                         {sizesList.map((szObj) => {
                           const isCurrent = item.size === szObj.size;
                           const isOut = szObj.stock <= 0;
+                          const isLowStock = szObj.stock > 0 && szObj.stock <= 2;
+
+                          let szTitle = lang === 'ar' ? `متوفر: ${szObj.stock}` : `In Stock: ${szObj.stock}`;
+                          let szSuffix = '';
+                          if (isOut) {
+                            szTitle = lang === 'ar' ? 'المقاس منتهي الكمية' : 'Out of stock';
+                            szSuffix = lang === 'ar' ? ' (منتهي)' : ' (Out)';
+                          } else if (szObj.stock === 1) {
+                            szTitle = lang === 'ar' ? 'متبقي آخر قطعة فقط' : 'Only 1 piece left';
+                            szSuffix = lang === 'ar' ? ' (آخر قطعة)' : ' (Last 1)';
+                          } else if (szObj.stock === 2) {
+                            szTitle = lang === 'ar' ? 'متبقي آخر قطعتين فقط' : 'Only 2 pieces left';
+                            szSuffix = lang === 'ar' ? ' (آخر قطعتين)' : ' (Last 2)';
+                          }
 
                           return (
                             <button
@@ -242,10 +257,10 @@ export const CartDrawer = () => {
                                 borderRadius: '4px',
                                 border: isCurrent 
                                   ? '1.5px solid var(--gold-primary)' 
-                                  : (isOut ? '1px solid rgba(244,63,94,0.3)' : '1px solid var(--border-color)'),
+                                  : (isOut ? '1px solid rgba(244,63,94,0.3)' : (isLowStock ? '1px solid rgba(212, 175, 55, 0.5)' : '1px solid var(--border-color)')),
                                 background: isCurrent 
                                   ? 'var(--gold-gradient)' 
-                                  : (isOut ? 'rgba(244,63,94,0.08)' : 'var(--bg-card)'),
+                                  : (isOut ? 'rgba(244,63,94,0.08)' : (isLowStock ? 'rgba(212, 175, 55, 0.05)' : 'var(--bg-card)')),
                                 color: isCurrent 
                                   ? '#000000' 
                                   : (isOut ? '#F43F5E' : 'var(--text-secondary)'),
@@ -258,9 +273,9 @@ export const CartDrawer = () => {
                                 transition: 'all 0.15s ease',
                                 boxShadow: isCurrent ? '0 2px 8px var(--gold-glow)' : 'none'
                               }}
-                              title={isOut ? (lang === 'ar' ? 'المقاس منتهي الكمية' : 'Out of stock') : (lang === 'ar' ? `متوفر: ${szObj.stock}` : `In Stock: ${szObj.stock}`)}
+                              title={szTitle}
                             >
-                              {szObj.size}
+                              {szObj.size}{szSuffix}
                             </button>
                           );
                         })}
@@ -268,86 +283,118 @@ export const CartDrawer = () => {
                     </div>
                   )}
 
-                  {/* Bottom Row: Quantity Modifier & Line Item Total (تعديل العدد + الإجمالي) */}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    paddingTop: '0.4rem',
-                    borderTop: '1px solid var(--border-color)'
-                  }}>
-                    {/* Quantity Controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', marginInlineEnd: '0.2rem' }}>
-                        {lang === 'ar' ? 'الكمية:' : 'Qty:'}
-                      </span>
-                      
-                      <button 
-                        type="button"
-                        onClick={() => updateQuantity(item.id, item.size, -1)}
-                        style={{ 
-                          width: '32px', 
-                          height: '32px', 
-                          borderRadius: '6px', 
-                          border: '1px solid var(--border-gold)',
-                          background: 'var(--bg-deep)', 
-                          color: 'var(--text-primary)', 
-                          fontWeight: 900, 
-                          fontSize: '1.1rem', 
-                          cursor: 'pointer', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        -
-                      </button>
-                      
-                      <span style={{ 
-                        fontWeight: 900, 
-                        color: 'var(--text-primary)', 
-                        minWidth: '24px', 
-                        textAlign: 'center',
-                        fontSize: '1rem',
-                        fontFamily: 'var(--font-en)'
-                      }}>
-                        {item.quantity}
-                      </span>
-                      
-                      <button 
-                        type="button"
-                        onClick={() => updateQuantity(item.id, item.size, 1)}
-                        style={{ 
-                          width: '32px', 
-                          height: '32px', 
-                          borderRadius: '6px', 
-                          border: '1px solid var(--border-gold)',
-                          background: 'var(--bg-deep)', 
-                          color: 'var(--text-primary)', 
-                          fontWeight: 900, 
-                          fontSize: '1.1rem', 
-                          cursor: 'pointer', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
+                  {/* Bottom Row: Quantity Modifier & Line Item Total */}
+                  {(() => {
+                    const currentVariantStock = sizesList.find(s => s.size === item.size)?.stock ?? 50;
+                    const isMaxStockReached = item.quantity >= currentVariantStock;
 
-                    {/* Total For this Item */}
-                    <div style={{ textAlign: 'end' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                        {lang === 'ar' ? 'إجمالي القطع' : 'Total'}
+                    return (
+                      <div>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          paddingTop: '0.4rem',
+                          borderTop: '1px solid var(--border-color)'
+                        }}>
+                          {/* Quantity Controls */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', marginInlineEnd: '0.2rem' }}>
+                              {lang === 'ar' ? 'الكمية:' : 'Qty:'}
+                            </span>
+                            
+                            <button 
+                              type="button"
+                              onClick={() => updateQuantity(item.id, item.size, -1)}
+                              style={{ 
+                                width: '32px', 
+                                height: '32px', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--border-gold)',
+                                background: 'var(--bg-deep)', 
+                                color: 'var(--text-primary)', 
+                                fontWeight: 900, 
+                                fontSize: '1.1rem', 
+                                cursor: 'pointer', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              -
+                            </button>
+                            
+                            <span style={{ 
+                              fontWeight: 900, 
+                              color: 'var(--text-primary)', 
+                              minWidth: '24px', 
+                              textAlign: 'center', 
+                              fontSize: '1rem', 
+                              fontFamily: 'var(--font-en)' 
+                            }}>
+                              {item.quantity}
+                            </span>
+                            
+                            <button 
+                              type="button"
+                              disabled={isMaxStockReached}
+                              onClick={() => {
+                                if (isMaxStockReached) {
+                                  showToast(lang === 'ar' ? `عذراً، أقصى كمية متوفرة من هذا المقاس هي ${currentVariantStock} قطعة فقط` : `Maximum available quantity for this size is ${currentVariantStock}`);
+                                  return;
+                                }
+                                updateQuantity(item.id, item.size, 1);
+                              }}
+                              style={{ 
+                                width: '32px', 
+                                height: '32px', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--border-gold)',
+                                background: isMaxStockReached ? 'rgba(255,255,255,0.05)' : 'var(--bg-deep)', 
+                                color: isMaxStockReached ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                fontWeight: 900, 
+                                fontSize: '1.1rem', 
+                                cursor: isMaxStockReached ? 'not-allowed' : 'pointer', 
+                                opacity: isMaxStockReached ? 0.35 : 1,
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                transition: 'all 0.15s ease'
+                              }}
+                              title={isMaxStockReached ? (lang === 'ar' ? `الحد الأقصى المتوفر (${currentVariantStock})` : `Max stock (${currentVariantStock})`) : ''}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* Total For this Item */}
+                          <div style={{ textAlign: 'end' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                              {lang === 'ar' ? 'إجمالي القطع' : 'Total'}
+                            </div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-en)' }}>
+                              {itemTotal} {currency}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Low stock reminder in Cart */}
+                        {currentVariantStock > 0 && currentVariantStock <= 2 && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            color: currentVariantStock === 1 ? '#EF4444' : 'var(--gold-primary)',
+                            marginTop: '0.35rem'
+                          }}>
+                            {lang === 'ar'
+                              ? (currentVariantStock === 1 ? 'تنبيه: متبقي آخر قطعة فقط من هذا المقاس في المخزن' : 'تنبيه: متبقي آخر قطعتين فقط من هذا المقاس في المخزن')
+                              : (currentVariantStock === 1 ? 'Notice: Only 1 piece left in stock' : 'Notice: Only 2 pieces left in stock')}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-en)' }}>
-                        {itemTotal} {currency}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                 </div>
               );
