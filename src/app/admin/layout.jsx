@@ -72,33 +72,36 @@ export default async function AdminLayout({ children }) {
       }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '1.6rem' }}>👑</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--gold-primary)', border: '1px solid var(--gold-primary)', padding: '0.25rem 0.6rem', borderRadius: '4px', letterSpacing: '1px' }}>KEMET</span>
             <div>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
                 لوحة تحكم KEMET الإدارية
               </h1>
               <span style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 800 }}>
-                ● وضع الإدارة المعزول والأمني (Admin System Active)
+                وضع الإدارة المعزول والأمني (Admin System Active)
               </span>
             </div>
           </div>
 
           {/* Admin Navigation Tabs */}
-          <nav style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <nav style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Link href="/admin" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
-              📊 الإحصائيات
+              الإحصائيات
             </Link>
             <Link href="/admin#coupons" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
-              🏷️ أكواد الخصم
+              أكواد الخصم
             </Link>
             <Link href="/admin/products" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
-              ⚽ المنتجات والمخزون
+              المنتجات والمخزون
             </Link>
-            <Link href="/admin/orders" className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
-              📦 إدارة الطلبات
+            <Link href="/admin/orders" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+              إدارة الطلبات
+            </Link>
+            <Link href="/admin/abandoned-carts" className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
+              السلات المتروكة والعملاء
             </Link>
             <Link href="/" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
-              🏠 الواجهة الرئيسية
+              الواجهة الرئيسية
             </Link>
           </nav>
         </div>

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
-import { createOrderAction, getCouponsAction, recordCouponUsageAction } from '../admin/actions';
+import { createOrderAction, getCouponsAction, recordCouponUsageAction, syncCustomerCartAction } from '../admin/actions';
 import { DEFAULT_COUPONS } from '../../lib/coupons';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 
@@ -41,7 +41,7 @@ const SHIPPING_RATES = {
 };
 
 export default function CheckoutPage() {
-  const { cart, clearCart, addOrder, user, cmsSettings, t } = useApp();
+  const { cart, clearCart, addOrder, user, cmsSettings, lang, t } = useApp();
 
   const rates = cmsSettings?.shippingRates || SHIPPING_RATES;
   const isFreeShippingPromo = cmsSettings?.isFreeShippingPromo ?? false;
@@ -201,6 +201,31 @@ export default function CheckoutPage() {
       trackPurchase(createdOrder);
     }
   }, [isSubmitted, createdOrder]);
+
+  // Update abandoned cart drop-off stage when customer reviews or fills checkout form
+  useEffect(() => {
+    const cleanPhone = (formData.phone || user?.phone || '').replace(/\D/g, '');
+    const hasIdentifier = user?.id || cleanPhone.length >= 10;
+
+    if (cart.length > 0 && hasIdentifier && !isSubmitted) {
+      const timer = setTimeout(() => {
+        syncCustomerCartAction({
+          userId: user?.id || null,
+          customer: {
+            fullName: formData.fullName || user?.fullName || 'عميل في صفحة الدفع',
+            phone: formData.phone || user?.phone || '',
+            governorate: formData.governorate || user?.governorate || 'القاهرة',
+            address: formData.address || user?.address || '',
+            email: user?.email || ''
+          },
+          items: cart,
+          lastPage: 'صفحة إتمام الطلب (Checkout)'
+        }).catch(() => {});
+      }, 1200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [cart, formData.fullName, formData.phone, formData.governorate, formData.address, user, isSubmitted]);
 
   // Handle Apply Coupon
   const handleApplyCoupon = (explicitCode = null) => {
@@ -666,7 +691,13 @@ export default function CheckoutPage() {
               </div>
 
               <button type="submit" disabled={isSubmitting || cart.length === 0} className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
-                {isSubmitting ? 'جاري تأكيد الطلب فورياً...' : `تأكيد الطلب بدفع ${totalAmount} ج.م`}
+                {isSubmitting 
+                  ? (lang === 'ar' ? 'جاري إتمام الطلب فورياً...' : 'Processing order...') 
+                  : (lang === 'ar' 
+                      ? `إتمام الطلب بدفع ${totalAmount} ج.م عند الاستلام` 
+                      : `Complete Order - Pay ${totalAmount} ${t('currency')} on Delivery`
+                    )
+                }
               </button>
             </form>
 

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations } from '../data/translations';
 
-import { getCategoriesListAction } from '../app/admin/actions';
+import { getCategoriesListAction, syncCustomerCartAction, clearCustomerCartAction } from '../app/admin/actions';
 import { trackAddToCart } from '../lib/analytics';
 
 const AppContext = createContext();
@@ -119,11 +119,30 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('kemet_theme', theme);
   }, [theme, mounted]);
 
-  // Sync cart
+  // Sync cart locally and to database for abandoned cart tracking
   useEffect(() => {
     if (!mounted) return;
     localStorage.setItem('kemet_cart', JSON.stringify(cart));
-  }, [cart, mounted]);
+
+    // Debounced database sync for logged-in user
+    if (user) {
+      const timer = setTimeout(() => {
+        try {
+          const lastPage = typeof window !== 'undefined' ? window.location.pathname : '/';
+          syncCustomerCartAction({
+            userId: user.id,
+            customer: user,
+            items: cart,
+            lastPage
+          }).catch(err => {
+            console.warn('Cart sync note:', err);
+          });
+        } catch (e) {}
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [cart, user, mounted]);
 
   // Sync user
   useEffect(() => {
@@ -304,10 +323,16 @@ export const AppProvider = ({ children }) => {
 
   const clearCart = () => {
     setCart([]);
+    if (user?.id || user?.phone) {
+      clearCustomerCartAction(user?.id, user?.phone).catch(() => {});
+    }
   };
 
   const addOrder = (newOrder) => {
     setOrders(prev => [newOrder, ...prev]);
+    if (user?.id || newOrder?.customer?.phone) {
+      clearCustomerCartAction(user?.id, newOrder?.customer?.phone).catch(() => {});
+    }
   };
 
   const cancelOrder = (orderId) => {

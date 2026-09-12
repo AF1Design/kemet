@@ -606,6 +606,9 @@ export async function createOrderAction(orderData) {
       triggerBackgroundRevalidate(revalPaths);
     }
 
+    // Clear abandoned cart tracking record for this customer upon successful order placement
+    clearCustomerCartAction(validUserId || orderData.userId, orderData.customer?.phone || orderData.customerPhone).catch(() => {});
+
     return { success: true, order: newOrder };
   } catch (err) {
     console.error('createOrderAction error:', err);
@@ -2176,6 +2179,206 @@ export async function saveAnnouncementBarConfigAction(config) {
   } catch (err) {
     console.error('saveAnnouncementBarConfigAction exception:', err);
     return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Syncs active shopping cart of a logged-in user to database for abandoned cart tracking
+ */
+export async function syncCustomerCartAction({ userId, customer, items = [], lastPage = '/' }) {
+  try {
+    if (!userId && !customer?.phone && !customer?.email) {
+      return { success: false, error: 'User identifier required' };
+    }
+
+    const supabaseAdmin = getAdminSupabase();
+    const cleanId = `_cart_${String(userId || customer?.phone || customer?.email || '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      await supabaseAdmin.from('categories').delete().eq('id', cleanId);
+      return { success: true, action: 'cleared' };
+    }
+
+    const cleanItems = items.map(it => ({
+      id: it.id || it.product_id,
+      nameAr: it.nameAr || it.name_ar || it.title || 'منتج KEMET',
+      nameEn: it.nameEn || it.name_en || '',
+      size: it.size || 'M',
+      quantity: Number(it.quantity || 1),
+      price: Number(it.price || 0),
+      image: it.image || it.main_image || null
+    }));
+
+    const totalAmount = cleanItems.reduce((s, it) => s + (it.price * it.quantity), 0);
+
+    const payload = {
+      userId: userId || null,
+      customerName: customer?.fullName || customer?.name || customer?.full_name || 'عميل مسجل',
+      customerPhone: customer?.phone || '',
+      customerEmail: customer?.email || '',
+      governorate: customer?.governorate || '',
+      address: customer?.address || '',
+      items: cleanItems,
+      totalAmount,
+      itemsCount: cleanItems.reduce((s, it) => s + it.quantity, 0),
+      lastPage: String(lastPage || '/'),
+      updatedAt: new Date().toISOString()
+    };
+
+    const { error } = await supabaseAdmin
+      .from('categories')
+      .upsert({
+        id: cleanId,
+        name_ar: JSON.stringify(payload),
+        name_en: 'ABANDONED_CART',
+        description_ar: String(customer?.phone || '').trim(),
+        description_en: 'ACTIVE',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+    if (error) throw error;
+    return { success: true, action: 'synced' };
+  } catch (err) {
+    console.warn('syncCustomerCartAction note:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Clears active cart record when order is successfully placed
+ */
+export async function clearCustomerCartAction(userId, phone = null) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    if (userId) {
+      const cleanId = `_cart_${String(userId).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      await supabaseAdmin.from('categories').delete().eq('id', cleanId);
+    }
+    if (phone) {
+      const cleanPhoneId = `_cart_${String(phone).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      await supabaseAdmin.from('categories').delete().eq('id', cleanPhoneId);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+/**
+ * Server Action: Fetches all abandoned carts and registered non-buyer leads for admin dashboard
+ */
+export async function getAbandonedCartsAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    // 1. Fetch live active carts from categories store
+    const { data: cartRows } = await supabaseAdmin
+      .from('categories')
+      .select('*')
+      .eq('name_en', 'ABANDONED_CART')
+      .eq('description_en', 'ACTIVE')
+      .order('updated_at', { ascending: false });
+
+    const abandonedCarts = [];
+    (cartRows || []).forEach(row => {
+      try {
+        if (row.name_ar) {
+          const parsed = JSON.parse(row.name_ar);
+          if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+            abandonedCarts.push(parsed);
+          }
+        }
+      } catch (e) {}
+    });
+
+    // 2. Fetch profiles and orders to cross-reference registered leads
+    const [{ data: profiles }, { data: orders }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabaseAdmin.from('orders').select('id, user_id, customer_phone, customer_email, total_amount, created_at')
+    ]);
+
+    const cleanPhone = (s) => {
+      if (!s) return '';
+      const digits = String(s).replace(/\D/g, '');
+      return digits.length >= 10 ? digits.slice(-10) : digits;
+    };
+    const cleanEmail = (s) => (s || '').toLowerCase().trim();
+
+    const buyersUserId = new Set();
+    const buyersPhone = new Set();
+    const buyersEmail = new Set();
+
+    (orders || []).forEach(o => {
+      if (o.user_id) buyersUserId.add(String(o.user_id).trim());
+      if (o.customer_phone) {
+        const p = cleanPhone(o.customer_phone);
+        if (p) buyersPhone.add(p);
+      }
+      if (o.customer_email) {
+        const e = cleanEmail(o.customer_email);
+        if (e) buyersEmail.add(e);
+      }
+    });
+
+    const registeredLeads = [];
+    (profiles || []).forEach(p => {
+      const pPhone = cleanPhone(p.phone);
+      const pEmail = cleanEmail(p.email);
+      const hasOrdered = buyersUserId.has(p.id) || (pPhone && buyersPhone.has(pPhone)) || (pEmail && buyersEmail.has(pEmail));
+
+      if (!hasOrdered && p.role !== 'admin' && p.email !== 'admin@kemet.eg') {
+        let stage = 'تصفح المتجر بعد تسجيل الدخول';
+        if (p.address && p.address.trim().length > 3) {
+          stage = 'أدخل العنوان التفصيلي في حسابه وتوقف';
+        } else if (p.governorate && p.governorate.trim().length > 0 && p.governorate !== 'القاهرة') {
+          stage = `حدد محافظة ${p.governorate} وتوقف`;
+        }
+
+        // Link active abandoned cart if this user has one
+        const leadCart = abandonedCarts.find(c =>
+          (c.userId && String(c.userId).trim() === String(p.id).trim()) ||
+          (pPhone && c.customerPhone && cleanPhone(c.customerPhone) === pPhone) ||
+          (pEmail && c.customerEmail && cleanEmail(c.customerEmail) === pEmail)
+        );
+
+        if (leadCart) {
+          stage = `أضاف ${leadCart.itemsCount || leadCart.items?.length || 1} منتج للسلة بقيمة ${leadCart.totalAmount} ج.م وتوقف`;
+        }
+
+        registeredLeads.push({
+          id: p.id,
+          fullName: p.full_name || 'عميل مسجل',
+          phone: p.phone || '',
+          email: p.email || '',
+          governorate: p.governorate || 'القاهرة',
+          address: p.address || '',
+          createdAt: p.created_at,
+          stage,
+          cart: leadCart || null
+        });
+      }
+    });
+
+    const totalAccounts = profiles?.length || 0;
+    const buyersCount = totalAccounts - registeredLeads.length;
+    const conversionRate = totalAccounts > 0 ? `${((buyersCount / totalAccounts) * 100).toFixed(1)}%` : '0%';
+
+    return {
+      success: true,
+      abandonedCarts,
+      registeredLeads,
+      stats: {
+        abandonedCartsCount: abandonedCarts.length,
+        potentialRevenue: abandonedCarts.reduce((s, c) => s + Number(c.totalAmount || 0), 0),
+        registeredLeadsCount: registeredLeads.length,
+        totalAccounts,
+        buyersCount,
+        conversionRate
+      }
+    };
+  } catch (err) {
+    console.error('getAbandonedCartsAction error:', err);
+    return { success: false, error: err.message, abandonedCarts: [], registeredLeads: [], stats: {} };
   }
 }
 
