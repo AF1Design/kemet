@@ -5,11 +5,12 @@ import React from 'react';
 export const Toast = ({ message }) => {
   if (!message) return null;
 
-  const isWarning = message.includes('⚠️') || message.includes('منتهي') || message.includes('خطأ') || message.includes('غير متوفر');
+  const isWarning = message.includes('تحذير') || message.includes('منتهي') || message.includes('خطأ') || message.includes('غير متوفر');
 
   return (
     <div 
       className="kemet-ios-toast"
+      data-keep-white="true"
       style={{
         position: 'fixed',
         top: 'max(16px, env(safe-area-inset-top, 16px))',
@@ -65,8 +66,12 @@ export const Toast = ({ message }) => {
         )}
       </div>
 
-      <span style={{ color: '#FFFFFF', letterSpacing: '0.2px' }}>
-        {message.replace(/[🛍️🎉⚠️✅]/g, '').trim()}
+      <span 
+        className="kemet-toast-text"
+        data-keep-white="true" 
+        style={{ color: '#FFFFFF', letterSpacing: '0.2px', fontWeight: 700 }}
+      >
+        {message.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim()}
       </span>
     </div>
   );

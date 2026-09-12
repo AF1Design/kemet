@@ -4,6 +4,7 @@ import { getAdminSupabase } from '../../lib/supabase/admin.js';
 import { processAndUploadProductImage } from '../../lib/image-uploader.js';
 import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
 import { DEFAULT_COUPONS } from '../../lib/coupons.js';
+import { DEFAULT_ANNOUNCEMENT_CONFIG } from '../../lib/announcement.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
@@ -335,15 +336,15 @@ function toDbStatus(status) {
 
 function toDisplayStatus(status, deliveryNotes = '') {
   const cleanStatus = (status || '').toLowerCase();
-  if (cleanStatus === 'cancelled' || cleanStatus.includes('ملغي')) return 'ملغي ❌';
-  if (cleanStatus === 'delivered' || cleanStatus.includes('تسليم')) return 'تم التسليم ✅';
+  if (cleanStatus === 'cancelled' || cleanStatus.includes('ملغي')) return 'ملغي';
+  if (cleanStatus === 'delivered' || cleanStatus.includes('تسليم')) return 'تم التسليم';
   if (String(deliveryNotes || '').includes('[OUT_FOR_DELIVERY]')) {
-    return 'مع المندوب 🛵';
+    return 'مع المندوب';
   }
-  if (cleanStatus === 'out_for_delivery' || cleanStatus.includes('مندوب')) return 'مع المندوب 🛵';
-  if (cleanStatus === 'shipped' || cleanStatus.includes('شحن')) return 'تم الشحن 🚚';
-  if (cleanStatus === 'processing' || cleanStatus.includes('تجهيز')) return 'جاري التجهيز ⚙️';
-  return 'جديد 📦';
+  if (cleanStatus === 'out_for_delivery' || cleanStatus.includes('مندوب')) return 'مع المندوب';
+  if (cleanStatus === 'shipped' || cleanStatus.includes('شحن')) return 'تم الشحن';
+  if (cleanStatus === 'processing' || cleanStatus.includes('تجهيز')) return 'جاري التجهيز';
+  return 'جديد';
 }
 
 export async function mapDisplayStatusToDb(status) {
@@ -615,7 +616,14 @@ export async function createOrderAction(orderData) {
 /**
  * Server Action: Customer updates their order items, sizes, quantities, and delivery details in Supabase DB
  */
-export async function updateCustomerOrderAction({ orderId, customer, items = [] }) {
+export async function updateCustomerOrderAction({
+  orderId,
+  customer,
+  items = [],
+  shippingFee = null,
+  sendNotificationEmail = false,
+  isAdminEdit = false
+}) {
   try {
     const supabaseAdmin = getAdminSupabase();
 
@@ -630,7 +638,7 @@ export async function updateCustomerOrderAction({ orderId, customer, items = [] 
       return { success: false, error: 'الطلب غير موجود في قاعدة البيانات' };
     }
 
-    if (currOrder.status === 'shipped' || currOrder.status === 'delivered' || currOrder.status === 'cancelled') {
+    if (!isAdminEdit && (currOrder.status === 'shipped' || currOrder.status === 'delivered' || currOrder.status === 'cancelled')) {
       return { success: false, error: 'عذراً، لا يمكن تعديل الطلب بعد شحنه أو إلغائه.' };
     }
 
@@ -639,22 +647,49 @@ export async function updateCustomerOrderAction({ orderId, customer, items = [] 
       return { success: false, error: 'يجب أن يحتوي الطلب على منتج واحد على الأقل.' };
     }
 
-    // Recompute total amount
-    const subtotal = rawItems.reduce((sum, item) => sum + (Number(item.price || item.unit_price || 0) * Number(item.quantity || 1)), 0);
-    const shippingFee = Number(currOrder.shipping_fee ?? 50);
-    const totalAmount = subtotal + shippingFee;
+    // Recompute subtotal
+    const subtotal = rawItems.reduce((sum, item) => sum + (Number(item.price ?? item.unit_price ?? 0) * Number(item.quantity || 1)), 0);
+    
+    // Determine shipping fee
+    let finalShippingFee = Number(currOrder.shipping_fee ?? 50);
+    if (shippingFee !== null && shippingFee !== undefined && !isNaN(Number(shippingFee))) {
+      finalShippingFee = Math.max(0, Number(shippingFee));
+    }
+    const totalAmount = subtotal + finalShippingFee;
 
-    // 2. Update order customer details & total amount
+    // 2. Update order customer details & total amount & shipping fee & subtotal
     const orderUpdatePayload = {
-      total_amount: totalAmount
+      subtotal: subtotal,
+      shipping_fee: finalShippingFee,
+      total_amount: totalAmount,
+      updated_at: new Date().toISOString()
     };
 
     if (customer) {
-      if (customer.fullName) orderUpdatePayload.customer_name = String(customer.fullName).trim();
-      if (customer.phone) orderUpdatePayload.customer_phone = String(customer.phone).trim();
-      if (customer.governorate) orderUpdatePayload.governorate = String(customer.governorate).trim();
-      if (customer.address) orderUpdatePayload.address = String(customer.address).trim();
-      if (customer.notes !== undefined) orderUpdatePayload.notes = String(customer.notes || '').trim();
+      if (customer.fullName !== undefined) orderUpdatePayload.customer_name = String(customer.fullName).trim();
+      if (customer.name !== undefined) orderUpdatePayload.customer_name = String(customer.name).trim();
+      if (customer.phone !== undefined) orderUpdatePayload.customer_phone = String(customer.phone).trim();
+      if (customer.governorate !== undefined) orderUpdatePayload.governorate = String(customer.governorate).trim();
+      if (customer.address !== undefined) orderUpdatePayload.address = String(customer.address).trim();
+      if (customer.notes !== undefined || customer.delivery_notes !== undefined) {
+        orderUpdatePayload.delivery_notes = String(customer.notes ?? customer.delivery_notes ?? '').trim();
+      }
+
+      // Sync customer email to profiles table if valid
+      if (customer.email) {
+        const cleanEmail = String(customer.email).trim().toLowerCase();
+        if (cleanEmail && cleanEmail.includes('@')) {
+          try {
+            if (currOrder.user_id) {
+              await supabaseAdmin.from('profiles').update({ email: cleanEmail }).eq('id', currOrder.user_id);
+            } else if (orderUpdatePayload.customer_phone) {
+              await supabaseAdmin.from('profiles').update({ email: cleanEmail }).eq('phone', orderUpdatePayload.customer_phone);
+            }
+          } catch (profErr) {
+            console.warn('Profile email update note:', profErr);
+          }
+        }
+      }
     }
 
     const { error: updateErr } = await supabaseAdmin
@@ -664,7 +699,13 @@ export async function updateCustomerOrderAction({ orderId, customer, items = [] 
 
     if (updateErr) throw updateErr;
 
-    // 3. Sync order_items: Delete old items and insert updated items
+    // 3. Fetch previous items to reconcile inventory stock
+    const { data: previousOrderItems } = await supabaseAdmin
+      .from('order_items')
+      .select('product_id, size, quantity')
+      .eq('order_id', orderId);
+
+    // Sync order_items: Delete old items and insert updated items
     await supabaseAdmin
       .from('order_items')
       .delete()
@@ -679,6 +720,8 @@ export async function updateCustomerOrderAction({ orderId, customer, items = [] 
     const itemsToInsert = rawItems.map(item => {
       const rawProdId = item.id || item.product_id ? String(item.id || item.product_id) : null;
       const validProdId = validProductIds.has(rawProdId) ? rawProdId : null;
+      const unitPrice = Number(item.price ?? item.unit_price ?? 0);
+      const qty = Number(item.quantity || 1);
 
       return {
         order_id: orderId,
@@ -686,9 +729,9 @@ export async function updateCustomerOrderAction({ orderId, customer, items = [] 
         product_name_ar: item.nameAr || item.name_ar || item.title || 'منتج KEMET',
         product_name_en: item.nameEn || item.name_en || '',
         size: String(item.size || 'M').trim(),
-        unit_price: Number(item.price || item.unit_price || 0),
-        quantity: Number(item.quantity || 1),
-        total_price: Number(item.price || item.unit_price || 0) * Number(item.quantity || 1)
+        unit_price: unitPrice,
+        quantity: qty,
+        total_price: unitPrice * qty
       };
     });
 
@@ -698,9 +741,189 @@ export async function updateCustomerOrderAction({ orderId, customer, items = [] 
 
     if (itemsErr) throw itemsErr;
 
-    triggerBackgroundRevalidate(['/admin/orders', '/my-orders', '/track-order']);
+    // 4. Reconcile inventory differences in product_variants
+    try {
+      const oldMap = {};
+      (previousOrderItems || []).forEach(it => {
+        if (!it.product_id || !it.size) return;
+        const key = `${it.product_id}_${String(it.size).trim()}`;
+        oldMap[key] = {
+          productId: it.product_id,
+          size: String(it.size).trim(),
+          qty: (oldMap[key]?.qty || 0) + Number(it.quantity || 1)
+        };
+      });
 
-    return { success: true };
+      const newMap = {};
+      itemsToInsert.forEach(it => {
+        if (!it.product_id || !it.size) return;
+        const key = `${it.product_id}_${String(it.size).trim()}`;
+        newMap[key] = {
+          productId: it.product_id,
+          size: String(it.size).trim(),
+          qty: (newMap[key]?.qty || 0) + Number(it.quantity || 1)
+        };
+      });
+
+      const affectedProductIds = new Set();
+      const allKeys = new Set([...Object.keys(oldMap), ...Object.keys(newMap)]);
+
+      for (const key of allKeys) {
+        const oldQty = oldMap[key]?.qty || 0;
+        const newQty = newMap[key]?.qty || 0;
+        const diff = newQty - oldQty;
+        if (diff === 0) continue;
+
+        const info = oldMap[key] || newMap[key];
+        if (!info?.productId || !info?.size) continue;
+
+        const { data: variantData } = await supabaseAdmin
+          .from('product_variants')
+          .select('stock_quantity')
+          .eq('product_id', info.productId)
+          .eq('size', info.size)
+          .maybeSingle();
+
+        if (variantData && variantData.stock_quantity !== null && variantData.stock_quantity !== undefined) {
+          const currentStock = Number(variantData.stock_quantity);
+          const newStock = Math.max(0, currentStock - diff);
+          await supabaseAdmin
+            .from('product_variants')
+            .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
+            .eq('product_id', info.productId)
+            .eq('size', info.size);
+
+          affectedProductIds.add(info.productId);
+        }
+      }
+
+      const revalPaths = ['/admin/orders', '/my-orders', '/track-order', '/category/all', '/', '/admin/products'];
+      for (const pId of affectedProductIds) {
+        revalPaths.push(`/product/${pId}`);
+      }
+      triggerBackgroundRevalidate(revalPaths);
+    } catch (stockErr) {
+      console.error('Inventory reconcile error on order update:', stockErr);
+    }
+
+    // 5. Send Order Update Confirmation Email if requested
+    let emailSent = false;
+    if (sendNotificationEmail) {
+      const targetEmail = customer?.email || currOrder.customer_email || currOrder.email;
+      if (targetEmail && String(targetEmail).includes('@')) {
+        try {
+          const resend = getResendClient();
+          const customerName = orderUpdatePayload.customer_name || currOrder.customer_name || 'عزيزنا العميل';
+          
+          const itemsRowsHtml = itemsToInsert.map(item => `
+            <tr>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; font-weight: 800; color: #0F172A; text-align: right;">${item.product_name_ar}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569; font-weight: 700;">${item.size}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569; font-weight: 700;">${item.quantity}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: center; color: #475569; font-weight: 700;">${item.unit_price} ج.م</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #E2E8F0; font-size: 14px; text-align: left; font-weight: 800; color: #B8860B;">${item.total_price} ج.م</td>
+            </tr>
+          `).join('');
+
+          const emailHtml = `
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <link rel="preconnect" href="https://fonts.googleapis.com" />
+              <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+              <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
+              <title>تحديث وتأكيد تفاصيل طلبك - KEMET</title>
+            </head>
+            <body style="margin: 0; padding: 24px 0; background-color: #F8FAFC; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; text-align: right;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 32px 28px; border: 1px solid #E2E8F0; border-radius: 14px; background-color: #FFFFFF; box-shadow: 0 4px 16px rgba(0,0,0,0.06); direction: rtl; text-align: right;">
+                <div style="text-align: left; margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
+                  <a href="https://kemetmisr.com" target="_blank" style="text-decoration: none;">
+                    <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px; border: 0;" />
+                  </a>
+                </div>
+                
+                <h2 style="color: #0F172A; font-family: 'Cairo', sans-serif; font-size: 22px; font-weight: 900; margin: 0 0 16px 0; line-height: 1.4; text-align: right;">
+                  تحديث رسمي بشأن تفاصيل طلبك رقم #${orderId}
+                </h2>
+                
+                <p style="color: #334155; font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 700; line-height: 1.7; margin-bottom: 20px; text-align: right;">
+                  عزيزنا العميل ${customerName}،<br />
+                  نحيطكم علماً بأنه تم تحديث وتعديل تفاصيل طلبكم والأسعار المعتمدة بناءً على تواصلكم معنا. فيما يلي بيان تفصيلي ببنود الطلب المعتمدة والإجمالي النهائي:
+                </p>
+
+                <table border="0" cellPadding="0" cellSpacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 20px;">
+                  <thead>
+                    <tr style="background: #F1F5F9;">
+                      <th style="padding: 10px; text-align: right; font-size: 13px; font-weight: 800; color: #475569;">المنتج</th>
+                      <th style="padding: 10px; text-align: center; font-size: 13px; font-weight: 800; color: #475569;">المقاس</th>
+                      <th style="padding: 10px; text-align: center; font-size: 13px; font-weight: 800; color: #475569;">الكمية</th>
+                      <th style="padding: 10px; text-align: center; font-size: 13px; font-weight: 800; color: #475569;">سعر القطعة</th>
+                      <th style="padding: 10px; text-align: left; font-size: 13px; font-weight: 800; color: #475569;">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsRowsHtml}
+                  </tbody>
+                </table>
+
+                <div style="background: #F8FAFC; padding: 16px 20px; border-radius: 10px; margin-bottom: 24px; border: 1px solid #E2E8F0;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #475569;">
+                    <span>المجموع الفرعي للمنتجات:</span>
+                    <strong style="color: #0F172A;">${subtotal} ج.م</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #475569;">
+                    <span>مصاريف الشحن:</span>
+                    <strong style="color: #0F172A;">${finalShippingFee === 0 ? 'مجاناً' : `${finalShippingFee} ج.م`}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 900; color: #B8860B; border-top: 2px solid #E2E8F0; padding-top: 10px; margin-top: 10px;">
+                    <span>المبلغ الإجمالي المطلوب سداده عند الاستلام:</span>
+                    <span style="font-size: 20px;">${totalAmount} ج.م</span>
+                  </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 28px; margin-bottom: 20px;">
+                  <a href="https://kemetmisr.com/track-order" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; font-family: 'Cairo', sans-serif; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 800; margin: 6px;">
+                    متابعة حالة الطلب
+                  </a>
+                  <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، بخصوص التعديل على طلبي رقم: #${orderId}`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; font-family: 'Cairo', sans-serif; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 800; margin: 6px;">
+                    تواصل معنا واتساب
+                  </a>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+                
+                <p style="color: #94A3B8; font-family: 'Cairo', sans-serif; font-size: 12px; text-align: center; margin: 0;">
+                  KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
+                </p>
+              </div>
+            </body>
+            </html>
+          `;
+
+          await resend.emails.send({
+            from: SENDER_EMAIL,
+            to: [targetEmail.trim().toLowerCase()],
+            subject: `تحديث وتأكيد تفاصيل طلبكم رقم #${orderId} - KEMET`,
+            html: emailHtml
+          });
+          emailSent = true;
+        } catch (mailErr) {
+          console.error('Order update confirmation email error:', mailErr);
+        }
+      }
+    }
+
+    triggerBackgroundRevalidate(['/admin/orders', '/my-orders', '/track-order', '/admin']);
+
+    return {
+      success: true,
+      subtotal,
+      shippingFee: finalShippingFee,
+      totalAmount,
+      emailSent
+    };
   } catch (err) {
     console.error('updateCustomerOrderAction error:', err);
     return { success: false, error: err.message || 'فشل تحديث بيانات الطلب' };
@@ -1305,7 +1528,7 @@ export async function sendDirectCustomerEmailAction({ orderId, recipientEmail, s
     `).join('') : '';
 
     const orderDetailsSection = itemsRows ? `
-      <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">📋 تفاصيل الطلب رقم #${orderId}:</h3>
+      <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">تفاصيل الطلب رقم #${orderId}:</h3>
       
       <table border="0" cellPadding="0" cellSpacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 16px;">
         <thead>
@@ -1606,6 +1829,10 @@ export async function addOrUpdateCouponAction(couponData) {
       ? Number(couponData.maxDiscountedPieces)
       : null;
 
+    const minOrderPieces = couponData.minOrderPieces != null && Number(couponData.minOrderPieces) > 0
+      ? Number(couponData.minOrderPieces)
+      : (couponData.minPieces != null && Number(couponData.minPieces) > 0 ? Number(couponData.minPieces) : 1);
+
     const newCoupon = {
       code: cleanCode,
       type: type,
@@ -1616,6 +1843,7 @@ export async function addOrUpdateCouponAction(couponData) {
       totalMaxUses: Number(couponData.totalMaxUses || 1000),
       remainingUses: Number(couponData.remainingUses ?? couponData.totalMaxUses ?? 1000),
       maxUsesPerUser: maxUsesPerUser,
+      minOrderPieces: minOrderPieces,
       maxDiscountedPieces: maxDiscountedPieces,
       usedBy: Array.isArray(couponData.usedBy) ? couponData.usedBy : [],
       userUsage: couponData.userUsage || {}
@@ -1894,3 +2122,60 @@ export async function getCouponAnalyticsAction(couponCode) {
     return { success: false, error: err.message || 'فشل جلب إحصائيات الكود' };
   }
 }
+
+
+/**
+ * Server Action: Fetches announcement bar config from Supabase DB
+ */
+export async function getAnnouncementBarConfigAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .select('*')
+      .eq('id', 'announcement_banner_config')
+      .single();
+
+    if (!error && data && data.name_ar) {
+      const parsed = JSON.parse(data.name_ar);
+      if (parsed && typeof parsed === 'object') {
+        return { success: true, config: parsed };
+      }
+    }
+  } catch (err) {
+    console.warn('getAnnouncementBarConfigAction note:', err);
+  }
+  return { success: true, config: DEFAULT_ANNOUNCEMENT_CONFIG };
+}
+
+/**
+ * Server Action: Saves announcement bar config to Supabase DB
+ */
+export async function saveAnnouncementBarConfigAction(config) {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+    const cleanJson = JSON.stringify(config);
+
+    const { error } = await supabaseAdmin
+      .from('categories')
+      .upsert({
+        id: 'announcement_banner_config',
+        name_ar: cleanJson,
+        name_en: 'ANNOUNCEMENT_BANNER_CONFIG',
+        description_ar: 'active',
+        description_en: 'JSON_CONFIG'
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.error('saveAnnouncementBarConfigAction DB error:', error);
+      return { success: false, error: error.message };
+    }
+
+    triggerBackgroundRevalidate(['/', '/category/all', '/checkout', '/admin', '/my-orders', '/track-order', '/admin/orders']);
+    return { success: true };
+  } catch (err) {
+    console.error('saveAnnouncementBarConfigAction exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+

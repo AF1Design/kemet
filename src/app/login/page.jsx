@@ -124,7 +124,7 @@ export default function LoginPage() {
       });
 
       setIsEditingProfile(false);
-      showToast(lang === 'ar' ? 'تم تحديث بيانات البروفايل بنجاح ⚙️' : 'Profile updated successfully ⚙️');
+      showToast(lang === 'ar' ? 'تم تحديث بيانات البروفايل بنجاح' : 'Profile updated successfully');
     } catch (err) {
       alert(err.message || (lang === 'ar' ? 'فشل في تحديث البيانات' : 'Failed to update profile'));
     } finally {

@@ -1,6 +1,36 @@
 // Default system coupons including KEMETFAMILY
 export const DEFAULT_COUPONS = [
   {
+    code: 'KEMETMISR',
+    type: 'fixed_price',
+    targetPrice: 225,
+    value: 225,
+    description: 'عرض القطعتين: 225 ج.م للتيشيرت عند طلب قطعتين أو أكثر',
+    isActive: true,
+    totalMaxUses: 500,
+    remainingUses: 500,
+    maxUsesPerUser: 1,
+    minOrderPieces: 2,
+    maxDiscountedPieces: null,
+    usedBy: [],
+    userUsage: {}
+  },
+  {
+    code: 'KEMET22',
+    type: 'fixed_price',
+    targetPrice: 290,
+    value: 290,
+    description: 'عرض القطعة الواحدة: 290 ج.م بدلاً من 470 ج.م',
+    isActive: true,
+    totalMaxUses: 500,
+    remainingUses: 500,
+    maxUsesPerUser: 1,
+    minOrderPieces: 1,
+    maxDiscountedPieces: null,
+    usedBy: [],
+    userUsage: {}
+  },
+  {
     code: 'KEMETFAMILY',
     type: 'fixed_price',
     targetPrice: 220,
@@ -10,6 +40,7 @@ export const DEFAULT_COUPONS = [
     totalMaxUses: 1000,
     remainingUses: 1000,
     maxUsesPerUser: 1,
+    minOrderPieces: 1,
     maxDiscountedPieces: 1,
     usedBy: [],
     userUsage: {}

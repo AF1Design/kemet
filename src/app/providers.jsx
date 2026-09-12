@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppProvider, useApp } from '../context/AppContext';
+import { AnnouncementBar } from '../components/AnnouncementBar';
 import { Navbar } from '../components/Navbar';
 import { CartDrawer } from '../components/CartDrawer';
 import { MobileDrawer } from '../components/MobileDrawer';
@@ -18,6 +19,7 @@ const AppShell = ({ children }) => {
 
   return (
     <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {!isAdminRoute && <AnnouncementBar />}
       {!isAdminRoute && <Navbar onOpenMobileMenu={() => setIsMobileMenuOpen(true)} />}
       
       {!isAdminRoute && (

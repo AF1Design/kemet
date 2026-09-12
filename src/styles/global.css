@@ -142,22 +142,34 @@ body::before {
 [data-theme="light"] h4,
 [data-theme="light"] h5,
 [data-theme="light"] h6,
-[data-theme="light"] p,
-[data-theme="light"] span:not(.cart-badge):not(.product-badge):not(.mobile-cart-badge),
-[data-theme="light"] div {
+[data-theme="light"] p:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *),
+[data-theme="light"] span:not(.cart-badge):not(.product-badge):not(.mobile-cart-badge):not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *),
+[data-theme="light"] div:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *) {
   color: inherit;
 }
 
-[data-theme="light"] [style*="color: #FFFFFF"],
-[data-theme="light"] [style*="color:#FFFFFF"],
-[data-theme="light"] [style*="color: rgb(255, 255, 255)"],
-[data-theme="light"] [style*="color: #FFF"],
-[data-theme="light"] [style*="color:#FFF"] {
+[data-theme="light"] [style*="color: #FFFFFF"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *):not([data-keep-white="true"]):not([data-keep-white="true"] *),
+[data-theme="light"] [style*="color:#FFFFFF"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *):not([data-keep-white="true"]):not([data-keep-white="true"] *),
+[data-theme="light"] [style*="color: rgb(255, 255, 255)"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *):not([data-keep-white="true"]):not([data-keep-white="true"] *),
+[data-theme="light"] [style*="color: #FFF"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *):not([data-keep-white="true"]):not([data-keep-white="true"] *),
+[data-theme="light"] [style*="color:#FFF"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *):not([data-keep-white="true"]):not([data-keep-white="true"] *) {
   color: #0F172A !important;
 }
 
-[data-theme="light"] [style*="color: #E2E8F0"],
-[data-theme="light"] [style*="color: #9CA3AF"] {
+/* Explicit high-contrast preservation for Toast, Announcement Bar and dark badges across all themes */
+.kemet-ios-toast,
+.kemet-ios-toast *,
+.kemet-ios-toast span,
+.announcement-bar,
+.announcement-bar *,
+.announcement-bar span,
+[data-keep-white="true"],
+[data-keep-white="true"] * {
+  color: #FFFFFF !important;
+}
+
+[data-theme="light"] [style*="color: #E2E8F0"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *),
+[data-theme="light"] [style*="color: #9CA3AF"]:not(.kemet-ios-toast):not(.kemet-ios-toast *):not(.announcement-bar):not(.announcement-bar *) {
   color: #334155 !important;
 }
 
@@ -293,16 +305,17 @@ select option {
 
 /* Announcement Bar */
 .announcement-bar {
-  background: var(--gold-gradient);
-  color: #000 !important;
+  background: linear-gradient(90deg, #8E6516 0%, #B88924 30%, #C9962D 50%, #B88924 70%, #8E6516 100%);
+  color: #FFFFFF !important;
   text-align: center;
-  padding: 0.45rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.3px;
   position: relative;
   z-index: 101;
 }
+
+.announcement-bar * {
+  color: #FFFFFF;
+}
+
 
 /* Header */
 .header {

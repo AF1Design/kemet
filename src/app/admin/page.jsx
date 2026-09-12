@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getAdminSupabase } from '../../lib/supabase/admin';
 import { PromoEmailControl } from '../../components/admin/PromoEmailControl';
 import { CouponsControl } from '../../components/admin/CouponsControl';
+import { AnnouncementBarControl } from '../../components/admin/AnnouncementBarControl';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,28 +25,19 @@ export default async function AdminDashboardPage() {
     activeProducts = activeCount || 0;
     totalCategories = catCount || 0;
   } catch (err) {
-    console.error('Error fetching admin overview metrics:', err);
+    console.error('Error fetching admin counts:', err);
   }
 
   return (
-    <div>
-      {/* Title */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem' }}>
-          <span className="brand-glow">مرحباً بك في لوحة تحكم KEMET 👑</span>
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-          نظام الإدارة المركزي لكتالوج المنتجات والمخزون والطلبات وأكواد الخصم
-        </p>
-      </div>
-
-      {/* Metrics Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      
+      {/* Top Banner Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
         
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-gold-bright)', borderRadius: 'var(--radius-lg)', padding: '1.75rem', boxShadow: 'var(--shadow-glow)' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>إجمالي المنتجات</span>
-            <span style={{ fontSize: '1.8rem' }}>⚽</span>
+            <span style={{ fontSize: '1.2rem', color: 'var(--gold-primary)', fontWeight: 800 }}>[كتالوج]</span>
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--gold-primary)' }}>{totalProducts}</div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>منتجات في الكتالوج</span>
@@ -54,7 +46,7 @@ export default async function AdminDashboardPage() {
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>المنتجات النشطة</span>
-            <span style={{ fontSize: '1.8rem' }}>🟢</span>
+            <span style={{ fontSize: '1.2rem', color: '#10B981', fontWeight: 800 }}>[مفعل]</span>
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#10B981' }}>{activeProducts}</div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>تعرض حالياً للزوار</span>
@@ -63,12 +55,17 @@ export default async function AdminDashboardPage() {
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>الفئات الرئيسية</span>
-            <span style={{ fontSize: '1.8rem' }}>📦</span>
+            <span style={{ fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 800 }}>[أقسام]</span>
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--text-primary)' }}>{totalCategories}</div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>أطقم / جيم / شورتات</span>
         </div>
 
+      </div>
+
+      {/* Announcement Bar Control */}
+      <div id="announcement-bar">
+        <AnnouncementBarControl />
       </div>
 
       {/* Coupons / Promo Codes Management */}
@@ -82,14 +79,14 @@ export default async function AdminDashboardPage() {
       {/* Quick Action Cards */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '2rem' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.25rem', color: 'var(--gold-primary)' }}>
-          ⚡ إجراءات سريعة
+          إجراءات سريعة
         </h3>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <Link href="/admin/products" className="btn-primary" style={{ padding: '0.85rem 1.75rem' }}>
-            إدارة وتعديل الكتالوج والمخزون ⚽
+            إدارة وتعديل الكتالوج والمخزون
           </Link>
           <Link href="/category/all" className="btn-secondary" style={{ padding: '0.85rem 1.75rem' }}>
-            معاينة المتجر كـ زائر 👁️
+            معاينة المتجر كـ زائر
           </Link>
         </div>
       </div>

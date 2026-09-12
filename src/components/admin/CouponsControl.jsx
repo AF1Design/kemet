@@ -29,6 +29,7 @@ export function CouponsControl() {
   const [totalMaxUses, setTotalMaxUses] = useState(1000);
   const [maxUsesPerUser, setMaxUsesPerUser] = useState(1);
   const [maxDiscountedPieces, setMaxDiscountedPieces] = useState(1);
+  const [minOrderPieces, setMinOrderPieces] = useState(1);
 
   // Analytics & Partner Commission State
   const [selectedAnalyticsCode, setSelectedAnalyticsCode] = useState('KEMETFAMILY');
@@ -108,6 +109,7 @@ export function CouponsControl() {
     setTotalMaxUses(1000);
     setMaxUsesPerUser(1);
     setMaxDiscountedPieces(1);
+    setMinOrderPieces(1);
     setStatusMsg(null);
     setIsModalOpen(true);
   };
@@ -123,6 +125,7 @@ export function CouponsControl() {
     setTotalMaxUses(c.totalMaxUses || 1000);
     setMaxUsesPerUser(c.maxUsesPerUser != null ? c.maxUsesPerUser : 1);
     setMaxDiscountedPieces(c.maxDiscountedPieces != null ? c.maxDiscountedPieces : '');
+    setMinOrderPieces(c.minOrderPieces != null ? c.minOrderPieces : (c.minPieces != null ? c.minPieces : 1));
     setStatusMsg(null);
     setIsModalOpen(true);
   };
@@ -146,6 +149,7 @@ export function CouponsControl() {
         totalMaxUses: Number(totalMaxUses) || 1000,
         remainingUses: modalMode === 'edit' ? undefined : (Number(totalMaxUses) || 1000),
         maxUsesPerUser: Number(maxUsesPerUser) > 0 ? Number(maxUsesPerUser) : 1,
+        minOrderPieces: Number(minOrderPieces) > 0 ? Number(minOrderPieces) : 1,
         maxDiscountedPieces: maxDiscountedPieces && Number(maxDiscountedPieces) > 0 ? Number(maxDiscountedPieces) : null,
         isActive: true
       };
@@ -241,6 +245,7 @@ export function CouponsControl() {
               <tr style={{ background: 'rgba(212, 175, 55, 0.08)', borderBottom: '1px solid var(--border-gold)' }}>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>كود الخصم</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>نوع الخصم والسعر</th>
+                <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحد الأدنى للقطع</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحد للحساب</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>القطع بالخصم</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الوصف / الملاحظات</th>
@@ -261,6 +266,18 @@ export function CouponsControl() {
                     </td>
                     <td style={{ padding: '1rem', fontWeight: 800, color: '#FFF' }}>
                       {getDiscountLabel(c)}
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 800 }}>
+                      <span style={{ 
+                        display: 'inline-block',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '4px',
+                        fontSize: '0.82rem',
+                        background: (c.minOrderPieces && c.minOrderPieces > 1) ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.05)',
+                        color: (c.minOrderPieces && c.minOrderPieces > 1) ? 'var(--gold-primary)' : 'inherit'
+                      }}>
+                        {(c.minOrderPieces && c.minOrderPieces > 1) ? `${c.minOrderPieces} قطع كحد أدنى` : '1 قطعة'}
+                      </span>
                     </td>
                     <td style={{ padding: '1rem', color: '#FFF', fontWeight: 700 }}>
                       <span style={{ background: 'rgba(255,255,255,0.08)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.82rem' }}>
@@ -747,6 +764,24 @@ export function CouponsControl() {
                 />
                 <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
                   إذا اختار العميل قطعاً متعددة في السلة، يُطبق الخصم على هذا العدد فقط وتُحسب أي قطع إضافية بسعرها الأصلي لمنع شراء كميات بالخصم.
+                </small>
+              </div>
+
+              {/* Setting 3: Min Pieces Required per Order */}
+              <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.35rem' }}>
+                  الحد الأدنى لعدد القطع في السلة لتفعيل الكود (Min Pieces):
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="مثال: 2 (لعرض القطعتين) أو 1 للقطعة الواحدة"
+                  value={minOrderPieces}
+                  onChange={e => setMinOrderPieces(e.target.value)}
+                  style={{ width: '100%', padding: '0.7rem', fontSize: '0.95rem', fontWeight: 800 }}
+                />
+                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  يشترط أن يحتوي الطلب على هذا العدد من القطع أو أكثر حتى يقبل الكود التفعيل في السلة وصفحة الدفع (الافتراضي: 1 قطعة).
                 </small>
               </div>
 

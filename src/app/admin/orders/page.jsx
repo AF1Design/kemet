@@ -3,18 +3,41 @@ import { getAdminSupabase } from '../../../lib/supabase/admin';
 import { AdminOrdersTable } from '../../../components/admin/AdminOrdersTable';
 import { mapDbStatusToDisplay } from '../actions';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const revalidate = 0; // Dynamic real-time admin view
 
 export default async function AdminOrdersPage() {
   let ordersList = [];
+  let catalogProducts = [];
 
   try {
     const supabaseAdmin = getAdminSupabase();
 
-    const { data, error } = await supabaseAdmin
-      .from('orders')
-      .select('*, order_items(*)')
-      .order('created_at', { ascending: false });
+    const [{ data, error }, { data: prodsData }] = await Promise.all([
+      supabaseAdmin
+        .from('orders')
+        .select('*, order_items(*)')
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('products')
+        .select('id, name_ar, name_en, price, main_image, is_active, product_variants(size, stock_quantity)')
+        .order('name_ar', { ascending: true })
+    ]);
+
+    if (prodsData) {
+      catalogProducts = prodsData.map(p => ({
+        id: p.id,
+        nameAr: p.name_ar,
+        nameEn: p.name_en,
+        price: Number(p.price || 0),
+        mainImage: p.main_image,
+        variants: (p.product_variants || []).map(v => ({
+          size: v.size,
+          stockQuantity: Number(v.stock_quantity ?? 0)
+        }))
+      }));
+    }
 
     if (error) {
       console.error('Error fetching admin orders:', error.message);
@@ -81,14 +104,14 @@ export default async function AdminOrdersPage() {
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
         <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '0.5rem' }}>
-          <span className="brand-glow">📦 إدارة ومتابعة جميع طلبات العملاء</span>
+          <span className="brand-glow">إدارة ومتابعة جميع طلبات العملاء</span>
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
           استعرض تفاصيل الشحنات، غير حالة الطلب في قاعدة البيانات، وتابع تفاصيل العنوان والتواصل فورياً
         </p>
       </div>
 
-      <AdminOrdersTable initialOrders={ordersList} />
+      <AdminOrdersTable initialOrders={ordersList} catalogProducts={catalogProducts} />
     </div>
   );
 }

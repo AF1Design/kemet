@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { updateOrderStatusAction, deleteOrderAction, sendDirectCustomerEmailAction } from '../../app/admin/actions';
+import { AdminOrderEditModal } from './AdminOrderEditModal';
 
 const STATUS_OPTIONS = [
-  'جديد 📦',
-  'جاري التجهيز ⚙️',
-  'تم الشحن 🚚',
-  'مع المندوب 🛵',
-  'تم التسليم ✅',
-  'ملغي ❌'
+  'جديد',
+  'جاري التجهيز',
+  'تم الشحن',
+  'مع المندوب',
+  'تم التسليم',
+  'ملغي'
 ];
 
 function formatOrderDate(dateString) {
@@ -41,12 +42,15 @@ function extractCouponCode(order) {
   return null;
 }
 
-export function AdminOrdersTable({ initialOrders }) {
+export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   
+  // Full Order Edit Modal State
+  const [editingOrder, setEditingOrder] = useState(null);
+
   // Tracking Edit / Reset Modal State
   const [trackingModalOrder, setTrackingModalOrder] = useState(null);
   const [trackingInput, setTrackingInput] = useState('');
@@ -62,7 +66,7 @@ export function AdminOrdersTable({ initialOrders }) {
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder;
+    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -93,7 +97,7 @@ export function AdminOrdersTable({ initialOrders }) {
         setOrders(prev =>
           prev.map(o => o.id === orderId ? { ...o, status: newStatus, tracking_number: trackingCode } : o)
         );
-        alert(`تم تحديث حالة الطلب #${orderId} بنجاح ✅`);
+        alert(`تم تحديث حالة الطلب #${orderId} بنجاح`);
       } else {
         alert(`فشل تحديث الحالة: ${res.error}`);
       }
@@ -123,7 +127,7 @@ export function AdminOrdersTable({ initialOrders }) {
           prev.map(o => o.id === orderId ? { ...o, tracking_number: cleanTracking || null } : o)
         );
         setTrackingModalOrder(null);
-        alert(`تم حفظ وتحديث كود التتبع للطلب #${orderId} بنجاح 🚚`);
+        alert(`تم حفظ وتحديث كود التتبع للطلب #${orderId} بنجاح`);
       } else {
         alert(`فشل تحديث كود التتبع: ${res.error}`);
       }
@@ -146,7 +150,7 @@ export function AdminOrdersTable({ initialOrders }) {
           prev.map(o => o.id === orderId ? { ...o, tracking_number: null } : o)
         );
         setTrackingModalOrder(null);
-        alert(`تم إلغاء وتصفير كود التتبع للطلب #${orderId} بنجاح 🗑️`);
+        alert(`تم إلغاء وتصفير كود التتبع للطلب #${orderId} بنجاح`);
       } else {
         alert(`فشل إلغاء كود التتبع: ${res.error}`);
       }
@@ -167,12 +171,12 @@ export function AdminOrdersTable({ initialOrders }) {
     const targetEmail = (emailRecipient || emailModalOrder.customer_email || emailModalOrder.customer?.email || '').trim();
 
     if (!targetEmail || !targetEmail.includes('@')) {
-      alert('⚠️ الرجاء إدخال بريد إلكتروني صحيح للعميل في خانة البريد المستهدف.');
+      alert('الرجاء إدخال بريد إلكتروني صحيح للعميل في خانة البريد المستهدف.');
       return;
     }
 
     if (!emailMessage.trim()) {
-      alert('⚠️ الرجاء كتابة نص الرسالة التي تريد إرسالها للعميل.');
+      alert('الرجاء كتابة نص الرسالة التي تريد إرسالها للعميل.');
       return;
     }
 
@@ -186,7 +190,7 @@ export function AdminOrdersTable({ initialOrders }) {
       });
 
       if (res.success) {
-        alert(`تم إرسال الرسالة بنجاح إلى بريد العميل (${targetEmail}) 📧`);
+        alert(`تم إرسال الرسالة بنجاح إلى بريد العميل (${targetEmail})`);
         setEmailModalOrder(null);
       } else {
         alert(`فشل إرسال البريد: ${res.error}`);
@@ -204,7 +208,7 @@ export function AdminOrdersTable({ initialOrders }) {
         const res = await deleteOrderAction(orderId);
         if (res.success) {
           setOrders(prev => prev.filter(o => o.id !== orderId));
-          alert(`تم حذف الطلب #${orderId} بنجاح 🗑️`);
+          alert(`تم حذف الطلب #${orderId} بنجاح`);
         } else {
           alert(`فشل حذف الطلب: ${res.error}`);
         }
@@ -310,9 +314,11 @@ export function AdminOrdersTable({ initialOrders }) {
               </tr>
             ) : (
               filteredOrders.map(order => {
-                const itemsList = Array.isArray(order.order_items) && order.order_items.length > 0
+                const itemsList = Array.isArray(order.items) && order.items.length > 0
+                  ? order.items
+                  : Array.isArray(order.order_items) && order.order_items.length > 0
                   ? order.order_items
-                  : Array.isArray(order.items) ? order.items : [];
+                  : [];
 
                 const productNames = itemsList.map(i => i.product_name_ar || i.nameAr || i.title || 'منتج KEMET').join(' + ');
                 const productSizes = Array.from(new Set(itemsList.map(i => i.size || 'M'))).join(', ');
@@ -386,7 +392,7 @@ export function AdminOrdersTable({ initialOrders }) {
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <select
-                          value={order.status || 'جديد 📦'}
+                          value={order.status || 'جديد'}
                           onChange={e => handleStatusChange(order.id, e.target.value)}
                           disabled={isPending}
                           style={{
@@ -411,7 +417,7 @@ export function AdminOrdersTable({ initialOrders }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}>
                           {order.tracking_number ? (
                             <span style={{ color: '#10B981', fontWeight: 700, direction: 'ltr' }}>
-                              🚚 {order.tracking_number}
+                              {order.tracking_number}
                             </span>
                           ) : (
                             <span style={{ color: 'var(--text-secondary)' }}>بدون كود تتبع</span>
@@ -425,20 +431,39 @@ export function AdminOrdersTable({ initialOrders }) {
                               border: 'none',
                               color: 'var(--gold-primary)',
                               cursor: 'pointer',
-                              fontSize: '0.78rem',
-                              padding: '0 2px'
+                              fontSize: '0.75rem',
+                              padding: '0 2px',
+                              textDecoration: 'underline'
                             }}
                             title="تعديل أو إلغاء كود تتبع الشحنة"
                           >
-                            ✏️
+                            تعديل
                           </button>
                         </div>
                       </div>
                     </td>
 
-                    {/* 11. الإجراءات (حذف + معاينة + رسالة بريد) */}
+                    {/* 11. الإجراءات (تعديل الطلب + حذف + معاينة + رسالة بريد) */}
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingOrder(order)}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.76rem',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-gold)',
+                            background: 'rgba(212,175,55,0.18)',
+                            color: 'var(--gold-primary)',
+                            fontWeight: 800,
+                            cursor: 'pointer'
+                          }}
+                          title="تعديل تفاصيل الطلب، إضافة أو حذف منتجات، وتعديل الأسعار"
+                        >
+                          تعديل الطلب
+                        </button>
+
                         <button
                           type="button"
                           className="btn-secondary"
@@ -446,7 +471,7 @@ export function AdminOrdersTable({ initialOrders }) {
                           style={{ padding: '0.35rem 0.6rem', fontSize: '0.76rem' }}
                           title="عرض تفاصيل المنتجات"
                         >
-                          👁️ تفاصيل
+                          تفاصيل
                         </button>
 
                         <button
@@ -464,7 +489,7 @@ export function AdminOrdersTable({ initialOrders }) {
                           }}
                           title="إرسال رسالة خاصة لبريد العميل"
                         >
-                          ✉️ رسالة
+                          رسالة
                         </button>
 
                         <button
@@ -482,7 +507,7 @@ export function AdminOrdersTable({ initialOrders }) {
                           }}
                           title="حذف الأوردر نهائياً من قاعدة البيانات"
                         >
-                          🗑️ حذف
+                          حذف
                         </button>
                       </div>
                     </td>
@@ -591,7 +616,7 @@ export function AdminOrdersTable({ initialOrders }) {
             boxShadow: 'var(--shadow-glow)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>🚚 تعديل أو إلغاء كود تتبع الشحنة (#{trackingModalOrder.id})</span>
+              <span>تعديل أو إلغاء كود تتبع الشحنة (#{trackingModalOrder.id})</span>
               <button type="button" onClick={() => setTrackingModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </h3>
 
@@ -628,7 +653,7 @@ export function AdminOrdersTable({ initialOrders }) {
                   cursor: 'pointer'
                 }}
               >
-                ❌ إلغاء وتصفير التتبع
+                إلغاء وتصفير التتبع
               </button>
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -642,7 +667,7 @@ export function AdminOrdersTable({ initialOrders }) {
                   disabled={isPending}
                   style={{ padding: '0.65rem 1.25rem' }}
                 >
-                  {isPending ? 'جاري الحفظ...' : '💾 حفظ الكود'}
+                  {isPending ? 'جاري الحفظ...' : 'حفظ الكود'}
                 </button>
               </div>
             </div>
@@ -673,23 +698,23 @@ export function AdminOrdersTable({ initialOrders }) {
             boxShadow: 'var(--shadow-glow)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>✉️ إرسال رسالة بريد خاصة للعميل</span>
+              <span>إرسال رسالة بريد خاصة للعميل</span>
               <button type="button" onClick={() => setEmailModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             </h3>
 
             <div style={{ marginBottom: '1.25rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-              <div>👤 العميل: <strong style={{ color: '#FFF' }}>{emailModalOrder.customer_name || emailModalOrder.customer?.fullName}</strong></div>
+              <div>العميل: <strong style={{ color: '#FFF' }}>{emailModalOrder.customer_name || emailModalOrder.customer?.fullName}</strong></div>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--gold-primary)', fontWeight: 800, marginBottom: '0.35rem' }}>
-                📧 البريد الإلكتروني المستهدف للعميل:
+                البريد الإلكتروني المستهدف للعميل:
               </label>
               <input
                 type="email"
                 value={emailRecipient}
                 onChange={e => setEmailRecipient(e.target.value)}
-                placeholder="بريد العميل (مثال: client@gmail.com)..."
+                placeholder="بريد العميل (مثال: client@example.com)..."
                 style={{ width: '100%', padding: '0.65rem 0.9rem', fontSize: '0.9rem', direction: 'ltr', textAlign: 'left' }}
               />
             </div>
@@ -731,12 +756,28 @@ export function AdminOrdersTable({ initialOrders }) {
                 disabled={isSendingEmail}
                 style={{ padding: '0.65rem 1.5rem' }}
               >
-                {isSendingEmail ? 'جاري الإرسال...' : '📧 إرسال الرسالة للعميل'}
+                {isSendingEmail ? 'جاري الإرسال...' : 'إرسال الرسالة للعميل'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Full Order & Pricing Edit Modal */}
+      <AdminOrderEditModal
+        order={editingOrder}
+        catalogProducts={catalogProducts}
+        isOpen={Boolean(editingOrder)}
+        onClose={() => setEditingOrder(null)}
+        onOrderUpdated={(updatedOrder) => {
+          setOrders(prev => prev.map(o => o.id === updatedOrder.id ? { 
+            ...o, 
+            ...updatedOrder,
+            items: updatedOrder.items || updatedOrder.order_items,
+            order_items: updatedOrder.order_items || updatedOrder.items
+          } : o));
+        }}
+      />
     </div>
   );
 }

@@ -96,11 +96,13 @@ export default function CheckoutPage() {
   let discountedPiecesCount = 0;
 
   if (appliedCoupon) {
-    const maxPieces = (appliedCoupon.maxDiscountedPieces && Number(appliedCoupon.maxDiscountedPieces) > 0)
-      ? Number(appliedCoupon.maxDiscountedPieces)
-      : Infinity;
+    const minPiecesRequired = Number(appliedCoupon.minOrderPieces) > 0 ? Number(appliedCoupon.minOrderPieces) : 1;
+    if (totalCartPieces >= minPiecesRequired) {
+      const maxPieces = (appliedCoupon.maxDiscountedPieces && Number(appliedCoupon.maxDiscountedPieces) > 0)
+        ? Number(appliedCoupon.maxDiscountedPieces)
+        : Infinity;
 
-    if (appliedCoupon.type === 'fixed_price') {
+      if (appliedCoupon.type === 'fixed_price') {
       let remainingAllowed = maxPieces;
       const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
 
@@ -135,6 +137,7 @@ export default function CheckoutPage() {
       discountedPiecesCount = Math.min(totalCartPieces, maxPieces === Infinity ? totalCartPieces : maxPieces);
     }
   }
+}
 
   const totalAmount = Math.max(0, subtotal - discountAmount) + shippingFee;
 
@@ -200,9 +203,14 @@ export default function CheckoutPage() {
   }, [isSubmitted, createdOrder]);
 
   // Handle Apply Coupon
-  const handleApplyCoupon = () => {
-    const code = couponInput.trim().toUpperCase();
+  const handleApplyCoupon = (explicitCode = null) => {
+    const rawCode = (typeof explicitCode === 'string' && explicitCode.trim()) ? explicitCode : couponInput;
+    const code = rawCode.trim().toUpperCase();
     if (!code) return;
+
+    if (explicitCode) {
+      setCouponInput(code);
+    }
 
     const coupon = availableCoupons.find(c => c.code.toUpperCase() === code);
 
@@ -234,6 +242,23 @@ export default function CheckoutPage() {
         type: 'error', 
         text: `لقد استنفدت الحد الأقصى المسموح به لاستخدام هذا الكود لحسابك (${maxPerUser} مرة)` 
       });
+      return;
+    }
+
+    // 3. Check minimum order pieces requirement
+    const minPiecesRequired = Number(coupon.minOrderPieces) > 0 ? Number(coupon.minOrderPieces) : 1;
+    if (totalCartPieces < minPiecesRequired) {
+      if (code === 'KEMETMISR' && minPiecesRequired === 2) {
+        setCouponMsg({
+          type: 'error',
+          text: `عذراً، كود KEMETMISR يشترط طلب قطعتين على الأقل للاستفادة من سعر 225 ج.م للتيشيرت (عدد القطع الحالية في السلة: ${totalCartPieces}). يمكنك إضافة قطعة أخرى أو استخدام كود KEMET22 للقطعة الواحدة بسعر 290 ج.م.`
+        });
+      } else {
+        setCouponMsg({
+          type: 'error',
+          text: `يشترط هذا الكود وجود ${minPiecesRequired} قطع على الأقل في السلة لتطبيقه (لديك حالياً ${totalCartPieces} قطعة).`
+        });
+      }
       return;
     }
 
@@ -291,6 +316,17 @@ export default function CheckoutPage() {
         setCouponMsg({ 
           type: 'error', 
           text: `عذراً، تم استنفاد الحد الأقصى المسموح لاستخدام هذا الكود لهذا الحساب أو رقم الهاتف (${maxPerUser} مرة).` 
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Safety re-check: Verify minOrderPieces on final submission
+      const minPiecesRequired = Number(appliedCoupon.minOrderPieces) > 0 ? Number(appliedCoupon.minOrderPieces) : 1;
+      if (totalCartPieces < minPiecesRequired) {
+        setCouponMsg({
+          type: 'error',
+          text: `عذراً، لا يمكن إتمام الطلب بهذا الكود لأن الحد الأدنى للقطع هو ${minPiecesRequired} قطعة (السلة بها ${totalCartPieces} قطعة فقط).`
         });
         setIsSubmitting(false);
         return;
@@ -494,14 +530,140 @@ export default function CheckoutPage() {
                 {t('codNotice')}
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)', background: 'rgba(0,0,0,0.25)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <input 
-                  type="checkbox"
-                  defaultChecked={true}
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--gold-primary)' }}
-                />
-                <span>{t('smsMarketingLabel')}</span>
-              </label>
+              {/* Coupon Code Section - Placed prominently above the submit button for easy mobile access */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.35)',
+                border: '1px solid var(--border-gold)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1.1rem',
+                marginTop: '0.5rem',
+                marginBottom: '0.75rem',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--gold-primary)' }}>
+                    كود الخصم / العروض الترويجية
+                  </span>
+                  {appliedCoupon && (
+                    <span style={{ fontSize: '0.78rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 800 }}>
+                      تم تفعيل ({appliedCoupon.code})
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    type="text"
+                    placeholder="أدخل كود الخصم هنا (مثال: KEMET22)"
+                    value={couponInput}
+                    onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                    disabled={appliedCoupon !== null}
+                    style={{
+                      flexGrow: 1,
+                      padding: '0.75rem 0.95rem',
+                      fontSize: '0.92rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm)'
+                    }}
+                  />
+                  {appliedCoupon ? (
+                    <button 
+                      type="button" 
+                      onClick={handleRemoveCoupon}
+                      style={{
+                        background: '#F43F5E',
+                        color: '#FFF',
+                        border: 'none',
+                        padding: '0.75rem 1.25rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontWeight: 800,
+                        fontSize: '0.88rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      إلغاء
+                    </button>
+                  ) : (
+                    <button 
+                      type="button" 
+                      onClick={() => handleApplyCoupon()}
+                      className="btn-primary"
+                      style={{
+                        padding: '0.75rem 1.4rem',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      تطبيق الكود
+                    </button>
+                  )}
+                </div>
+
+                {/* 1-Click Fast Apply Offer Chips */}
+                <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                    عروض سريعة بضغطة واحدة:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCoupon('KEMETMISR')}
+                      style={{
+                        background: appliedCoupon?.code === 'KEMETMISR' ? 'var(--gold-primary)' : 'rgba(212, 175, 55, 0.12)',
+                        color: appliedCoupon?.code === 'KEMETMISR' ? '#000' : 'var(--gold-primary)',
+                        border: '1px solid var(--border-gold)',
+                        padding: '0.4rem 0.85rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.82rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        textAlign: 'right'
+                      }}
+                    >
+                      عرض القطعتين (225 ج.م للقطعة) - كود KEMETMISR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCoupon('KEMET22')}
+                      style={{
+                        background: appliedCoupon?.code === 'KEMET22' ? 'var(--gold-primary)' : 'rgba(212, 175, 55, 0.12)',
+                        color: appliedCoupon?.code === 'KEMET22' ? '#000' : 'var(--gold-primary)',
+                        border: '1px solid var(--border-gold)',
+                        padding: '0.4rem 0.85rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.82rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        textAlign: 'right'
+                      }}
+                    >
+                      عرض القطعة الواحدة (290 ج.م) - كود KEMET22
+                    </button>
+                  </div>
+                </div>
+
+                {couponMsg && (
+                  <div style={{
+                    fontSize: '0.84rem',
+                    marginTop: '0.75rem',
+                    fontWeight: 800,
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    background: couponMsg.type === 'error' ? 'rgba(244, 63, 94, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                    color: couponMsg.type === 'error' ? '#F43F5E' : '#10B981',
+                    border: `1px solid ${couponMsg.type === 'error' ? 'rgba(244, 63, 94, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`
+                  }}>
+                    {couponMsg.text}
+                  </div>
+                )}
+              </div>
 
               <button type="submit" disabled={isSubmitting || cart.length === 0} className="btn-primary" style={{ width: '100%', padding: '0.95rem', fontSize: '1.05rem', marginTop: '0.5rem' }}>
                 {isSubmitting ? 'جاري تأكيد الطلب فورياً...' : `تأكيد الطلب بدفع ${totalAmount} ج.م`}
@@ -535,46 +697,44 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Coupon Code Input Area */}
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                  هل لديك كود خصم أو بروموكود؟
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
-                    type="text"
-                    placeholder="أدخل كود الخصم (مثال: KEMETFAMILY)"
-                    value={couponInput}
-                    onChange={e => setCouponInput(e.target.value.toUpperCase())}
-                    disabled={appliedCoupon !== null}
-                    style={{ flexGrow: 1, padding: '0.65rem 0.85rem', fontSize: '0.88rem', textTransform: 'uppercase' }}
-                  />
-                  {appliedCoupon ? (
-                    <button 
-                      type="button" 
-                      onClick={handleRemoveCoupon}
-                      style={{ background: '#F43F5E', color: '#FFF', border: 'none', padding: '0.65rem 1rem', borderRadius: 'var(--radius-md)', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}
-                    >
-                      إلغاء
-                    </button>
-                  ) : (
-                    <button 
-                      type="button" 
-                      onClick={handleApplyCoupon}
-                      className="btn-secondary"
-                      style={{ padding: '0.65rem 1rem', fontSize: '0.85rem', fontWeight: 800 }}
-                    >
-                      تطبيق الخصم
-                    </button>
-                  )}
-                </div>
-
-                {couponMsg && (
-                  <div style={{ fontSize: '0.82rem', marginTop: '0.4rem', fontWeight: 800, color: couponMsg.type === 'error' ? '#F43F5E' : '#10B981' }}>
-                    {couponMsg.text}
+              {/* Active Coupon Banner in Order Summary */}
+              {appliedCoupon && (
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10B981' }}>
+                      تم تفعيل كود الخصم ({appliedCoupon.code})
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      وفرت {discountAmount} {t('currency')} من قيمة المنتجات
+                    </div>
                   </div>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    style={{
+                      background: 'rgba(244, 63, 94, 0.12)',
+                      border: '1px solid rgba(244, 63, 94, 0.3)',
+                      color: '#F43F5E',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '0.3rem 0.65rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    إلغاء الخصم
+                  </button>
+                </div>
+              )}
 
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
