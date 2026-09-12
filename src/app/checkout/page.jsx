@@ -57,6 +57,8 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
+  const [nameError, setNameError] = useState(null);
+  const [phoneError, setPhoneError] = useState(null);
 
   // Coupon States
   const [couponInput, setCouponInput] = useState('');
@@ -333,6 +335,20 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Validation 1: Full name must be a 3-part name
+    const nameWords = (formData.fullName || '').trim().split(/\s+/).filter(w => w.length >= 2);
+    if (nameWords.length < 3) {
+      setNameError('يجب إدخال الاسم ثلاثي');
+      return;
+    }
+
+    // Validation 2: Phone number must be exactly 11 digits starting with 01
+    const cleanPhone = (formData.phone || '').trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 11 || !cleanPhone.startsWith('01')) {
+      setPhoneError('يجب ان يكون رقم الهاتف صحيح');
+      return;
+    }
+
     // Safety re-check: Verify user usage limits on final submission to prevent bypassing
     if (appliedCoupon) {
       const maxPerUser = Number(appliedCoupon.maxUsesPerUser) > 0 ? Number(appliedCoupon.maxUsesPerUser) : 1;
@@ -488,15 +504,26 @@ export default function CheckoutPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '0.4rem' }}>
-                  {t('fullName')}
+                  الاسم ثلاثي
                 </label>
                 <input 
                   type="text" 
                   required
-                  placeholder="الاسم الأول والعائلة"
+                  placeholder="الاسم ثلاثي"
                   value={formData.fullName}
-                  onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={e => {
+                    setFormData({ ...formData, fullName: e.target.value });
+                    if (nameError) setNameError(null);
+                  }}
+                  style={{
+                    borderColor: nameError ? '#EF4444' : undefined
+                  }}
                 />
+                {nameError && (
+                  <span style={{ display: 'block', color: '#EF4444', fontSize: '0.8rem', fontWeight: 800, marginTop: '0.35rem' }}>
+                    {nameError}
+                  </span>
+                )}
               </div>
 
               <div>
@@ -506,10 +533,23 @@ export default function CheckoutPage() {
                 <input 
                   type="tel" 
                   required
+                  maxLength={11}
                   placeholder="01XXXXXXXXX"
                   value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={e => {
+                    const onlyNums = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    setFormData({ ...formData, phone: onlyNums });
+                    if (phoneError) setPhoneError(null);
+                  }}
+                  style={{
+                    borderColor: phoneError ? '#EF4444' : undefined
+                  }}
                 />
+                {phoneError && (
+                  <span style={{ display: 'block', color: '#EF4444', fontSize: '0.8rem', fontWeight: 800, marginTop: '0.35rem' }}>
+                    {phoneError}
+                  </span>
+                )}
               </div>
 
               <div>

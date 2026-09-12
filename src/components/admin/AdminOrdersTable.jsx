@@ -42,8 +42,76 @@ function extractCouponCode(order) {
   return null;
 }
 
+function generateOrderConfirmationText(order) {
+  if (!order) return '';
+
+  const rawName = String(order.customer_name || order.customer?.fullName || order.customer?.name || 'عميل KEMET').trim();
+  const nameParts = rawName.split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || 'عزيزنا';
+  const isTripleName = nameParts.length >= 3;
+  const displayName = isTripleName ? rawName : `${rawName} ( محتاجين الاسم ثلاثي )`;
+
+  const orderId = order.id ? `#${order.id}` : '';
+  const gov = String(order.governorate || order.customer?.governorate || 'القاهرة').trim();
+  const addr = String(order.address || order.customer?.address || 'غير محدد').trim();
+
+  const itemsList = Array.isArray(order.items) && order.items.length > 0
+    ? order.items
+    : Array.isArray(order.order_items) && order.order_items.length > 0
+    ? order.order_items
+    : [];
+
+  const productsText = itemsList.length > 0
+    ? itemsList.map(i => {
+        const name = (i.product_name_ar || i.nameAr || i.name || i.title || 'منتج KEMET').trim();
+        const qty = Number(i.quantity || 1);
+        return qty > 1 ? `${name} (عدد ${qty})` : name;
+      }).join(' + ')
+    : 'طقم KEMET الرسمي';
+
+  const sizesText = itemsList.length > 0
+    ? Array.from(new Set(itemsList.map(i => String(i.size || 'M').trim()))).join(' + ')
+    : 'M';
+
+  // Pricing calculations
+  const subtotal = Number(order.subtotal || 0);
+  const shippingFee = Number(order.shipping_fee ?? order.shipping ?? 50);
+  const totalAmount = Number(order.total_amount ?? order.total ?? 0);
+  const originalTotal = subtotal > 0 ? (subtotal + shippingFee) : totalAmount;
+
+  const hasDiscount = originalTotal > totalAmount && totalAmount > 0;
+  let priceLine = '';
+  if (hasDiscount) {
+    priceLine = `الاجمالي شامل الشحن ${originalTotal} و بعد الخصم هيكون الاجمالي ${totalAmount}`;
+  } else {
+    priceLine = `الاجمالي شامل الشحن ${totalAmount || originalTotal}`;
+  }
+
+  const phone = String(order.customer_phone || order.customer?.phone || '').trim();
+
+  return `مساء الخير استاذ ${firstName}
+مع حضرتك عمار من Kemet Store
+حضرتك طلبت اوردر من كيميت رقم الطلب${orderId}
+الاسم - ${displayName}
+المحافظة - ${gov}
+العنوان - ${addr}
+المنتج -${productsText}
+المقاس - ${sizesText}
+${priceLine}
+رقم الهاتف - ${phone}`;
+}
+
+function getOrderConfirmationWhatsAppUrl(order) {
+  const rawPhone = String(order.customer_phone || order.customer?.phone || '').replace(/\D/g, '');
+  if (!rawPhone) return null;
+  const phone = rawPhone.startsWith('20') ? rawPhone : (rawPhone.startsWith('0') ? '2' + rawPhone : '20' + rawPhone);
+  const text = generateOrderConfirmationText(order);
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
 export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
   const [orders, setOrders] = useState(initialOrders || []);
+  const [copiedOrderId, setCopiedOrderId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
@@ -76,6 +144,34 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
       document.body.style.overflow = 'unset';
     };
   }, [selectedOrderDetails, trackingModalOrder, emailModalOrder]);
+
+  const handleCopyConfirmation = (order) => {
+    const text = generateOrderConfirmationText(order);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedOrderId(order.id);
+        setTimeout(() => setCopiedOrderId(null), 2000);
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        setCopiedOrderId(order.id);
+        setTimeout(() => setCopiedOrderId(null), 2000);
+      });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedOrderId(order.id);
+      setTimeout(() => setCopiedOrderId(null), 2000);
+    }
+  };
 
   const handleStatusChange = (orderId, newStatus) => {
     const currentOrder = orders.find(o => o.id === orderId);
@@ -289,7 +385,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
 
       {/* Structured Orders Table */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', minWidth: '1100px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', minWidth: '1350px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.4)' }}>
               <th style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--gold-primary)' }}>رقم الطلب</th>
@@ -443,9 +539,54 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
                       </div>
                     </td>
 
-                    {/* 11. الإجراءات (تعديل الطلب + حذف + معاينة + رسالة بريد) */}
+                    {/* 11. الإجراءات */}
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* واتساب التأكيد */}
+                        {getOrderConfirmationWhatsAppUrl(order) && (
+                          <a
+                            href={getOrderConfirmationWhatsAppUrl(order)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.76rem',
+                              borderRadius: 'var(--radius-md)',
+                              background: '#10B981',
+                              color: '#000',
+                              fontWeight: 800,
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                            title="فتح محادثة واتساب العميل بالرسالة الجاهزة لتأكيد الطلب"
+                          >
+                            واتساب التأكيد
+                          </a>
+                        )}
+
+                        {/* نسخ التأكيد */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyConfirmation(order)}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.76rem',
+                            borderRadius: 'var(--radius-md)',
+                            border: copiedOrderId === order.id ? '1px solid #10B981' : '1px solid var(--border-gold)',
+                            background: copiedOrderId === order.id ? '#10B981' : 'rgba(212,175,55,0.14)',
+                            color: copiedOrderId === order.id ? '#000' : 'var(--gold-primary)',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="نسخ رسالة تأكيد الطلب للعميل بنفس التنسيق المطلوب"
+                        >
+                          {copiedOrderId === order.id ? 'تم النسخ' : 'نسخ التأكيد'}
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => setEditingOrder(order)}
