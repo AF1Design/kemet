@@ -102,7 +102,7 @@ export default async function AdminOrdersPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '2.5rem' }}>
+      <div className="admin-page-header" style={{ marginBottom: '2.5rem' }}>
         <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '0.5rem' }}>
           <span className="brand-glow">إدارة ومتابعة جميع طلبات العملاء</span>
         </h2>

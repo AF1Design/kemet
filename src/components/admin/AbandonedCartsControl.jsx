@@ -205,12 +205,8 @@ export function AbandonedCartsControl({
       </div>
 
       {/* Top Metrics Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1.25rem'
-      }}>
-        <div style={{
+      <div className="admin-stats-grid">
+        <div className="admin-stats-card" style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-lg)',
@@ -220,13 +216,13 @@ export function AbandonedCartsControl({
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>السلات المتروكة النشطة</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--gold-primary)', fontWeight: 800, border: '1px solid var(--gold-primary)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>تلقائي</span>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
             {stats.abandonedCartsCount ?? abandonedCarts.length}
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>عملاء لديهم منتجات معلقة في السلة</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>عملاء لديهم منتجات معلقة في السلة</span>
         </div>
 
-        <div style={{
+        <div className="admin-stats-card" style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-lg)',
@@ -236,13 +232,13 @@ export function AbandonedCartsControl({
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>القيمة التقديرية المعلقة</span>
             <span style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 800, border: '1px solid #F59E0B', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>محتملة</span>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#F59E0B' }}>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.2rem', fontWeight: 900, color: '#F59E0B' }}>
             {(stats.potentialRevenue ?? 0).toLocaleString()} <span style={{ fontSize: '1rem', fontWeight: 700 }}>ج.م</span>
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>إجمالي قيمة المنتجات المتروكة</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>إجمالي قيمة المنتجات المتروكة</span>
         </div>
 
-        <div style={{
+        <div className="admin-stats-card" style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-lg)',
@@ -252,13 +248,13 @@ export function AbandonedCartsControl({
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>حسابات مسجلة لم تطلب بعد</span>
             <span style={{ fontSize: '0.75rem', color: '#3B82F6', fontWeight: 800, border: '1px solid #3B82F6', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>حسابات</span>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3B82F6' }}>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3B82F6' }}>
             {stats.registeredLeadsCount ?? registeredLeads.length}
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>مسجلين لم ينشئوا أي طلب مكتمل</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>مسجلين لم ينشئوا أي طلب مكتمل</span>
         </div>
 
-        <div style={{
+        <div className="admin-stats-card" style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-lg)',
@@ -268,10 +264,10 @@ export function AbandonedCartsControl({
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>معدل التحويل الكلي</span>
             <span style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 800, border: '1px solid #10B981', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>تحويل</span>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#10B981' }}>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.2rem', fontWeight: 900, color: '#10B981' }}>
             {stats.conversionRate || '0%'}
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             {stats.buyersCount ?? 0} مشتري من أصل {stats.totalAccounts ?? 0} حساب مسجل
           </span>
         </div>

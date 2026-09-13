@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { updateCustomerOrderAction } from '../../app/admin/actions';
 
 const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClose, onOrderUpdated }) {
+  const [mounted, setMounted] = useState(false);
   const [items, setItems] = useState([]);
   const [shippingFee, setShippingFee] = useState(50);
   const [customerName, setCustomerName] = useState('');
@@ -16,6 +18,10 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
   const [notes, setNotes] = useState('');
   const [sendEmailNotification, setSendEmailNotification] = useState(true);
   const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Add Product Sub-form State
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -61,7 +67,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
     }
   }, [order, isOpen, catalogProducts]);
 
-  if (!isOpen || !order) return null;
+  if (!isOpen || !order || !mounted) return null;
 
   // Real-time calculations
   const subtotal = items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
@@ -204,54 +210,22 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
     });
   };
 
-  return (
+  return createPortal(
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        zIndex: 999999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1rem',
-        direction: 'rtl'
-      }}
+      className="admin-modal-backdrop"
       onClick={onClose}
     >
       <div
-        style={{
-          background: '#0B0F19',
-          border: '1px solid rgba(212, 175, 55, 0.35)',
-          borderRadius: '16px',
-          width: '100%',
-          maxWidth: '900px',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(184, 134, 11, 0.15)',
-          overflow: 'hidden'
-        }}
+        className="admin-modal-container"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div
-          style={{
-            padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: 'linear-gradient(180deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%)'
-          }}
-        >
+        <div className="admin-modal-header">
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
               تعديل تفاصيل وأسعار الطلب #{order.id}
             </h3>
-            <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>
+            <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>
               العميل: {customerName || 'غير محدد'} | تحكم كامل في بنود الطلب، الأسعار، ومصاريف الشحن
             </span>
           </div>
@@ -264,14 +238,14 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               border: '1px solid rgba(255, 255, 255, 0.12)',
               color: '#94A3B8',
               borderRadius: '8px',
-              width: '34px',
-              height: '34px',
+              width: '38px',
+              height: '38px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.1rem',
+              fontSize: '1.2rem',
               cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              flexShrink: 0
             }}
             title="إغلاق النافذة"
           >
@@ -280,7 +254,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
         </div>
 
         {/* Scrollable Body */}
-        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="admin-modal-body">
           
           {saveError && (
             <div style={{
@@ -319,19 +293,10 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
                 return (
                   <div
                     key={item.uniqueKey || index}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '10px',
-                      padding: '0.9rem 1.1rem',
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(180px, 1fr) auto auto auto auto',
-                      gap: '1rem',
-                      alignItems: 'center'
-                    }}
+                    className="admin-modal-item-card"
                   >
                     {/* Product Name */}
-                    <div>
+                    <div style={{ flex: '1 1 180px' }}>
                       <div style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '0.95rem' }}>
                         {item.nameAr}
                       </div>
@@ -342,103 +307,106 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
                       )}
                     </div>
 
-                    {/* Size Selector */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
-                        المقاس
-                      </label>
-                      <select
-                        value={item.size}
-                        onChange={(e) => handleItemSizeChange(item.uniqueKey, e.target.value)}
-                        style={{
-                          background: '#131A2A',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          color: '#FFFFFF',
-                          padding: '0.35rem 0.6rem',
-                          borderRadius: '6px',
-                          fontSize: '0.85rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {itemAvailableSizes.map(sz => (
-                          <option key={sz} value={sz}>{sz}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Controls Row (Size, Quantity, Price) */}
+                    <div className="admin-item-controls-row">
+                      {/* Size Selector */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
+                          المقاس
+                        </label>
+                        <select
+                          value={item.size}
+                          onChange={(e) => handleItemSizeChange(item.uniqueKey, e.target.value)}
+                          style={{
+                            background: '#131A2A',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#FFFFFF',
+                            padding: '0.35rem 0.6rem',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {itemAvailableSizes.map(sz => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                    {/* Quantity Counter */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
-                        الكمية
-                      </label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleItemQuantityChange(item.uniqueKey, -1)}
+                      {/* Quantity Counter */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
+                          الكمية
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleItemQuantityChange(item.uniqueKey, -1)}
+                            style={{
+                              background: '#1E293B',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              color: '#FFFFFF',
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              fontWeight: 900
+                            }}
+                          >
+                            -
+                          </button>
+                          <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 800, color: '#FFFFFF', fontSize: '0.9rem' }}>
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleItemQuantityChange(item.uniqueKey, 1)}
+                            style={{
+                              background: '#1E293B',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              color: '#FFFFFF',
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              fontWeight: 900
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Unit Price Custom Input */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
+                          سعر القطعة (ج.م)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.price}
+                          onChange={(e) => handleItemPriceChange(item.uniqueKey, e.target.value)}
                           style={{
-                            background: '#1E293B',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: '#FFFFFF',
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
+                            width: '85px',
+                            background: '#131A2A',
+                            border: '1px solid var(--border-gold)',
+                            color: 'var(--gold-primary)',
+                            padding: '0.35rem 0.5rem',
+                            borderRadius: '6px',
                             fontSize: '0.9rem',
-                            fontWeight: 900
+                            fontWeight: 800,
+                            textAlign: 'center'
                           }}
-                        >
-                          -
-                        </button>
-                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 800, color: '#FFFFFF', fontSize: '0.9rem' }}>
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleItemQuantityChange(item.uniqueKey, 1)}
-                          style={{
-                            background: '#1E293B',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: '#FFFFFF',
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '0.9rem',
-                            fontWeight: 900
-                          }}
-                        >
-                          +
-                        </button>
+                        />
                       </div>
                     </div>
 
-                    {/* Unit Price Custom Input */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
-                        سعر القطعة (ج.م)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.price}
-                        onChange={(e) => handleItemPriceChange(item.uniqueKey, e.target.value)}
-                        style={{
-                          width: '90px',
-                          background: '#131A2A',
-                          border: '1px solid var(--border-gold)',
-                          color: 'var(--gold-primary)',
-                          padding: '0.35rem 0.5rem',
-                          borderRadius: '6px',
-                          fontSize: '0.9rem',
-                          fontWeight: 800,
-                          textAlign: 'center'
-                        }}
-                      />
-                    </div>
-
                     {/* Line Total & Remove Action */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div className="admin-item-total-row" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                       <div style={{ textAlign: 'left', minWidth: '70px' }}>
                         <span style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block' }}>الإجمالي</span>
                         <span style={{ fontWeight: 900, color: '#FFFFFF', fontSize: '0.95rem' }}>
@@ -453,9 +421,9 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
                           background: 'rgba(244, 63, 94, 0.12)',
                           border: '1px solid rgba(244, 63, 94, 0.35)',
                           color: '#F43F5E',
-                          padding: '0.35rem 0.6rem',
+                          padding: '0.4rem 0.75rem',
                           borderRadius: '6px',
-                          fontSize: '0.78rem',
+                          fontSize: '0.8rem',
                           fontWeight: 700,
                           cursor: 'pointer'
                         }}
@@ -483,14 +451,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               إضافة منتج جديد من الكتالوج لهذا الطلب
             </h4>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(200px, 2fr) 1fr 1fr 1.2fr auto',
-                gap: '0.75rem',
-                alignItems: 'flex-end'
-              }}
-            >
+            <div className="admin-add-product-grid">
               {/* Select Product */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '0.3rem' }}>
@@ -825,16 +786,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
         </div>
 
         {/* Modal Footer Actions */}
-        <div
-          style={{
-            padding: '1.1rem 1.5rem',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '0.75rem',
-            background: 'rgba(0, 0, 0, 0.4)'
-          }}
-        >
+        <div className="admin-modal-footer">
           <button
             type="button"
             onClick={onClose}
@@ -843,7 +795,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               background: 'transparent',
               border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#94A3B8',
-              padding: '0.55rem 1.25rem',
+              padding: '0.65rem 1.25rem',
               borderRadius: '8px',
               fontSize: '0.9rem',
               fontWeight: 700,
@@ -861,7 +813,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               background: 'var(--gold-primary)',
               border: 'none',
               color: '#000000',
-              padding: '0.55rem 1.65rem',
+              padding: '0.65rem 1.65rem',
               borderRadius: '8px',
               fontSize: '0.92rem',
               fontWeight: 900,
@@ -869,6 +821,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               opacity: isPending ? 0.7 : 1,
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.5rem'
             }}
           >
@@ -876,6 +829,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1082,10 +1082,10 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
 
         const trackingSection = updated.tracking_number ? `
           <div style="background: #EFF6FF; border: 1px solid #93C5FD; padding: 18px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <div style="font-size: 14px; color: #1E40AF; margin-bottom: 6px; font-weight: bold;">📦 كود تتبع الشحنة لدى البريد المصري:</div>
+            <div style="font-size: 14px; color: #1E40AF; margin-bottom: 6px; font-weight: bold;">كود تتبع الشحنة لدى البريد المصري:</div>
             <div style="font-size: 22px; font-weight: 900; color: #1E3A8A; letter-spacing: 2px; margin-bottom: 12px; font-family: monospace;">${updated.tracking_number}</div>
             <a href="https://kemetmisr.com/track-order" target="_blank" style="display: inline-block; background: #2563EB; color: #FFFFFF; text-decoration: none; padding: 10px 22px; border-radius: 6px; font-size: 14px; font-weight: bold;">
-              تتبع الشحنة الآن على موقع KEMET 🚚
+              تتبع الشحنة الآن على موقع KEMET
             </a>
           </div>
         ` : '';
@@ -1094,17 +1094,17 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
 
         const cancellationNoticeSection = isCancelled ? `
           <div style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 18px; border-radius: 8px; margin: 20px 0; text-align: center; color: #991B1B;">
-            <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">⚠️ نأسف لإبلاغك بأنه تم إلغاء الطلب رقم #${updated.id}</div>
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">نأسف لإبلاغك بأنه تم إلغاء الطلب رقم #${updated.id}</div>
             <div style="font-size: 14px; line-height: 1.6; color: #7F1D1D; margin-bottom: 16px;">
               تم إلغاء هذا الطلب بسبب وجود خطأ أو عدم استكمال في بيانات الشحن أو الموبايل المرفقة مع الطلب. يمكنك إعادة الطلب بسهولة عبر الموقع بعد مراجعة البيانات، أو تواصل معنا مباشرة على الواتساب لمعرفة التفاصيل.
             </div>
 
             <div style="text-align: center; margin-top: 14px;">
               <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; text-decoration: none; padding: 11px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
-                🛒 إعادة الطلب من الموقع
+                إعادة الطلب من الموقع
               </a>
               <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، أود الاستفسار عن سبب إلغاء طلبي رقم: #${updated.id}`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; text-decoration: none; padding: 11px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; margin: 5px;">
-                💬 معرفة سبب الإلغاء عبر الواتساب
+                معرفة سبب الإلغاء عبر الواتساب
               </a>
             </div>
           </div>
@@ -1112,7 +1112,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
 
         const courierNoticeSection = isOutForDelivery ? `
           <div style="background: #FEF9C3; border: 1px solid #FDE047; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; color: #854D0E; font-size: 15px; font-weight: bold; line-height: 1.6;">
-            🛵 أوردرك اليوم مع المندوب وفي الطريق إليك خلال ساعات! يرجى التواجد في العنوان وتوافر الهاتف لتسهيل استلام الشحنة.
+            أوردرك اليوم مع المندوب وفي الطريق إليك خلال ساعات! يرجى التواجد في العنوان وتوافر الهاتف لتسهيل استلام الشحنة.
           </div>
         ` : '';
 
@@ -1140,7 +1140,7 @@ export async function updateOrderStatusAction(orderId, newStatus, trackingNumber
             ${courierNoticeSection}
             ${trackingSection}
 
-            <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">📋 تفاصيل المنتجات والطلب:</h3>
+            <h3 style="color: #0F172A; font-size: 16px; margin-top: 24px; margin-bottom: 12px; border-bottom: 2px solid #F1F5F9; padding-bottom: 6px;">تفاصيل المنتجات والطلب:</h3>
             
             <table border="0" cellPadding="0" cellSpacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 16px;">
               <thead>
@@ -1343,7 +1343,7 @@ export async function sendMassPromoEmailAction(params) {
         const resendRes = await resend.emails.send({
           from: SENDER_SUPPORT,
           to: [email],
-          subject: '🔥 عرض خاص وحصري من KEMET!',
+          subject: 'عرض خاص وحصري من KEMET!',
           html: emailHtml
         });
 
@@ -1386,7 +1386,7 @@ export async function getBannerSettingsAction() {
       return {
         success: true,
         isVisible: data.description_ar === 'true',
-        textAr: data.name_ar || '⚡ شحن مجاني لجميع المحافظات لفترة محدودة! ⚡',
+        textAr: data.name_ar || 'شحن مجاني لجميع المحافظات لفترة محدودة',
         textEn: data.name_en || ''
       };
     }
@@ -1396,7 +1396,7 @@ export async function getBannerSettingsAction() {
   return {
     success: true,
     isVisible: false,
-    textAr: '⚡ شحن مجاني لجميع المحافظات لفترة محدودة! ⚡',
+    textAr: 'شحن مجاني لجميع المحافظات لفترة محدودة',
     textEn: ''
   };
 }
@@ -1407,7 +1407,7 @@ export async function getBannerSettingsAction() {
 export async function saveBannerSettingsAction({ isVisible, textAr, textEn = '' }) {
   try {
     const supabaseAdmin = getAdminSupabase();
-    const cleanText = textAr ? String(textAr).trim() : '⚡ شحن مجاني لجميع المحافظات لفترة محدودة! ⚡';
+    const cleanText = textAr ? String(textAr).trim() : 'شحن مجاني لجميع المحافظات لفترة محدودة';
 
     const { data, error } = await supabaseAdmin
       .from('categories')
@@ -1665,8 +1665,8 @@ export async function getHomepageSectionsAction() {
   const defaultSections = [
     {
       id: 'best_sellers',
-      titleAr: 'الأكثر مبيعاً 🔥',
-      titleEn: 'Best Sellers 🔥',
+      titleAr: 'الأكثر مبيعاً',
+      titleEn: 'Best Sellers',
       subtitleAr: 'القطع الأكثر طلباً وإقبالاً في كولكشن KEMET',
       subtitleEn: 'Most popular and featured KEMET sportswear',
       categoryId: 'all',
@@ -1677,8 +1677,8 @@ export async function getHomepageSectionsAction() {
     },
     {
       id: 'kits',
-      titleAr: 'أطقم وتيشيرتات KEMET ⚽',
-      titleEn: 'Official KEMET Kits ⚽',
+      titleAr: 'أطقم وتيشيرتات KEMET',
+      titleEn: 'Official KEMET Kits',
       subtitleAr: 'أحدث تشكيلة من أطقم الأندية والمنتخبات الرياضية',
       subtitleEn: 'Latest official football kits and sportswear',
       categoryId: 'kits',
@@ -1689,8 +1689,8 @@ export async function getHomepageSectionsAction() {
     },
     {
       id: 'training',
-      titleAr: 'ملابس التدريب والجيم 💪',
-      titleEn: 'Training & Gym Wear 💪',
+      titleAr: 'ملابس التدريب والجيم',
+      titleEn: 'Training & Gym Wear',
       subtitleAr: 'خامات مريحة ومقاومة للعرق مصممة للتمارين الشاقة',
       subtitleEn: 'Performance sportswear engineered for the gym',
       categoryId: 'training',
@@ -1701,8 +1701,8 @@ export async function getHomepageSectionsAction() {
     },
     {
       id: 'shorts',
-      titleAr: 'الشورتات والمستلزمات 🩳',
-      titleEn: 'Shorts & Gear 🩳',
+      titleAr: 'الشورتات والمستلزمات',
+      titleEn: 'Shorts & Gear',
       subtitleAr: 'شورتات رياضية ومستلزمات أساسية لكل رياضي',
       subtitleEn: 'Athletic shorts and essential gear',
       categoryId: 'shorts',

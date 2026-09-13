@@ -37,9 +37,9 @@ export default async function AdminProductsPage() {
   return (
     <div>
       {/* Section Header */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div className="admin-page-header" style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.4rem' }}>
-          <span className="brand-glow">⚽ إدارة الكتالوج والمخزون</span>
+          <span className="brand-glow">إدارة الكتالوج والمخزون</span>
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
           إضافة وتعديل المنتجات، تحديث الصور الأربعة، وإدارة كميات المقاسات في الكتالوج

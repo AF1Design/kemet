@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { updateOrderStatusAction, deleteOrderAction, sendDirectCustomerEmailAction } from '../../app/admin/actions';
 import { AdminOrderEditModal } from './AdminOrderEditModal';
 
@@ -110,11 +111,16 @@ function getOrderConfirmationWhatsAppUrl(order) {
 }
 
 export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
+  const [mounted, setMounted] = useState(false);
   const [orders, setOrders] = useState(initialOrders || []);
   const [copiedOrderId, setCopiedOrderId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Full Order Edit Modal State
   const [editingOrder, setEditingOrder] = useState(null);
@@ -341,7 +347,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
             style={{ padding: '0.8rem 1.25rem', flexGrow: 1, maxWidth: '400px', fontSize: '0.95rem' }}
           />
 
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="admin-filter-scroll" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => setStatusFilter('ALL')}
@@ -383,8 +389,8 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
         </div>
       </div>
 
-      {/* Structured Orders Table */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
+      {/* Structured Orders Table (Desktop View) */}
+      <div className="admin-orders-desktop" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', minWidth: '1350px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.4)' }}>
@@ -660,20 +666,296 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
         </table>
       </div>
 
+      {/* Mobile Orders Cards View (< 900px) */}
+      <div className="admin-orders-mobile">
+        {filteredOrders.length === 0 ? (
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            لا توجد طلبات مسجلة
+          </div>
+        ) : (
+          filteredOrders.map(order => {
+            const itemsList = Array.isArray(order.items) && order.items.length > 0
+              ? order.items
+              : Array.isArray(order.order_items) && order.order_items.length > 0
+              ? order.order_items
+              : [];
+
+            const productNames = itemsList.map(i => i.product_name_ar || i.nameAr || i.title || 'منتج KEMET').join(' + ');
+            const productSizes = Array.from(new Set(itemsList.map(i => i.size || 'M'))).join(', ');
+            const orderCoupon = extractCouponCode(order);
+            const waUrl = getOrderConfirmationWhatsAppUrl(order);
+
+            return (
+              <div 
+                key={order.id} 
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1.15rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                {/* Header: Order # + Date + Status Select */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.65rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ fontWeight: 900, color: 'var(--gold-primary)', fontSize: '1.05rem' }}>
+                        #{order.id}
+                      </span>
+                      {orderCoupon && (
+                        <span style={{
+                          padding: '0.15rem 0.45rem',
+                          background: 'rgba(212,175,55,0.15)',
+                          border: '1px solid var(--border-gold)',
+                          color: 'var(--gold-primary)',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          fontWeight: 800
+                        }}>
+                          كود: {orderCoupon}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {formatOrderDate(order.created_at)}
+                    </span>
+                  </div>
+
+                  {/* Status Dropdown */}
+                  <select
+                    value={order.status || 'جديد'}
+                    onChange={e => handleStatusChange(order.id, e.target.value)}
+                    disabled={isPending}
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(212,175,55,0.15)',
+                      border: '1px solid var(--border-gold)',
+                      color: 'var(--gold-primary)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {STATUS_OPTIONS.map(status => (
+                      <option key={status} value={status} style={{ background: '#0B0F19', color: '#FFF' }}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Customer Information */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.86rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, color: '#FFF' }}>
+                      {order.customer_name || order.customer?.fullName || 'عميل KEMET'}
+                    </span>
+                    <span style={{ color: 'var(--gold-primary)', fontWeight: 800, fontSize: '0.82rem' }}>
+                      {order.governorate || order.customer?.governorate || 'القاهرة'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ direction: 'ltr', color: 'var(--text-secondary)', fontSize: '0.84rem', fontWeight: 600 }}>
+                      {order.customer_phone || order.customer?.phone || 'غير مسجل'}
+                    </span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', maxWidth: '60%', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {order.address || order.customer?.address || 'بدون عنوان تفصيلي'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Products & Financial Summary */}
+                <div style={{ background: 'rgba(0,0,0,0.35)', padding: '0.65rem 0.8rem', borderRadius: '8px', fontSize: '0.82rem' }}>
+                  <div style={{ fontWeight: 700, color: '#FFF', marginBottom: '0.25rem' }}>
+                    {productNames || 'طقم KEMET الرسمي'}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    <span>المقاس: <strong style={{ color: 'var(--gold-primary)' }}>{productSizes || 'M'}</strong></span>
+                    <span>الإجمالي: <strong style={{ color: 'var(--gold-primary)', fontSize: '0.95rem' }}>{order.total_amount || order.total} ج.م</strong></span>
+                  </div>
+                </div>
+
+                {/* Tracking Code Line */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    كود التتبع: {order.tracking_number ? <strong style={{ color: '#10B981', direction: 'ltr' }}>{order.tracking_number}</strong> : 'بدون كود تتبع'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenTrackingModal(order)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--gold-primary)',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    تعديل التتبع
+                  </button>
+                </div>
+
+                {/* Action Buttons Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.45rem', marginTop: '0.2rem' }}>
+                  {/* واتساب التأكيد */}
+                  {waUrl ? (
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        padding: '0.55rem',
+                        fontSize: '0.8rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: '#10B981',
+                        color: '#000',
+                        fontWeight: 800,
+                        textDecoration: 'none',
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      واتساب التأكيد
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      style={{
+                        padding: '0.55rem',
+                        fontSize: '0.8rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'rgba(255,255,255,0.06)',
+                        color: '#666',
+                        fontWeight: 800,
+                        textAlign: 'center'
+                      }}
+                    >
+                      واتساب
+                    </button>
+                  )}
+
+                  {/* نسخ التأكيد */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyConfirmation(order)}
+                    style={{
+                      padding: '0.55rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: copiedOrderId === order.id ? '1px solid #10B981' : '1px solid var(--border-gold)',
+                      background: copiedOrderId === order.id ? '#10B981' : 'rgba(212,175,55,0.14)',
+                      color: copiedOrderId === order.id ? '#000' : 'var(--gold-primary)',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {copiedOrderId === order.id ? 'تم النسخ' : 'نسخ التأكيد'}
+                  </button>
+
+                  {/* تعديل الطلب */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingOrder(order)}
+                    style={{
+                      padding: '0.55rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-gold)',
+                      background: 'rgba(212,175,55,0.18)',
+                      color: 'var(--gold-primary)',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                  >
+                    تعديل الطلب
+                  </button>
+
+                  {/* تفاصيل */}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setSelectedOrderDetails(order)}
+                    style={{
+                      padding: '0.55rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      fontWeight: 800,
+                      textAlign: 'center'
+                    }}
+                  >
+                    تفاصيل
+                  </button>
+
+                  {/* رسالة */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEmailModal(order)}
+                    style={{
+                      padding: '0.55rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(212,175,55,0.4)',
+                      background: 'rgba(212,175,55,0.12)',
+                      color: 'var(--gold-primary)',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                  >
+                    رسالة
+                  </button>
+
+                  {/* حذف */}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteOrder(order.id)}
+                    style={{
+                      padding: '0.55rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(244,63,94,0.4)',
+                      background: 'rgba(244,63,94,0.12)',
+                      color: '#F43F5E',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                  >
+                    حذف
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {/* Details Modal */}
-      {selectedOrderDetails && (
+      {mounted && selectedOrderDetails && createPortal(
         <div 
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedOrderDetails(null); }}
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.85)',
+            background: 'rgba(0,0,0,0.88)',
             backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
-            padding: '1.5rem',
+            zIndex: 999999,
+            padding: '1rem',
             overflowY: 'auto'
           }}
         >
@@ -681,17 +963,17 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
             background: 'var(--bg-card)',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
+            padding: '1.5rem',
             maxWidth: '600px',
             width: '100%',
-            maxHeight: '85vh',
+            maxHeight: '90vh',
             overflowY: 'auto',
             boxShadow: 'var(--shadow-glow)',
             margin: 'auto'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>تفاصيل الطلب #{selectedOrderDetails.id}</span>
-              <button type="button" onClick={() => setSelectedOrderDetails(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              <button type="button" onClick={() => setSelectedOrderDetails(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer', padding: '0.25rem' }}>✕</button>
             </h3>
 
             {extractCouponCode(selectedOrderDetails) && (
@@ -731,34 +1013,36 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit / Cancel Tracking Modal */}
-      {trackingModalOrder && (
+      {mounted && trackingModalOrder && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.85)',
+          background: 'rgba(0,0,0,0.88)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1.5rem'
+          zIndex: 999999,
+          padding: '1rem'
         }}>
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
+            padding: '1.5rem',
             maxWidth: '500px',
             width: '100%',
             boxShadow: 'var(--shadow-glow)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>تعديل أو إلغاء كود تتبع الشحنة (#{trackingModalOrder.id})</span>
-              <button type="button" onClick={() => setTrackingModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              <button type="button" onClick={() => setTrackingModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer', padding: '0.25rem' }}>✕</button>
             </h3>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
@@ -778,7 +1062,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={handleCancelTrackingNumber}
@@ -813,34 +1097,36 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Direct Customer Email Modal */}
-      {emailModalOrder && (
+      {mounted && emailModalOrder && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.85)',
+          background: 'rgba(0,0,0,0.88)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1.5rem'
+          zIndex: 999999,
+          padding: '1rem'
         }}>
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
+            padding: '1.5rem',
             maxWidth: '550px',
             width: '100%',
             boxShadow: 'var(--shadow-glow)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>إرسال رسالة بريد خاصة للعميل</span>
-              <button type="button" onClick={() => setEmailModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              <button type="button" onClick={() => setEmailModalOrder(null)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer', padding: '0.25rem' }}>✕</button>
             </h3>
 
             <div style={{ marginBottom: '1.25rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
@@ -886,7 +1172,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" className="btn-secondary" onClick={() => setEmailModalOrder(null)} style={{ padding: '0.65rem 1.25rem' }}>
                 إلغاء
               </button>
@@ -901,7 +1187,8 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Full Order & Pricing Edit Modal */}

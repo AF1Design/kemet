@@ -61,46 +61,43 @@ export default async function AdminLayout({ children }) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
       {/* Top Admin Navigation Bar */}
-      <header style={{ 
-        background: 'var(--bg-card)', 
-        borderBottom: '1px solid var(--border-gold-bright)', 
-        padding: '1rem 2rem',
-        boxShadow: 'var(--shadow-glow)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--gold-primary)', border: '1px solid var(--gold-primary)', padding: '0.25rem 0.6rem', borderRadius: '4px', letterSpacing: '1px' }}>KEMET</span>
-            <div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
-                لوحة تحكم KEMET الإدارية
-              </h1>
-              <span style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 800 }}>
-                وضع الإدارة المعزول والأمني (Admin System Active)
-              </span>
+      <header className="admin-header">
+        <div className="admin-header-inner">
+          <div className="admin-brand-block">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <span className="admin-brand-tag">KEMET</span>
+              <div>
+                <h1 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0, letterSpacing: '0.2px' }}>
+                  لوحة تحكم KEMET الإدارية
+                </h1>
+                <span className="admin-brand-subtitle-full" style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 800 }}>
+                  وضع الإدارة المعزول والأمني (Admin System Active)
+                </span>
+              </div>
             </div>
+            <span className="admin-brand-subtitle-mobile" style={{ display: 'none', fontSize: '0.72rem', color: '#10B981', fontWeight: 800, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+              نشط
+            </span>
           </div>
 
-          {/* Admin Navigation Tabs */}
-          <nav style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Link href="/admin" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+          {/* Admin Navigation Tabs - Horizontally Scrollable on Mobile without Wrapping */}
+          <nav className="admin-nav-scroll">
+            <Link href="/admin" className="admin-nav-pill btn-secondary">
               الإحصائيات
             </Link>
-            <Link href="/admin#coupons" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+            <Link href="/admin#coupons" className="admin-nav-pill btn-secondary">
               أكواد الخصم
             </Link>
-            <Link href="/admin/products" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+            <Link href="/admin/products" className="admin-nav-pill btn-secondary">
               المنتجات والمخزون
             </Link>
-            <Link href="/admin/orders" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+            <Link href="/admin/orders" className="admin-nav-pill btn-secondary">
               إدارة الطلبات
             </Link>
-            <Link href="/admin/abandoned-carts" className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
+            <Link href="/admin/abandoned-carts" className="admin-nav-pill btn-primary" style={{ background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
               السلات المتروكة والعملاء
             </Link>
-            <Link href="/" className="btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}>
+            <Link href="/" className="admin-nav-pill btn-secondary">
               الواجهة الرئيسية
             </Link>
           </nav>
@@ -108,7 +105,7 @@ export default async function AdminLayout({ children }) {
       </header>
 
       {/* Admin Content Area */}
-      <main className="container" style={{ paddingTop: '2.5rem', paddingBottom: '4rem' }}>
+      <main className="admin-main container">
         {children}
       </main>
     </div>

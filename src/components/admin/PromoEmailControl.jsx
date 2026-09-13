@@ -6,7 +6,7 @@ import { getRegisteredUsersStatsAction, sendMassPromoEmailAction } from '../../a
 export function PromoEmailControl() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [emailsSentCount, setEmailsSentCount] = useState(0);
-  const [promoTextAr, setPromoTextAr] = useState('🔥 خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!');
+  const [promoTextAr, setPromoTextAr] = useState('خصومات KEMET لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن');
   const [isSending, setIsSending] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
 
@@ -43,18 +43,18 @@ export function PromoEmailControl() {
 
         setStatusMsg({
           type: 'success',
-          text: `تم إرسال العرض الترويجي بنجاح إلى ${newlySent} مستخدم مسجّل من أصل ${res.totalRecipients || totalUsers}! 📧✨`
+          text: `تم إرسال العرض الترويجي بنجاح إلى ${newlySent} مستخدم مسجّل من أصل ${res.totalRecipients || totalUsers}`
         });
       } else {
         setStatusMsg({
           type: 'error',
-          text: res?.error || 'حدث خطأ في السيرفر أثناء إرسال البريد الجماعي.'
+          text: res?.error || 'حدث خطأ في السيرفر أثناء إرسال البريد الجماعي'
         });
       }
     } catch (err) {
       setStatusMsg({
         type: 'error',
-        text: err.message || 'حدث خطأ في شبكة الإرسال.'
+        text: err.message || 'حدث خطأ في شبكة الإرسال'
       });
     } finally {
       setIsSending(false);
@@ -66,49 +66,51 @@ export function PromoEmailControl() {
       background: 'var(--bg-card)',
       border: '1px solid var(--border-gold-bright)',
       borderRadius: 'var(--radius-lg)',
-      padding: '2rem',
+      padding: 'clamp(1rem, 3vw, 2rem)',
       boxShadow: 'var(--shadow-glow)',
       marginBottom: '2.5rem'
     }}>
       {/* Section Title */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--gold-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-            <span>📧</span> مركز إرسال العروض الترويجية بالبريد الإلكتروني
+          <h3 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.3rem)', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
+            مركز إرسال العروض الترويجية بالبريد الإلكتروني
           </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '0.3rem 0 0 0' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.3rem 0 0 0' }}>
             نظام بث الرسائل الترويجية الفعلي لجميع عملاء ومتسوقي متجر KEMET المسجلين
           </p>
         </div>
 
         {/* Stats Badges */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', width: '100%', maxWidth: '400px' }}>
           <div style={{
+            flex: '1 1 140px',
             background: 'rgba(212, 175, 55, 0.1)',
             border: '1px solid var(--gold-primary)',
             borderRadius: 'var(--radius-md)',
-            padding: '0.65rem 1.25rem',
+            padding: '0.65rem 1rem',
             textAlign: 'center'
           }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', fontWeight: 700 }}>
-              عدد المستخدمين المسجلين 👥
+              عدد المستخدمين المسجلين
             </span>
-            <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
               {totalUsers}
             </span>
           </div>
 
           <div style={{
+            flex: '1 1 140px',
             background: 'rgba(16, 185, 129, 0.1)',
             border: '1px solid #10B981',
             borderRadius: 'var(--radius-md)',
-            padding: '0.65rem 1.25rem',
+            padding: '0.65rem 1rem',
             textAlign: 'center'
           }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', fontWeight: 700 }}>
-              وصلهم العرض على البريد 📩
+              وصلهم العرض على البريد
             </span>
-            <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10B981' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 900, color: '#10B981' }}>
               {emailsSentCount}
             </span>
           </div>
@@ -118,7 +120,7 @@ export function PromoEmailControl() {
       {/* Form and Action */}
       <form onSubmit={handleSendMassEmail}>
         <div style={{ marginBottom: '1.25rem' }}>
-          <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+          <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
             نص العرض الترويجي المراد إرساله:
           </label>
           <textarea
@@ -132,7 +134,7 @@ export function PromoEmailControl() {
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               color: '#FFFFFF',
-              fontSize: '0.95rem',
+              fontSize: '0.9rem',
               lineHeight: '1.6',
               resize: 'vertical'
             }}
@@ -145,7 +147,7 @@ export function PromoEmailControl() {
           <div style={{
             padding: '0.85rem 1.25rem',
             borderRadius: 'var(--radius-md)',
-            fontSize: '0.9rem',
+            fontSize: '0.88rem',
             fontWeight: 800,
             marginBottom: '1.25rem',
             background: statusMsg.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
@@ -162,8 +164,10 @@ export function PromoEmailControl() {
             disabled={isSending || !promoTextAr.trim()}
             className="btn-primary"
             style={{
-              padding: '0.85rem 2rem',
-              fontSize: '0.95rem',
+              width: '100%',
+              maxWidth: '380px',
+              padding: '0.85rem 1.5rem',
+              fontSize: '0.9rem',
               fontWeight: 900,
               background: 'var(--gold-gradient)',
               color: '#000000',
@@ -171,7 +175,7 @@ export function PromoEmailControl() {
               cursor: isSending ? 'not-allowed' : 'pointer'
             }}
           >
-            {isSending ? '⏳ جاري إرسال البريد الجماعي...' : '🚀 إرسال العرض الترويجي لكافة المستخدمين بالبريد'}
+            {isSending ? 'جاري إرسال البريد الجماعي...' : 'إرسال العرض الترويجي لكافة المستخدمين بالبريد'}
           </button>
         </div>
       </form>

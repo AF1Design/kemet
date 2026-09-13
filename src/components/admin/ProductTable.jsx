@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   createProductAction, 
   updateProductAction, 
@@ -17,11 +18,16 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export function ProductTable({ initialProducts, categories: initialCategories }) {
+  const [mounted, setMounted] = useState(false);
   const { setDbCategories } = useApp();
   const [products, setProducts] = useState(initialProducts || []);
   const [categoriesList, setCategoriesList] = useState(initialCategories || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Clean and validate real categories only (ignore internal json/config rows)
   const cleanCategories = (categoriesList || []).filter(c => 
@@ -257,7 +263,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
       const res = await deleteProductAction(productId);
       if (res.success) {
         setProducts(prev => prev.filter(p => p.id !== productId));
-        alert(`تم حذف المنتج "${productName}" نهائياً بنجاح 🗑️`);
+        alert(`تم حذف المنتج "${productName}" نهائياً بنجاح`);
       } else {
         alert(`فشل حذف المنتج: ${res.error}`);
       }
@@ -369,7 +375,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
   // Save Inline Edited Category Name
   const handleSaveCategoryEdit = (catId) => {
     if (!editCatAr.trim()) {
-      alert('⚠️ يرجى كتابة الاسم بالعربي للقسم');
+      alert('يرجى كتابة الاسم بالعربي للقسم');
       return;
     }
 
@@ -392,9 +398,9 @@ export function ProductTable({ initialProducts, categories: initialCategories })
         if (fresh.success && fresh.categories && setDbCategories) {
           setDbCategories(fresh.categories);
         }
-        alert(`✅ تم حفظ وتعديل اسم القسم (${catId}) إلى: "${res.category.name_ar}" بنجاح 🏷️`);
+        alert(`تم حفظ وتعديل اسم القسم (${catId}) إلى: "${res.category.name_ar}" بنجاح`);
       } else {
-        alert(`⚠️ فشل تعديل الاسم: ${res.error || 'خطأ بالسيرفر'}`);
+        alert(`فشل تعديل الاسم: ${res.error || 'خطأ بالسيرفر'}`);
       }
     });
   };
@@ -554,10 +560,10 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     try {
       const res = await saveHomepageSectionsAction(homepageSections);
       if (res.success) {
-        alert('✅ تم حفظ وتحديث عناوين وترتيب أقسام الصفحة الرئيسية بنجاح 🎠');
+        alert('تم حفظ وتحديث عناوين وترتيب أقسام الصفحة الرئيسية بنجاح');
         setIsSectionsModalOpen(false);
       } else {
-        alert(`⚠️ فشل حفظ الإعدادات: ${res.error}`);
+        alert(`فشل حفظ الإعدادات: ${res.error}`);
       }
     } catch (err) {
       alert(`حدث خطأ: ${err.message}`);
@@ -569,42 +575,43 @@ export function ProductTable({ initialProducts, categories: initialCategories })
   return (
     <div>
       {/* Controls Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '0.85rem' }}>
         <input
           type="text"
-          placeholder="🔍 ابحث برقم المنتج أو الاسم (مثال: ريال مدريد)..."
+          placeholder="ابحث برقم المنتج أو الاسم (مثال: ريال مدريد)..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          style={{ padding: '0.8rem 1.25rem', width: '320px', fontSize: '0.95rem' }}
+          style={{ padding: '0.75rem 1.1rem', flex: '1 1 260px', maxWidth: '380px', fontSize: '0.9rem' }}
         />
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn-secondary"
             onClick={handleOpenSectionsModal}
             style={{
-              padding: '0.8rem 1.5rem',
+              padding: '0.75rem 1.25rem',
               fontWeight: 800,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.4rem',
               border: '1px solid var(--border-gold)',
               background: 'rgba(212,175,55,0.12)',
-              color: 'var(--gold-primary)'
+              color: 'var(--gold-primary)',
+              fontSize: '0.85rem'
             }}
           >
-            🎛️ إدارة وترتيب أقسام الواجهة
+            إدارة وترتيب أقسام الواجهة
           </button>
 
-          <button type="button" className="btn-primary" onClick={handleOpenAddModal} style={{ padding: '0.8rem 1.75rem' }}>
-            ⚽ إضافة منتج جديد
+          <button type="button" className="btn-primary" onClick={handleOpenAddModal} style={{ padding: '0.75rem 1.5rem', fontSize: '0.85rem' }}>
+            إضافة منتج جديد +
           </button>
         </div>
       </div>
 
-      {/* Products Table */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
+      {/* Products Table (Desktop View >= 900px) */}
+      <div className="admin-products-desktop" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.3)' }}>
@@ -637,8 +644,8 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     <td style={{ padding: '0.85rem', fontWeight: 800 }}>
                       <div>
                         {prod.name_ar}{' '}
-                        {(prod.is_featured || prod.isFeatured || (Array.isArray(prod.keywords) && prod.keywords.includes('IS_FEATURED_GOLD'))) && <span title="منتج مميز VIP Gold Card" style={{ color: '#FFDF73', fontSize: '0.82rem', background: 'rgba(212,175,55,0.2)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>👑 مميز</span>}{' '}
-                        {prod.is_best_seller && <span title="الأكثر مبيعاً">🔥</span>}
+                        {(prod.is_featured || prod.isFeatured || (Array.isArray(prod.keywords) && prod.keywords.includes('IS_FEATURED_GOLD'))) && <span title="منتج مميز VIP Gold Card" style={{ color: '#FFDF73', fontSize: '0.82rem', background: 'rgba(212,175,55,0.2)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>[مميز]</span>}{' '}
+                        {prod.is_best_seller && <span style={{ color: '#F59E0B', fontSize: '0.8rem', fontWeight: 800 }}>[الأكثر مبيعاً]</span>}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{prod.name_en}</div>
                     </td>
@@ -667,7 +674,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                         })}
                       </div>
                       <div style={{ fontSize: '0.72rem', color: totalStock === 0 ? '#F43F5E' : 'var(--text-secondary)', marginTop: '0.2rem', fontWeight: 800 }}>
-                        {totalStock === 0 ? '⚠️ انتهى المخزون بالكامل' : `إجمالي القطع: ${totalStock}`}
+                        {totalStock === 0 ? 'انتهى المخزون بالكامل' : `إجمالي القطع: ${totalStock}`}
                       </div>
                     </td>
                     <td style={{ padding: '0.85rem' }}>
@@ -687,7 +694,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                             color: prod.is_active ? '#10B981' : '#F43F5E'
                           }}
                         >
-                          {prod.is_active ? '🟢 نشط' : '🔴 معطل'}
+                          {prod.is_active ? 'نشط' : 'معطل'}
                         </button>
 
                         <button
@@ -706,7 +713,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                             color: '#F43F5E'
                           }}
                         >
-                          🗑️ حذف
+                          حذف
                         </button>
                       </div>
                     </td>
@@ -717,7 +724,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                         onClick={() => handleOpenEditModal(prod)}
                         style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
                       >
-                        ⚙️ تعديل وتحديث المخزون
+                        تعديل وتحديث المخزون
                       </button>
                     </td>
                   </tr>
@@ -728,34 +735,201 @@ export function ProductTable({ initialProducts, categories: initialCategories })
         </table>
       </div>
 
+      {/* Products Dedicated Mobile Cards (< 900px) */}
+      <div className="admin-products-mobile">
+        {filteredProducts.length === 0 ? (
+          <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+            لا توجد منتجات مطابقة لعملية البحث
+          </div>
+        ) : (
+          filteredProducts.map(prod => {
+            const variants = getProductVariants(prod);
+            const totalStock = variants.reduce((sum, v) => sum + Number(v.stock_quantity ?? 0), 0);
+
+            return (
+              <div
+                key={`mobile_${prod.id}`}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                  opacity: prod.is_active ? 1 : 0.65,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {/* Top: Thumbnail, Title, Subtitle, Category */}
+                <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+                  <img
+                    src={prod.main_image}
+                    alt={prod.name_ar}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      objectFit: 'cover',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-gold)',
+                      flexShrink: 0
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: '#FFFFFF', wordBreak: 'break-word' }}>
+                        {prod.name_ar}
+                      </h4>
+                      <span style={{
+                        padding: '0.15rem 0.5rem',
+                        background: 'rgba(212, 175, 55, 0.1)',
+                        border: '1px solid var(--border-gold)',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--gold-primary)',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {prod.category_id}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      {prod.name_en}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                      {(prod.is_featured || prod.isFeatured || (Array.isArray(prod.keywords) && prod.keywords.includes('IS_FEATURED_GOLD'))) && (
+                        <span style={{ color: '#FFDF73', fontSize: '0.72rem', background: 'rgba(212,175,55,0.2)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 800 }}>
+                          [مميز]
+                        </span>
+                      )}
+                      {prod.is_best_seller && (
+                        <span style={{ color: '#F59E0B', fontSize: '0.72rem', fontWeight: 800, background: 'rgba(245,158,11,0.15)', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                          [الأكثر مبيعاً]
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Price & Stock Strip */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)' }}>
+                  <div>
+                    <span style={{ color: 'var(--gold-primary)', fontWeight: 900, fontSize: '1.05rem' }}>{prod.price} ج.م</span>
+                    {prod.old_price && (
+                      <span style={{ fontSize: '0.75rem', textDecoration: 'line-through', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
+                        {prod.old_price} ج.م
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: totalStock === 0 ? '#F43F5E' : 'var(--text-secondary)' }}>
+                    {totalStock === 0 ? 'انتهى المخزون' : `إجمالي القطع: ${totalStock}`}
+                  </div>
+                </div>
+
+                {/* Sizes Badges */}
+                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                  {variants.map(v => {
+                    const st = Number(v.stock_quantity ?? 0);
+                    return (
+                      <span
+                        key={v.size}
+                        style={{
+                          padding: '0.2rem 0.45rem',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          background: st === 0 ? 'rgba(244,63,94,0.2)' : 'rgba(255,255,255,0.06)',
+                          color: st === 0 ? '#F43F5E' : '#FFFFFF',
+                          fontWeight: 700
+                        }}
+                      >
+                        {v.size}: {st}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/* Mobile Action Buttons */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr auto', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(prod.id, prod.is_active)}
+                    disabled={isPending}
+                    style={{
+                      padding: '0.55rem 0.5rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      borderRadius: 'var(--radius-sm)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: prod.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                      color: prod.is_active ? '#10B981' : '#F43F5E',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {prod.is_active ? 'نشط' : 'معطل'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => handleOpenEditModal(prod)}
+                    style={{ padding: '0.55rem 0.75rem', fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', justifyContent: 'center' }}
+                  >
+                    تعديل ومخزون
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProduct(prod.id, prod.name_ar)}
+                    disabled={isPending}
+                    style={{
+                      padding: '0.55rem 0.75rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(244,63,94,0.4)',
+                      cursor: 'pointer',
+                      background: 'rgba(244,63,94,0.1)',
+                      color: '#F43F5E'
+                    }}
+                  >
+                    حذف
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {/* Product Edit / Add Modal Dialog */}
-      {isModalOpen && (
+      {mounted && isModalOpen && createPortal(
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(5, 7, 12, 0.96)',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.88)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 99999,
-          padding: '1rem'
+          zIndex: 999999,
+          padding: '1rem',
+          direction: 'rtl'
         }}>
           <div style={{
-            background: 'var(--bg-card)',
+            background: '#0B0F19',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
+            padding: '1.5rem',
             maxWidth: '780px',
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: '92vh',
             overflowY: 'auto',
             boxShadow: 'var(--shadow-glow)'
           }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '1.5rem', color: 'var(--gold-primary)' }}>
-              {editingProduct ? `⚙️ تعديل المنتج والمخزون: ${editingProduct.id}` : '➕ إضافة منتج جديد للكتالوج'}
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 900, marginBottom: '1.25rem', color: 'var(--gold-primary)' }}>
+              {editingProduct ? `تعديل المنتج والمخزون: ${editingProduct.id}` : 'إضافة منتج جديد للكتالوج'}
             </h3>
 
             {formError && (
@@ -772,7 +946,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>الاسم بالعربي</label>
                   <input type="text" value={formData.nameAr} onChange={e => setFormData({ ...formData, nameAr: e.target.value })} required style={{ width: '100%', padding: '0.75rem' }} />
@@ -783,7 +957,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 800 }}>الفئة / القسم</label>
@@ -845,18 +1019,18 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </div>
               </div>
 
-              {/* 📷 4 Images Management Section (Front + 3 Catalog Images) */}
+              {/* 4 Images Management Section (Front + 3 Catalog Images) */}
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-gold)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.8rem' }}>
                   <label style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
-                    🖼️ صور المنتج الأربعة (صورة الواجهة Front + 3 صور معرض الكتالوج)
+                    صور المنتج الأربعة (صورة الواجهة Front + 3 صور معرض الكتالوج)
                   </label>
                   <span style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10B981', color: '#10B981', fontSize: '0.72rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                    ⚡ الضغط التلقائي مفعّل (تحويل لـ WebP وتصغير أبعاد 1200px)
+                    الضغط التلقائي مفعّل (تحويل لـ WebP وتصغير أبعاد 1200px)
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   {/* Image 1: Main Front View */}
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
@@ -952,11 +1126,11 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 </div>
               </div>
 
-              {/* 📏 DYNAMIC DYNAMIC CUSTOM SIZES & STOCK MANAGEMENT SECTION */}
+              {/* DYNAMIC CUSTOM SIZES & STOCK MANAGEMENT SECTION */}
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-gold)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <label style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
-                    📏 إدارة مقاسات المنتج ومخزونها (Dynamic Sizes & Stock)
+                    إدارة مقاسات المنتج ومخزونها (Dynamic Sizes & Stock)
                   </label>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                     أضف أي مقاس تراه مناسباً (مثال: 40 للأحذية، XL للملابس)
@@ -972,10 +1146,10 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                         <button 
                           type="button" 
                           onClick={() => handleRemoveSize(item.size)} 
-                          style={{ color: '#F43F5E', fontSize: '0.75rem', fontWeight: 800, padding: '0 0.3rem' }}
+                          style={{ color: '#F43F5E', fontSize: '0.75rem', fontWeight: 800, padding: '0 0.3rem', background: 'transparent', border: 'none', cursor: 'pointer' }}
                           title="حذف هذا المقاس"
                         >
-                          ❌
+                          ✕
                         </button>
                       </div>
                       <input
@@ -1026,7 +1200,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     onChange={e => setFormData({ ...formData, isFeatured: e.target.checked })} 
                     style={{ width: '18px', height: '18px', accentColor: '#D4AF37' }}
                   />
-                  👑 منتج مميز وفاخر (VIP Gold Card) - الكارت الذهبي والسعر الأعلى
+                  منتج مميز وفاخر (VIP Gold Card) - الكارت الذهبي والسعر الأعلى
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', color: 'var(--gold-primary)' }}>
                   <input 
@@ -1035,7 +1209,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     onChange={e => setFormData({ ...formData, isBestSeller: e.target.checked })} 
                     style={{ width: '18px', height: '18px' }}
                   />
-                  إضافة لقائمة الأعلى مبيعاً 🔥 (Best Seller)
+                  إضافة لقائمة الأكثر مبيعاً (Best Seller)
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer' }}>
                   <input 
@@ -1044,51 +1218,117 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     onChange={e => setFormData({ ...formData, isNew: e.target.checked })} 
                     style={{ width: '18px', height: '18px' }}
                   />
-                  إضافة شارة كولكشن جديد ✨ (New Arrival)
+                  إضافة شارة كولكشن جديد (New Arrival)
                 </label>
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
                   إلغاء
                 </button>
                 <button type="submit" className="btn-primary" disabled={isPending} style={{ padding: '0.75rem 2rem' }}>
-                  {isPending ? 'جاري الحفظ...' : 'حفظ المنتج والمخزون 💾'}
+                  {isPending ? 'جاري الحفظ...' : 'حفظ المنتج والمخزون'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Homepage Sections CMS Modal */}
-      {isSectionsModalOpen && (
+      {/* Category Creation Modal Dialog */}
+      {mounted && isCategoryModalOpen && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.85)',
+          background: 'rgba(0, 0, 0, 0.88)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1.5rem'
+          zIndex: 9999999,
+          padding: '1rem',
+          direction: 'rtl'
         }}>
           <div style={{
-            background: 'var(--bg-card)',
+            background: '#0B0F19',
+            border: '1px solid var(--border-gold)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '1.5rem',
+            maxWidth: '480px',
+            width: '100%',
+            boxShadow: 'var(--shadow-glow)'
+          }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>إضافة قسم / فئة جديدة</span>
+              <button type="button" onClick={() => setIsCategoryModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+            </h3>
+
+            {catError && (
+              <div style={{ color: '#F43F5E', background: 'rgba(244,63,94,0.1)', padding: '0.65rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.82rem' }}>
+                {catError}
+              </div>
+            )}
+
+            <form onSubmit={handleAddCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>معرف القسم بالإنجليزية (ID - أحرف صغيرة بدون مسافات):</label>
+                <input type="text" placeholder="مثال: jackets" value={newCatId} onChange={e => setNewCatId(e.target.value.toLowerCase().trim())} required style={{ width: '100%', padding: '0.65rem' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>اسم القسم بالعربي:</label>
+                <input type="text" placeholder="مثال: الجواكت الرياضية" value={newCatNameAr} onChange={e => setNewCatNameAr(e.target.value)} required style={{ width: '100%', padding: '0.65rem' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>اسم القسم بالإنجليزي (اختياري):</label>
+                <input type="text" placeholder="مثال: Sports Jackets" value={newCatNameEn} onChange={e => setNewCatNameEn(e.target.value)} style={{ width: '100%', padding: '0.65rem' }} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button type="button" className="btn-secondary" onClick={() => setIsCategoryModalOpen(false)} style={{ padding: '0.6rem 1.25rem' }}>
+                  إلغاء
+                </button>
+                <button type="submit" className="btn-primary" disabled={isPending} style={{ padding: '0.6rem 1.5rem' }}>
+                  {isPending ? 'جاري الحفظ...' : 'إضافة القسم'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Homepage Sections CMS Modal */}
+      {mounted && isSectionsModalOpen && createPortal(
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.88)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '1rem',
+          direction: 'rtl'
+        }}>
+          <div style={{
+            background: '#0B0F19',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
+            padding: '1.5rem',
             maxWidth: '650px',
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: '92vh',
             overflowY: 'auto',
             boxShadow: 'var(--shadow-glow)'
           }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>🎛️ إدارة وترتيب أقسام وسلايدرات الواجهة</span>
-              <button type="button" onClick={() => setIsSectionsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              <span>إدارة وترتيب أقسام وسلايدرات الواجهة</span>
+              <button type="button" onClick={() => setIsSectionsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#FFF', fontSize: '1.2rem', cursor: 'pointer', padding: '0.25rem' }}>✕</button>
             </h3>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
@@ -1204,7 +1444,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                           cursor: 'pointer'
                         }}
                       >
-                        {sec.enabled ? 'ظاهر بالواجهة ✅' : 'مخفي ❌'}
+                        {sec.enabled ? 'ظاهر بالواجهة' : 'مخفي'}
                       </button>
                     </div>
                   </div>
@@ -1219,7 +1459,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                         type="text"
                         value={sec.titleAr || ''}
                         onChange={e => handleUpdateSectionField(sec.id, 'titleAr', e.target.value)}
-                        placeholder="مثال: أفضل المنتجات 🔥"
+                        placeholder="مثال: أفضل المنتجات"
                         style={{
                           width: '100%',
                           padding: '0.45rem 0.75rem',
@@ -1241,7 +1481,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                         type="text"
                         value={sec.titleEn || ''}
                         onChange={e => handleUpdateSectionField(sec.id, 'titleEn', e.target.value)}
-                        placeholder="e.g. Best Sellers 🔥"
+                        placeholder="e.g. Best Sellers"
                         style={{
                           width: '100%',
                           padding: '0.45rem 0.75rem',
@@ -1263,7 +1503,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
             {/* Quick Add Available Categories to Homepage Sections */}
             <div style={{ marginBottom: '1.75rem', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)' }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.5rem' }}>
-                ➕ إضافة فئات الكتالوج الأخرى إلى الصفحة الرئيسية:
+                إضافة فئات الكتالوج الأخرى إلى الصفحة الرئيسية:
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {cleanCategories.map(cat => {
@@ -1305,7 +1545,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 disabled={isSavingSections}
                 style={{ padding: '0.65rem 1.75rem' }}
               >
-                {isSavingSections ? 'جاري الحفظ...' : '💾 حفظ وتحديث الواجهة'}
+                {isSavingSections ? 'جاري الحفظ...' : 'حفظ وتحديث الواجهة'}
               </button>
             </div>
           </div>

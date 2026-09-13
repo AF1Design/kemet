@@ -35,43 +35,43 @@ export default async function AdminDashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
       
       {/* Top Banner Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+      <div className="admin-stats-grid">
         
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>إجمالي المنتجات</span>
-            <span style={{ fontSize: '1.2rem', color: 'var(--gold-primary)', fontWeight: 800 }}>[كتالوج]</span>
+        <div className="admin-stats-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>إجمالي المنتجات</span>
+            <span style={{ fontSize: '1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>[كتالوج]</span>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--gold-primary)' }}>{totalProducts}</div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>منتجات في الكتالوج</span>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--gold-primary)' }}>{totalProducts}</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>منتجات في الكتالوج</span>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>المنتجات النشطة</span>
-            <span style={{ fontSize: '1.2rem', color: '#10B981', fontWeight: 800 }}>[مفعل]</span>
+        <div className="admin-stats-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>المنتجات النشطة</span>
+            <span style={{ fontSize: '1rem', color: '#10B981', fontWeight: 800 }}>[مفعل]</span>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#10B981' }}>{activeProducts}</div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>تعرض حالياً للزوار</span>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.4rem', fontWeight: 900, color: '#10B981' }}>{activeProducts}</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>تعرض حالياً للزوار</span>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>الفئات الرئيسية</span>
-            <span style={{ fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 800 }}>[أقسام]</span>
+        <div className="admin-stats-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>الفئات الرئيسية</span>
+            <span style={{ fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 800 }}>[أقسام]</span>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--text-primary)' }}>{totalCategories}</div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>أطقم / جيم / شورتات</span>
+          <div className="admin-stats-card-val" style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--text-primary)' }}>{totalCategories}</div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>أطقم / جيم / شورتات</span>
         </div>
 
         <Link href="/admin/abandoned-carts" style={{ textDecoration: 'none' }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem', height: '100%', transition: 'border-color 0.2s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 800 }}>السلات المتروكة</span>
-              <span style={{ fontSize: '1.2rem', color: '#F59E0B', fontWeight: 800 }}>[متابعة]</span>
+          <div className="admin-stats-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '1.75rem', height: '100%', transition: 'border-color 0.2s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>السلات المتروكة</span>
+              <span style={{ fontSize: '1rem', color: '#F59E0B', fontWeight: 800 }}>[متابعة]</span>
             </div>
-            <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#F59E0B' }}>{abandonedCartsCount}</div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>سلات نشطة قيد المتابعة</span>
+            <div className="admin-stats-card-val" style={{ fontSize: '2.4rem', fontWeight: 900, color: '#F59E0B' }}>{abandonedCartsCount}</div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>سلات نشطة قيد المتابعة</span>
           </div>
         </Link>
 

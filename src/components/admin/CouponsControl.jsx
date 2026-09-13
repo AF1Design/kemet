@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   getCouponsAction, 
   addOrUpdateCouponAction, 
@@ -14,10 +15,30 @@ export function CouponsControl() {
   const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
   const [statusMsg, setStatusMsg] = useState(null);
+
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (isModalOpen) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.documentElement.style.overflow = 'unset';
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.documentElement.style.overflow = 'unset';
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen]);
 
   // Form State
   const [code, setCode] = useState('');
@@ -566,7 +587,7 @@ export function CouponsControl() {
       </div>
 
       {/* Add / Edit Coupon Modal */}
-      {isModalOpen && (
+      {mounted && isModalOpen && createPortal(
         <div 
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
@@ -574,13 +595,14 @@ export function CouponsControl() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(0,0,0,0.88)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
-            padding: '2rem 1rem',
+            zIndex: 999999,
+            padding: '1rem',
             overflowY: 'auto'
           }}
         >
@@ -588,10 +610,10 @@ export function CouponsControl() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border-gold-bright)',
             borderRadius: 'var(--radius-lg)',
-            padding: '1.75rem 2rem',
+            padding: 'clamp(1rem, 3vw, 1.75rem)',
             maxWidth: '560px',
             width: '100%',
-            maxHeight: '85vh',
+            maxHeight: '92vh',
             overflowY: 'auto',
             boxShadow: 'var(--shadow-glow)',
             direction: 'rtl',
@@ -648,37 +670,44 @@ export function CouponsControl() {
                     fontSize: '0.95rem', 
                     textTransform: 'uppercase', 
                     direction: 'ltr', 
-                    textAlign: 'left',
-                    opacity: modalMode === 'edit' ? 0.7 : 1,
-                    cursor: modalMode === 'edit' ? 'not-allowed' : 'text'
+                    letterSpacing: '1px',
+                    fontWeight: 900,
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-color)',
+                    background: modalMode === 'edit' ? 'rgba(255,255,255,0.05)' : 'var(--bg-deep)',
+                    color: 'var(--gold-primary)'
                   }}
                 />
-                {modalMode === 'edit' && (
-                  <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.78rem' }}>
-                    رمز الكود ثابت ولا يمكن تغييره للحفاظ على سجل وتحليلات المبيعات السابقة.
-                  </small>
-                )}
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                  نوع الخصم ونظام التسعير:
+                  نوع الخصم:
                 </label>
                 <select
                   value={type}
                   onChange={e => setType(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', background: 'var(--bg-dark)', color: '#FFF', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-md)' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '0.9rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-deep)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer'
+                  }}
                 >
-                  <option value="fixed_price">سعر محدد للتيشيرت (مثال: 220 ج.م للقطعة بدل 450)</option>
-                  <option value="percentage">نسبة مئوية من السعر (مثال: 10% أو 15%)</option>
-                  <option value="fixed">مبلغ خصم ثابت (مثال: 50 ج.م من الإجمالي)</option>
+                  <option value="fixed_price">سعر ثابت للقطعة (Fixed Price per Piece - مثل 220 ج.م)</option>
+                  <option value="percentage">نسبة مئوية (Percentage %)</option>
+                  <option value="fixed_amount">مبلغ خصم كاش (Fixed Amount EGP)</option>
                 </select>
               </div>
 
               {type === 'fixed_price' && (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                    سعر التيشيرت المطلوب عند استخدام الكود (ج.م):
+                    السعر الثابت الجديد لكل تيشيرت (ج.م):
                   </label>
                   <input
                     type="number"
@@ -687,10 +716,10 @@ export function CouponsControl() {
                     placeholder="220"
                     value={targetPrice}
                     onChange={e => setTargetPrice(e.target.value)}
-                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.95rem' }}
+                    style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', fontWeight: 800 }}
                   />
                   <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem' }}>
-                    أي عميل يدخل هذا الكود، سيتم حساب التيشيرت بسعر {targetPrice} ج.م بدلاً من السعر الأصلي + مصاريف الشحن للمحافظة.
+                    سيتم تسعير كل تيشيرت يطلبه العميل بهذا السعر المباشر (مثل: القطعة بـ 220 ج.م).
                   </small>
                 </div>
               )}
@@ -704,19 +733,19 @@ export function CouponsControl() {
                     type="number"
                     required
                     min="1"
-                    max="90"
+                    max="100"
                     placeholder="10"
                     value={percentageValue}
                     onChange={e => setPercentageValue(e.target.value)}
-                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.95rem' }}
+                    style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', fontWeight: 800 }}
                   />
                 </div>
               )}
 
-              {type === 'fixed' && (
+              {type === 'fixed_amount' && (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
-                    مبلغ الخصم الثابت (ج.م):
+                    مبلغ الخصم الإجمالي (ج.م):
                   </label>
                   <input
                     type="number"
@@ -725,15 +754,22 @@ export function CouponsControl() {
                     placeholder="50"
                     value={fixedAmountValue}
                     onChange={e => setFixedAmountValue(e.target.value)}
-                    style={{ width: '100%', padding: '0.75rem', fontSize: '0.95rem' }}
+                    style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', fontWeight: 800 }}
                   />
                 </div>
               )}
 
-              {/* Setting 1: Max Uses Per User / Account */}
+              {/* Advanced Anti-Exploitation & Bundle Controls */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--gold-primary)', display: 'block', marginBottom: '0.75rem' }}>
+                  إعدادات حماية العرض وضبط الباقات (Anti-Abuse Controls):
+                </span>
+              </div>
+
+              {/* Setting 1: Max Uses Per User */}
               <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
                 <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.35rem' }}>
-                  الحد الأقصى لاستخدام الكود لكل عميل / حساب:
+                  الحد الأقصى للاستخدام لكل عميل / حساب / رقم هاتف:
                 </label>
                 <input
                   type="number"
@@ -844,7 +880,8 @@ export function CouponsControl() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
