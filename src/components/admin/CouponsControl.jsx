@@ -7,6 +7,7 @@ import {
   addOrUpdateCouponAction, 
   deleteCouponAction, 
   toggleCouponStatusAction,
+  toggleCouponSuggestedAction,
   getCouponAnalyticsAction
 } from '../../app/admin/actions';
 import { DEFAULT_COUPONS } from '../../lib/coupons';
@@ -51,6 +52,8 @@ export function CouponsControl() {
   const [maxUsesPerUser, setMaxUsesPerUser] = useState(1);
   const [maxDiscountedPieces, setMaxDiscountedPieces] = useState(1);
   const [minOrderPieces, setMinOrderPieces] = useState(1);
+  const [isSuggested, setIsSuggested] = useState(false);
+  const [suggestionLabel, setSuggestionLabel] = useState('');
 
   // Analytics & Partner Commission State
   const [selectedAnalyticsCode, setSelectedAnalyticsCode] = useState('KEMETFAMILY');
@@ -131,6 +134,8 @@ export function CouponsControl() {
     setMaxUsesPerUser(1);
     setMaxDiscountedPieces(1);
     setMinOrderPieces(1);
+    setIsSuggested(false);
+    setSuggestionLabel('');
     setStatusMsg(null);
     setIsModalOpen(true);
   };
@@ -147,6 +152,8 @@ export function CouponsControl() {
     setMaxUsesPerUser(c.maxUsesPerUser != null ? c.maxUsesPerUser : 1);
     setMaxDiscountedPieces(c.maxDiscountedPieces != null ? c.maxDiscountedPieces : '');
     setMinOrderPieces(c.minOrderPieces != null ? c.minOrderPieces : (c.minPieces != null ? c.minPieces : 1));
+    setIsSuggested(c.isSuggested === true);
+    setSuggestionLabel(c.suggestionLabel || '');
     setStatusMsg(null);
     setIsModalOpen(true);
   };
@@ -172,6 +179,8 @@ export function CouponsControl() {
         maxUsesPerUser: Number(maxUsesPerUser) > 0 ? Number(maxUsesPerUser) : 1,
         minOrderPieces: Number(minOrderPieces) > 0 ? Number(minOrderPieces) : 1,
         maxDiscountedPieces: maxDiscountedPieces && Number(maxDiscountedPieces) > 0 ? Number(maxDiscountedPieces) : null,
+        isSuggested: isSuggested,
+        suggestionLabel: suggestionLabel.trim() || null,
         isActive: true
       };
 
@@ -189,6 +198,15 @@ export function CouponsControl() {
   const handleToggleStatus = (couponCode) => {
     startTransition(async () => {
       const res = await toggleCouponStatusAction(couponCode);
+      if (res.success && res.coupons) {
+        setCoupons(res.coupons);
+      }
+    });
+  };
+
+  const handleToggleSuggested = (couponCode) => {
+    startTransition(async () => {
+      const res = await toggleCouponSuggestedAction(couponCode);
       if (res.success && res.coupons) {
         setCoupons(res.coupons);
       }
@@ -272,6 +290,7 @@ export function CouponsControl() {
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الوصف / الملاحظات</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الاستخدامات المتبقية</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحالة</th>
+                <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800, textAlign: 'center' }}>مقترح في صفحة الدفع</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800, textAlign: 'center' }}>إجراءات</th>
               </tr>
             </thead>
@@ -337,6 +356,28 @@ export function CouponsControl() {
                       }}>
                         {c.isActive ? 'مفعّل ونشط' : 'متوقف'}
                       </span>
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSuggested(c.code)}
+                        disabled={isPending}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          border: c.isSuggested ? '1px solid #10B981' : '1px solid rgba(255,255,255,0.15)',
+                          background: c.isSuggested ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                          color: c.isSuggested ? '#10B981' : 'var(--text-secondary)',
+                          transition: 'all 0.2s ease',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="اضغط للتفعيل أو الإلغاء كاقتراح سريع بنقرة واحدة في صفحة الدفع"
+                      >
+                        {c.isSuggested ? 'معروض للعميل' : 'مخفي'}
+                      </button>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -819,6 +860,37 @@ export function CouponsControl() {
                 <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
                   يشترط أن يحتوي الطلب على هذا العدد من القطع أو أكثر حتى يقبل الكود التفعيل في السلة وصفحة الدفع (الافتراضي: 1 قطعة).
                 </small>
+              </div>
+
+              {/* Setting 4: Suggest Coupon in Checkout */}
+              <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 800, color: '#10B981', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={isSuggested}
+                    onChange={e => setIsSuggested(e.target.checked)}
+                    style={{ width: '1.2rem', height: '1.2rem', accentColor: '#10B981', cursor: 'pointer' }}
+                  />
+                  إظهار هذا الكود كاقتراح سريع بنقرة واحدة للعميل في صفحة الدفع
+                </label>
+                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.4rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  عند تفعيل هذا الخيار، سيظهر زر جاهز للعميل في صفحة الدفع يضغط عليه لتطبيق الكود فوراً. يمكنك إيقافه أو تفعيله في أي وقت.
+                </small>
+
+                {isSuggested && (
+                  <div style={{ marginTop: '0.75rem', borderTop: '1px dashed rgba(16, 185, 129, 0.25)', paddingTop: '0.65rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--gold-primary)', marginBottom: '0.35rem' }}>
+                      نص الزرار المقترح (اختياري - سيظهر على الزر للعميل):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="مثال: عرض القطعتين (225 ج.م للقطعة) - كود KEMETMISR"
+                      value={suggestionLabel}
+                      onChange={e => setSuggestionLabel(e.target.value)}
+                      style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

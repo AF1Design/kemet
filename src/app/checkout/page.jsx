@@ -672,49 +672,46 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* 1-Click Fast Apply Offer Chips */}
-                <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                    عروض سريعة بضغطة واحدة:
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyCoupon('KEMETMISR')}
-                      style={{
-                        background: appliedCoupon?.code === 'KEMETMISR' ? 'var(--gold-primary)' : 'rgba(212, 175, 55, 0.12)',
-                        color: appliedCoupon?.code === 'KEMETMISR' ? '#000' : 'var(--gold-primary)',
-                        border: '1px solid var(--border-gold)',
-                        padding: '0.4rem 0.85rem',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '0.82rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        textAlign: 'right'
-                      }}
-                    >
-                      عرض القطعتين (225 ج.م للقطعة) - كود KEMETMISR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyCoupon('KEMET22')}
-                      style={{
-                        background: appliedCoupon?.code === 'KEMET22' ? 'var(--gold-primary)' : 'rgba(212, 175, 55, 0.12)',
-                        color: appliedCoupon?.code === 'KEMET22' ? '#000' : 'var(--gold-primary)',
-                        border: '1px solid var(--border-gold)',
-                        padding: '0.4rem 0.85rem',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '0.82rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        textAlign: 'right'
-                      }}
-                    >
-                      عرض القطعة الواحدة (290 ج.م) - كود KEMET22
-                    </button>
-                  </div>
-                </div>
+                {(() => {
+                  const suggestedCoupons = (availableCoupons || []).filter(c => c.isActive && c.isSuggested);
+                  if (suggestedCoupons.length === 0) return null;
+
+                  return (
+                    <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                        {lang === 'ar' ? 'عروض سريعة بضغطة واحدة:' : 'Quick offers (1-click):'}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {suggestedCoupons.map((c) => {
+                          const isSelected = appliedCoupon?.code?.toUpperCase() === c.code?.toUpperCase();
+                          const label = c.suggestionLabel || c.description || (c.type === 'fixed_price' ? `سعر القطعة ${c.targetPrice || c.value} ج.م - كود ${c.code}` : `كود ${c.code}`);
+
+                          return (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => handleApplyCoupon(c.code)}
+                              style={{
+                                background: isSelected ? 'var(--gold-primary)' : 'rgba(212, 175, 55, 0.12)',
+                                color: isSelected ? '#000' : 'var(--gold-primary)',
+                                border: '1px solid var(--border-gold)',
+                                padding: '0.4rem 0.85rem',
+                                borderRadius: 'var(--radius-sm)',
+                                fontSize: '0.82rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                textAlign: 'right'
+                              }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {couponMsg && (
                   <div style={{

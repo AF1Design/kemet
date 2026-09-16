@@ -1792,7 +1792,11 @@ export async function getCouponsAction() {
         if (!hasFamily) {
           parsed.unshift(DEFAULT_COUPONS[0]);
         }
-        return { success: true, coupons: parsed };
+        const normalized = parsed.map(c => ({
+          ...c,
+          isSuggested: c.isSuggested !== undefined ? Boolean(c.isSuggested) : (c.code === 'KEMETMISR' || c.code === 'KEMET22')
+        }));
+        return { success: true, coupons: normalized };
       }
     }
   } catch (err) {
@@ -1868,6 +1872,8 @@ export async function addOrUpdateCouponAction(couponData) {
       value: value,
       description: couponData.description ? String(couponData.description).trim() : '',
       isActive: couponData.isActive !== false,
+      isSuggested: couponData.isSuggested === true,
+      suggestionLabel: couponData.suggestionLabel ? String(couponData.suggestionLabel).trim() : null,
       totalMaxUses: Number(couponData.totalMaxUses || 1000),
       remainingUses: Number(couponData.remainingUses ?? couponData.totalMaxUses ?? 1000),
       maxUsesPerUser: maxUsesPerUser,
@@ -1887,6 +1893,8 @@ export async function addOrUpdateCouponAction(couponData) {
           return {
             ...c,
             ...newCoupon,
+            isSuggested: couponData.isSuggested !== undefined ? Boolean(couponData.isSuggested) : (c.isSuggested ?? false),
+            suggestionLabel: couponData.suggestionLabel !== undefined ? couponData.suggestionLabel : (c.suggestionLabel || null),
             usedBy: c.usedBy || [],
             userUsage: c.userUsage || {},
             orders: c.orders || [],
@@ -1960,6 +1968,34 @@ export async function toggleCouponStatusAction(couponCode) {
     return { success: true, coupons: updated };
   } catch (err) {
     console.error('toggleCouponStatusAction error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Server Action: Toggles whether a coupon is suggested to customers in checkout
+ */
+export async function toggleCouponSuggestedAction(couponCode) {
+  try {
+    const res = await getCouponsAction();
+    const currentCoupons = res.coupons || DEFAULT_COUPONS;
+    const cleanCode = String(couponCode).trim().toUpperCase();
+
+    const updated = currentCoupons.map(c => {
+      if (c.code.toUpperCase() === cleanCode) {
+        return { ...c, isSuggested: !c.isSuggested };
+      }
+      return c;
+    });
+
+    const saveRes = await saveCouponsListAction(updated);
+    if (!saveRes.success) {
+      return { success: false, error: saveRes.error || 'فشل تعديل حالة اقتراح الكوبون' };
+    }
+
+    return { success: true, coupons: updated };
+  } catch (err) {
+    console.error('toggleCouponSuggestedAction error:', err);
     return { success: false, error: err.message };
   }
 }
