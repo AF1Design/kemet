@@ -324,7 +324,7 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (cart.length === 0 || isSubmitting) return;
 
