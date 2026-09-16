@@ -1248,18 +1248,32 @@ export async function sendMassPromoEmailAction(params) {
     const supabaseAdmin = getAdminSupabase();
     const emailSet = new Set();
 
-    // 1. Safe fetch registered users from Supabase Auth
+    // 1. Safe fetch registered users from Supabase Auth (with full pagination limit up to 1000)
     try {
-      const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers();
+      const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (!userErr && userData && userData.users) {
         userData.users.forEach(u => {
-          if (u.email && u.email.includes('@')) {
+          if (u.email && u.email.includes('@') && u.email !== 'admin@kemet.eg') {
             emailSet.add(u.email.trim().toLowerCase());
           }
         });
       }
     } catch (authErr) {
       console.warn('Auth users fetch note:', authErr);
+    }
+
+    // 2. Also fetch registered customer emails from profiles table
+    try {
+      const { data: profiles, error: profErr } = await supabaseAdmin.from('profiles').select('email, role');
+      if (!profErr && profiles) {
+        profiles.forEach(p => {
+          if (p.email && p.email.includes('@') && p.role !== 'admin' && p.email !== 'admin@kemet.eg') {
+            emailSet.add(p.email.trim().toLowerCase());
+          }
+        });
+      }
+    } catch (profErr) {
+      console.warn('Profiles email fetch note:', profErr);
     }
 
     // Default system support email
@@ -1470,24 +1484,35 @@ export async function saveBannerSettingsAction({ isVisible, textAr, textEn = '' 
 export async function getRegisteredUsersStatsAction() {
   try {
     const supabaseAdmin = getAdminSupabase();
-    let userCount = 0;
+    const emailSet = new Set();
 
     try {
-      const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers();
+      const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (!userErr && userData && userData.users) {
-        userCount = userData.users.length;
+        userData.users.forEach(u => {
+          if (u.email && u.email.includes('@') && u.email !== 'admin@kemet.eg') {
+            emailSet.add(u.email.trim().toLowerCase());
+          }
+        });
       }
     } catch (e) {
       console.warn('listUsers note:', e);
     }
 
-    // Fallback/sync check profiles if listUsers returned 0
-    if (userCount === 0) {
-      const { count } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true });
-      userCount = count || 0;
+    try {
+      const { data: profiles, error: profErr } = await supabaseAdmin.from('profiles').select('email, role');
+      if (!profErr && profiles) {
+        profiles.forEach(p => {
+          if (p.email && p.email.includes('@') && p.role !== 'admin' && p.email !== 'admin@kemet.eg') {
+            emailSet.add(p.email.trim().toLowerCase());
+          }
+        });
+      }
+    } catch (profErr) {
+      console.warn('Profiles fetch note:', profErr);
     }
 
-    return { success: true, count: userCount };
+    return { success: true, count: emailSet.size };
   } catch (err) {
     console.error('getRegisteredUsersStatsAction error:', err);
     return { success: false, count: 0 };

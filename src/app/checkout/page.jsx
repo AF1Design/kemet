@@ -419,10 +419,12 @@ export default function CheckoutPage() {
       }
     }
 
-    // Instant Non-blocking Server Save (Zero Delay UX)
-    createOrderAction(newOrder).catch(err => {
-      console.warn('Background order save note:', err);
-    });
+    // Reliable Server Save
+    try {
+      await createOrderAction(newOrder);
+    } catch (err) {
+      console.warn('Order save note:', err);
+    }
 
     // Marketing Analytics: Track Purchase Event (Idempotent by Order ID)
     trackPurchase(newOrder);
