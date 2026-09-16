@@ -54,6 +54,7 @@ export function CouponsControl() {
   const [minOrderPieces, setMinOrderPieces] = useState(1);
   const [isSuggested, setIsSuggested] = useState(false);
   const [suggestionLabel, setSuggestionLabel] = useState('');
+  const [originalCode, setOriginalCode] = useState(null);
 
   // Analytics & Partner Commission State
   const [selectedAnalyticsCode, setSelectedAnalyticsCode] = useState('KEMETFAMILY');
@@ -125,6 +126,7 @@ export function CouponsControl() {
   const openAddModal = () => {
     setModalMode('add');
     setCode('');
+    setOriginalCode(null);
     setType('fixed_price');
     setTargetPrice(220);
     setPercentageValue(10);
@@ -143,6 +145,7 @@ export function CouponsControl() {
   const handleEditCoupon = (c) => {
     setModalMode('edit');
     setCode(c.code);
+    setOriginalCode(c.code);
     setType(c.type || 'fixed_price');
     setTargetPrice(c.targetPrice || c.value || 220);
     setPercentageValue(c.type === 'percentage' ? (c.value || 10) : 10);
@@ -170,6 +173,7 @@ export function CouponsControl() {
 
       const payload = {
         code: code.trim().toUpperCase(),
+        originalCode: originalCode,
         type: type,
         targetPrice: type === 'fixed_price' ? Number(targetPrice) : null,
         value: val,
@@ -630,9 +634,6 @@ export function CouponsControl() {
       {/* Add / Edit Coupon Modal */}
       {mounted && isModalOpen && createPortal(
         <div 
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsModalOpen(false);
-          }}
           style={{
             position: 'fixed',
             inset: 0,

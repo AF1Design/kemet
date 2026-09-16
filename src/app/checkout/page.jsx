@@ -275,17 +275,10 @@ export default function CheckoutPage() {
     // 3. Check minimum order pieces requirement
     const minPiecesRequired = Number(coupon.minOrderPieces) > 0 ? Number(coupon.minOrderPieces) : 1;
     if (totalCartPieces < minPiecesRequired) {
-      if (code === 'KEMETMISR' && minPiecesRequired === 2) {
-        setCouponMsg({
-          type: 'error',
-          text: `عذراً، كود KEMETMISR يشترط طلب قطعتين على الأقل للاستفادة من سعر 225 ج.م للتيشيرت (عدد القطع الحالية في السلة: ${totalCartPieces}). يمكنك إضافة قطعة أخرى أو استخدام كود KEMET22 للقطعة الواحدة بسعر 290 ج.م.`
-        });
-      } else {
-        setCouponMsg({
-          type: 'error',
-          text: `يشترط هذا الكود وجود ${minPiecesRequired} قطع على الأقل في السلة لتطبيقه (لديك حالياً ${totalCartPieces} قطعة).`
-        });
-      }
+      setCouponMsg({
+        type: 'error',
+        text: `يشترط كود (${coupon.code}) طلب ${minPiecesRequired} قطع على الأقل في السلة للاستفادة من العرض (لديك حالياً ${totalCartPieces} قطعة).`
+      });
       return;
     }
 

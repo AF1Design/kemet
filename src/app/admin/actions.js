@@ -1787,14 +1787,9 @@ export async function getCouponsAction() {
     if (!error && data && data.name_ar) {
       const parsed = JSON.parse(data.name_ar);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure KEMETFAMILY code exists in the store
-        const hasFamily = parsed.some(c => c.code.toUpperCase() === 'KEMETFAMILY');
-        if (!hasFamily) {
-          parsed.unshift(DEFAULT_COUPONS[0]);
-        }
         const normalized = parsed.map(c => ({
           ...c,
-          isSuggested: c.isSuggested !== undefined ? Boolean(c.isSuggested) : (c.code === 'KEMETMISR' || c.code === 'KEMET22')
+          isSuggested: c.isSuggested !== undefined ? Boolean(c.isSuggested) : false
         }));
         return { success: true, coupons: normalized };
       }
@@ -1844,6 +1839,7 @@ export async function addOrUpdateCouponAction(couponData) {
     const res = await getCouponsAction();
     const currentCoupons = res.coupons || DEFAULT_COUPONS;
     const cleanCode = String(couponData.code || '').trim().toUpperCase();
+    const originalCode = String(couponData.originalCode || '').trim().toUpperCase();
 
     if (!cleanCode) {
       return { success: false, error: 'كود الخصم مطلوب.' };
@@ -1883,7 +1879,8 @@ export async function addOrUpdateCouponAction(couponData) {
       userUsage: couponData.userUsage || {}
     };
 
-    const existingIndex = currentCoupons.findIndex(c => c.code.toUpperCase() === cleanCode);
+    const matchTarget = originalCode || cleanCode;
+    const existingIndex = currentCoupons.findIndex(c => c.code.toUpperCase() === matchTarget);
     let updatedList = [];
 
     if (existingIndex > -1) {
