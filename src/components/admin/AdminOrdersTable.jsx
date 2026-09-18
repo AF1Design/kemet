@@ -4,6 +4,7 @@ import React, { useState, useEffect, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { updateOrderStatusAction, deleteOrderAction, sendDirectCustomerEmailAction } from '../../app/admin/actions';
 import { AdminOrderEditModal } from './AdminOrderEditModal';
+import { SupplierPreparationManifestModal } from './SupplierPreparationManifestModal';
 
 const STATUS_OPTIONS = [
   'جديد',
@@ -136,11 +137,14 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
   const [emailMessage, setEmailMessage] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
+  // Supplier Preparation Manifest Modal State
+  const [isManifestOpen, setIsManifestOpen] = useState(false);
+
   const [isPending, startTransition] = useTransition();
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder;
+    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder || isManifestOpen;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -149,7 +153,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder]);
+  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder, editingOrder, isManifestOpen]);
 
   const handleCopyConfirmation = (order) => {
     const text = generateOrderConfirmationText(order);
@@ -337,6 +341,42 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
     <div>
       {/* Search & Filter Controls */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-gold-bright)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', marginBottom: '2rem', boxShadow: 'var(--shadow-glow)' }}>
+        
+        {/* Top Header Row with Manifest Button */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
+              إدارة ومتابعة طلبات المتجر
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '0.25rem 0 0 0' }}>
+              ابحث عن أي طلب برقم الهاتف أو الاسم أو المحافظة أو فلتر بحسب الحالة
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsManifestOpen(true)}
+            className="btn-primary"
+            style={{
+              padding: '0.75rem 1.4rem',
+              fontSize: '0.92rem',
+              fontWeight: 900,
+              background: 'var(--gold-gradient)',
+              color: '#000',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 14px rgba(212, 175, 55, 0.35)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            شيت تحضير طلبيات المورد (تجميع المقاسات)
+          </button>
+        </div>
+
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
           
           <input
@@ -1205,6 +1245,14 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
             order_items: updatedOrder.order_items || updatedOrder.items
           } : o));
         }}
+      />
+
+      {/* Supplier Preparation Manifest Modal */}
+      <SupplierPreparationManifestModal
+        isOpen={isManifestOpen}
+        onClose={() => setIsManifestOpen(false)}
+        orders={orders}
+        catalogProducts={catalogProducts}
       />
     </div>
   );
