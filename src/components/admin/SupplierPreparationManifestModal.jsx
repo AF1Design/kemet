@@ -11,7 +11,7 @@ export function SupplierPreparationManifestModal({
   orders = [],
   catalogProducts = []
 }) {
-  const [statusFilter, setStatusFilter] = useState('unshipped'); // 'unshipped' | 'new' | 'processing' | 'all'
+  const [statusFilter, setStatusFilter] = useState('unshipped'); // 'unshipped' | 'new' | 'processing' | 'delivered' | 'all'
   const [supplierPhone, setSupplierPhone] = useState('01018237667');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
@@ -32,14 +32,18 @@ export function SupplierPreparationManifestModal({
   const relevantOrders = useMemo(() => {
     return (orders || []).filter(o => {
       const st = (o.status || '').trim();
+      const lower = st.toLowerCase();
       if (statusFilter === 'unshipped') {
-        return st === 'جديد' || st === 'جاري التجهيز' || st === 'pending' || st === 'processing';
+        return st === 'جديد' || st === 'جاري التجهيز' || lower === 'pending' || lower === 'processing';
       }
       if (statusFilter === 'new') {
-        return st === 'جديد' || st === 'pending';
+        return st === 'جديد' || lower === 'pending';
       }
       if (statusFilter === 'processing') {
-        return st === 'جاري التجهيز' || st === 'processing';
+        return st === 'جاري التجهيز' || lower === 'processing';
+      }
+      if (statusFilter === 'delivered') {
+        return st === 'تم التسليم' || lower === 'delivered' || st === 'تم التوصيل' || st === 'مكتمل';
       }
       return true; // 'all'
     });
@@ -88,16 +92,22 @@ export function SupplierPreparationManifestModal({
     return { manifestList: list, totalPiecesCount: totalPieces, sizeTotals: sTotals };
   }, [relevantOrders, productImagesMap]);
 
-  // Generate WhatsApp message text for supplier
+  // Generate WhatsApp message text for supplier or inventory report
   const whatsappMessage = useMemo(() => {
     if (manifestList.length === 0) {
-      return 'لا توجد طلبيات معلقة حالياً في شيت التجهيز.';
+      return statusFilter === 'delivered'
+        ? 'لا توجد طلبيات مسجلة بحالة تم التسليم حالياً.'
+        : 'لا توجد طلبيات معلقة حالياً في شيت التجهيز.';
     }
 
     const lines = [];
     lines.push('السلام عليكم ورحمة الله،');
     lines.push('مع حضرتك متجر كيميت');
-    lines.push(`بيان طلبيات البضاعة المطلوب تجهيزها وتوريدها (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة):`);
+    if (statusFilter === 'delivered') {
+      lines.push(`بيان جرد الطلبيات المسلَّمة للعملاء (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة تم تسليمها):`);
+    } else {
+      lines.push(`بيان طلبيات البضاعة المطلوب تجهيزها وتوريدها (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة):`);
+    }
     lines.push('');
 
     manifestList.forEach((item, idx) => {
@@ -111,11 +121,16 @@ export function SupplierPreparationManifestModal({
     });
 
     lines.push('----------------------------------------');
-    lines.push(`إجمالي عدد التيشيرتات المطلوب توريدها: ${totalPiecesCount} قطعة.`);
-    lines.push('برجاء تأكيد استلام البيان والبدء في التجهيز.');
+    if (statusFilter === 'delivered') {
+      lines.push(`إجمالي عدد التيشيرتات المسلَّمة: ${totalPiecesCount} قطعة.`);
+      lines.push('كشف جرد رسمي لمتجر كيميت.');
+    } else {
+      lines.push(`إجمالي عدد التيشيرتات المطلوب توريدها: ${totalPiecesCount} قطعة.`);
+      lines.push('برجاء تأكيد استلام البيان والبدء في التجهيز.');
+    }
 
     return lines.join('\n');
-  }, [manifestList, totalPiecesCount]);
+  }, [manifestList, totalPiecesCount, statusFilter]);
 
   const handleCopyText = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -212,10 +227,12 @@ export function SupplierPreparationManifestModal({
         >
           <div>
             <h3 style={{ fontSize: 'clamp(1.2rem, 2.5vw, 1.55rem)', fontWeight: 900, color: 'var(--gold-primary)', margin: 0 }}>
-              شيت تحضير وتوريد البضاعة من المصنع
+              {statusFilter === 'delivered' ? 'شيت جرد الطلبيات المسلَّمة' : 'شيت تحضير وتوريد البضاعة من المصنع'}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.35rem 0 0 0' }}>
-              كشف مجمع وفوري بجميع موديلات ومقاسات التيشيرتات المطلوبة في طلبيات المتجر الحالية
+              {statusFilter === 'delivered'
+                ? 'كشف جرد تفصيلي بحسب الموديلات والمقاسات لكافة الطلبيات التي تم تسليمها للعملاء بالفعل'
+                : 'كشف مجمع وفوري بجميع موديلات ومقاسات التيشيرتات المطلوبة في طلبيات المتجر الحالية'}
             </p>
           </div>
 
@@ -257,7 +274,7 @@ export function SupplierPreparationManifestModal({
             }}
           >
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', fontWeight: 700 }}>
-              إجمالي القطع المطلوبة
+              {statusFilter === 'delivered' ? 'إجمالي القطع المسلَّمة (جرد)' : 'إجمالي القطع المطلوبة'}
             </span>
             <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
               {totalPiecesCount} قطعة
@@ -291,7 +308,7 @@ export function SupplierPreparationManifestModal({
             }}
           >
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', fontWeight: 700 }}>
-              عدد الطلبيات المشمولة
+              {statusFilter === 'delivered' ? 'عدد الطلبيات المسلَّمة' : 'عدد الطلبيات المشمولة'}
             </span>
             <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FFF' }}>
               {relevantOrders.length} أوردر
@@ -322,6 +339,7 @@ export function SupplierPreparationManifestModal({
                 { id: 'unshipped', label: 'غير المشحونة (جديد + جاري التجهيز)' },
                 { id: 'new', label: 'الجديدة فقط' },
                 { id: 'processing', label: 'جاري التجهيز فقط' },
+                { id: 'delivered', label: 'تم التسليم (للجرد)' },
                 { id: 'all', label: 'جميع الطلبات' }
               ].map(f => (
                 <button
@@ -408,7 +426,7 @@ export function SupplierPreparationManifestModal({
                 transition: 'all 0.2s ease'
               }}
             >
-              مراسلة المورد عبر واتساب مباشرة
+              {statusFilter === 'delivered' ? 'مراسلة المورد / الإدارة ببيان الجرد عبر واتساب' : 'مراسلة المورد عبر واتساب مباشرة'}
             </button>
 
             <button
@@ -427,7 +445,7 @@ export function SupplierPreparationManifestModal({
                 cursor: manifestList.length === 0 ? 'not-allowed' : 'pointer'
               }}
             >
-              {copySuccess ? 'تم نسخ البيان بنجاح' : 'نسخ نص البيان للواتساب'}
+              {copySuccess ? 'تم نسخ البيان بنجاح' : (statusFilter === 'delivered' ? 'نسخ بيان الجرد للواتساب' : 'نسخ نص البيان للواتساب')}
             </button>
 
             <button
@@ -442,7 +460,7 @@ export function SupplierPreparationManifestModal({
                 cursor: manifestList.length === 0 ? 'not-allowed' : 'pointer'
               }}
             >
-              طباعة الشيت
+              {statusFilter === 'delivered' ? 'طباعة كشف الجرد' : 'طباعة الشيت'}
             </button>
           </div>
         </div>
@@ -459,7 +477,9 @@ export function SupplierPreparationManifestModal({
               color: 'var(--text-secondary)'
             }}
           >
-            لا توجد طلبيات مطابقة للفلتر المحدد حالياً. جميع الطلبات مشحونة أو لا توجد منتجات جديدة.
+            {statusFilter === 'delivered'
+              ? 'لا توجد طلبيات مسجلة بحالة تم التسليم حالياً.'
+              : 'لا توجد طلبيات مطابقة للفلتر المحدد حالياً. جميع الطلبات مشحونة أو لا توجد منتجات جديدة.'}
           </div>
         ) : (
           <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
@@ -476,13 +496,13 @@ export function SupplierPreparationManifestModal({
                     اسم موديل التيشيرت
                   </th>
                   <th style={{ padding: '0.85rem 1rem', color: 'var(--gold-primary)', fontWeight: 900 }}>
-                    توزيع المقاسات المطلوبة
+                    {statusFilter === 'delivered' ? 'توزيع المقاسات المسلَّمة' : 'توزيع المقاسات المطلوبة'}
                   </th>
                   <th style={{ padding: '0.85rem 1rem', width: '110px', textAlign: 'center', color: 'var(--gold-primary)', fontWeight: 900 }}>
                     المجموع
                   </th>
                   <th style={{ padding: '0.85rem 1rem', width: '120px', textAlign: 'center', color: 'var(--gold-primary)', fontWeight: 800 }}>
-                    تم الاستلام
+                    {statusFilter === 'delivered' ? 'مكتمل التسليم' : 'تم الاستلام'}
                   </th>
                 </tr>
               </thead>
@@ -596,7 +616,7 @@ export function SupplierPreparationManifestModal({
                             }}
                           />
                           <span style={{ fontSize: '0.78rem', color: isChecked ? '#10B981' : 'var(--text-secondary)', fontWeight: 700 }}>
-                            {isChecked ? 'تم الاستلام' : 'معلق'}
+                            {isChecked ? (statusFilter === 'delivered' ? 'تم التدقيق' : 'تم الاستلام') : 'معلق'}
                           </span>
                         </label>
                       </td>
@@ -609,7 +629,7 @@ export function SupplierPreparationManifestModal({
               <tfoot>
                 <tr style={{ background: 'rgba(0, 0, 0, 0.6)', borderTop: '2px solid var(--border-gold)' }}>
                   <td colSpan={3} style={{ padding: '1rem', fontWeight: 900, color: 'var(--gold-primary)', fontSize: '1rem' }}>
-                    الإجمالي العام لجميع الموديلات المطلوبة:
+                    {statusFilter === 'delivered' ? 'الإجمالي العام لكافة الموديلات المسلَّمة:' : 'الإجمالي العام لجميع الموديلات المطلوبة:'}
                   </td>
                   <td style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -625,7 +645,7 @@ export function SupplierPreparationManifestModal({
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      {Object.values(checkedItems).filter(Boolean).length} من {manifestList.length} تم استلامه
+                      {Object.values(checkedItems).filter(Boolean).length} من {manifestList.length} {statusFilter === 'delivered' ? 'تم تدقيقه' : 'تم استلامه'}
                     </span>
                   </td>
                 </tr>

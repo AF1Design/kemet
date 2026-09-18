@@ -373,7 +373,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
               whiteSpace: 'nowrap'
             }}
           >
-            شيت تحضير طلبيات المورد (تجميع المقاسات)
+            شيت تحضير وجرد الطلبيات (تجميع المقاسات)
           </button>
         </div>
 
