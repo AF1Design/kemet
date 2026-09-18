@@ -12,6 +12,8 @@ export function SupplierPreparationManifestModal({
   catalogProducts = []
 }) {
   const [statusFilter, setStatusFilter] = useState('unshipped'); // 'unshipped' | 'new' | 'processing' | 'delivered' | 'all'
+  const [dateFrom, setDateFrom] = useState(''); // 'YYYY-MM-DD'
+  const [dateTo, setDateTo] = useState('');     // 'YYYY-MM-DD'
   const [supplierPhone, setSupplierPhone] = useState('01018237667');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
@@ -28,26 +30,44 @@ export function SupplierPreparationManifestModal({
     return map;
   }, [catalogProducts]);
 
-  // Filter orders according to status selection
+  // Filter orders according to status selection and date range
   const relevantOrders = useMemo(() => {
     return (orders || []).filter(o => {
+      // 1. Filter by Status
       const st = (o.status || '').trim();
       const lower = st.toLowerCase();
+      let statusMatches = true;
       if (statusFilter === 'unshipped') {
-        return st === 'جديد' || st === 'جاري التجهيز' || lower === 'pending' || lower === 'processing';
+        statusMatches = st === 'جديد' || st === 'جاري التجهيز' || lower === 'pending' || lower === 'processing';
+      } else if (statusFilter === 'new') {
+        statusMatches = st === 'جديد' || lower === 'pending';
+      } else if (statusFilter === 'processing') {
+        statusMatches = st === 'جاري التجهيز' || lower === 'processing';
+      } else if (statusFilter === 'delivered') {
+        statusMatches = st === 'تم التسليم' || lower === 'delivered' || st === 'تم التوصيل' || st === 'مكتمل';
       }
-      if (statusFilter === 'new') {
-        return st === 'جديد' || lower === 'pending';
+      if (!statusMatches) return false;
+
+      // 2. Filter by Date Range (created_at)
+      if (dateFrom || dateTo) {
+        const orderDateStr = o.created_at || o.createdAt;
+        if (!orderDateStr) return false;
+        const orderDate = new Date(orderDateStr);
+        if (isNaN(orderDate.getTime())) return false;
+
+        if (dateFrom) {
+          const from = new Date(dateFrom + 'T00:00:00');
+          if (orderDate < from) return false;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo + 'T23:59:59.999');
+          if (orderDate > to) return false;
+        }
       }
-      if (statusFilter === 'processing') {
-        return st === 'جاري التجهيز' || lower === 'processing';
-      }
-      if (statusFilter === 'delivered') {
-        return st === 'تم التسليم' || lower === 'delivered' || st === 'تم التوصيل' || st === 'مكتمل';
-      }
-      return true; // 'all'
+
+      return true;
     });
-  }, [orders, statusFilter]);
+  }, [orders, statusFilter, dateFrom, dateTo]);
 
   // Aggregate items by model and size
   const { manifestList, totalPiecesCount, sizeTotals } = useMemo(() => {
@@ -92,6 +112,17 @@ export function SupplierPreparationManifestModal({
     return { manifestList: list, totalPiecesCount: totalPieces, sizeTotals: sTotals };
   }, [relevantOrders, productImagesMap]);
 
+  // Summary label for selected date range
+  const dateRangeSummary = useMemo(() => {
+    if (dateFrom && dateTo) {
+      if (dateFrom === dateTo) return `بتاريخ ${dateFrom}`;
+      return `عن الفترة من ${dateFrom} إلى ${dateTo}`;
+    }
+    if (dateFrom) return `من تاريخ ${dateFrom} حتى الآن`;
+    if (dateTo) return `حتى تاريخ ${dateTo}`;
+    return '';
+  }, [dateFrom, dateTo]);
+
   // Generate WhatsApp message text for supplier or inventory report
   const whatsappMessage = useMemo(() => {
     if (manifestList.length === 0) {
@@ -103,10 +134,11 @@ export function SupplierPreparationManifestModal({
     const lines = [];
     lines.push('السلام عليكم ورحمة الله،');
     lines.push('مع حضرتك متجر كيميت');
+    const periodLabel = dateRangeSummary ? ` (${dateRangeSummary})` : '';
     if (statusFilter === 'delivered') {
-      lines.push(`بيان جرد الطلبيات المسلَّمة للعملاء (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة تم تسليمها):`);
+      lines.push(`بيان جرد الطلبيات المسلَّمة للعملاء${periodLabel} (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة تم تسليمها):`);
     } else {
-      lines.push(`بيان طلبيات البضاعة المطلوب تجهيزها وتوريدها (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة):`);
+      lines.push(`بيان طلبيات البضاعة المطلوب تجهيزها وتوريدها${periodLabel} (${manifestList.length} موديل - إجمالي ${totalPiecesCount} قطعة):`);
     }
     lines.push('');
 
@@ -123,14 +155,16 @@ export function SupplierPreparationManifestModal({
     lines.push('----------------------------------------');
     if (statusFilter === 'delivered') {
       lines.push(`إجمالي عدد التيشيرتات المسلَّمة: ${totalPiecesCount} قطعة.`);
+      if (dateRangeSummary) lines.push(`الفترة المحددة: ${dateRangeSummary}.`);
       lines.push('كشف جرد رسمي لمتجر كيميت.');
     } else {
       lines.push(`إجمالي عدد التيشيرتات المطلوب توريدها: ${totalPiecesCount} قطعة.`);
+      if (dateRangeSummary) lines.push(`الفترة المحددة: ${dateRangeSummary}.`);
       lines.push('برجاء تأكيد استلام البيان والبدء في التجهيز.');
     }
 
     return lines.join('\n');
-  }, [manifestList, totalPiecesCount, statusFilter]);
+  }, [manifestList, totalPiecesCount, statusFilter, dateRangeSummary]);
 
   const handleCopyText = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -314,6 +348,23 @@ export function SupplierPreparationManifestModal({
               {relevantOrders.length} أوردر
             </span>
           </div>
+
+          <div
+            style={{
+              background: (dateFrom || dateTo) ? 'rgba(212, 175, 55, 0.1)' : 'rgba(255, 255, 255, 0.04)',
+              border: (dateFrom || dateTo) ? '1px solid var(--gold-primary)' : '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.85rem 1rem',
+              textAlign: 'center'
+            }}
+          >
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', fontWeight: 700 }}>
+              فترة الجرد الحالية
+            </span>
+            <span style={{ fontSize: (dateFrom || dateTo) ? '0.92rem' : '1.4rem', fontWeight: 900, color: (dateFrom || dateTo) ? 'var(--gold-primary)' : '#FFF', display: 'block', marginTop: '0.35rem' }}>
+              {dateRangeSummary || 'كافة التواريخ'}
+            </span>
+          </div>
         </div>
 
         {/* Filter & Supplier Actions Bar */}
@@ -400,6 +451,194 @@ export function SupplierPreparationManifestModal({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Date Range Filter Row */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              paddingTop: '0.85rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 800 }}>
+                تحديد فترة الجرد:
+              </span>
+
+              {/* Date From */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: 'var(--radius-sm)',
+                  border: dateFrom ? '1px solid var(--gold-primary)' : '1px solid var(--border-color)'
+                }}
+              >
+                <span style={{ fontSize: '0.75rem', color: 'var(--gold-primary)', fontWeight: 800 }}>من:</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#FFF',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  title="تاريخ بداية الفترة"
+                />
+              </div>
+
+              {/* Date To */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: 'var(--radius-sm)',
+                  border: dateTo ? '1px solid var(--gold-primary)' : '1px solid var(--border-color)'
+                }}
+              >
+                <span style={{ fontSize: '0.75rem', color: 'var(--gold-primary)', fontWeight: 800 }}>إلى:</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#FFF',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  title="تاريخ نهاية الفترة"
+                />
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    setDateFrom(today);
+                    setDateTo(today);
+                  }}
+                  style={{
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-color)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  اليوم
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    setDateFrom(past);
+                    setDateTo(today);
+                  }}
+                  style={{
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-color)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  آخر 7 أيام
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    setDateFrom(past);
+                    setDateTo(today);
+                  }}
+                  style={{
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-color)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  آخر 30 يوم
+                </button>
+
+                {(dateFrom || dateTo) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDateFrom('');
+                      setDateTo('');
+                    }}
+                    style={{
+                      padding: '0.3rem 0.75rem',
+                      fontSize: '0.76rem',
+                      fontWeight: 800,
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      border: '1px solid #EF4444',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#EF4444'
+                    }}
+                  >
+                    مسح التاريخ
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Active Period Label */}
+            {dateRangeSummary && (
+              <div
+                style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  color: 'var(--gold-primary)',
+                  background: 'rgba(212, 175, 55, 0.12)',
+                  border: '1px solid var(--gold-primary)',
+                  padding: '0.3rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)'
+                }}
+              >
+                الفترة المختارة: {dateRangeSummary}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons Row */}
