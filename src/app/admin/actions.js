@@ -88,16 +88,56 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
 
     let productResult = null;
 
-    if (isEditMode) {
-      const { data: updated, error: updateErr } = await supabaseAdmin
-        .from('products')
-        .update(payload)
-        .eq('id', productData.id)
-        .select()
-        .single();
+    const originalId = productData.originalId || productData.id;
+    const isIdChanged = isEditMode && originalId && productData.id && originalId !== productData.id;
 
-      if (updateErr) throw updateErr;
-      productResult = updated;
+    if (isEditMode) {
+      if (isIdChanged) {
+        // Check if the new ID already exists
+        const { data: existingProd } = await supabaseAdmin
+          .from('products')
+          .select('id')
+          .eq('id', productData.id)
+          .single();
+
+        if (existingProd) {
+          return { success: false, error: `معرف المنتج الجديد (${productData.id}) مستخدم بالفعل لمنتج آخر، يرجى اختيار معرف آخر` };
+        }
+
+        // 1. Delete old variants with originalId first so foreign key constraint doesn't block ID rename
+        await supabaseAdmin
+          .from('product_variants')
+          .delete()
+          .eq('product_id', originalId);
+
+        // 2. Update order_items with old ID to the new ID
+        await supabaseAdmin
+          .from('order_items')
+          .update({ product_id: productData.id })
+          .eq('product_id', originalId);
+
+        // 3. Update products row with new ID and payload
+        payload.id = productData.id;
+        const { data: updated, error: updateErr } = await supabaseAdmin
+          .from('products')
+          .update(payload)
+          .eq('id', originalId)
+          .select()
+          .single();
+
+        if (updateErr) throw updateErr;
+        productResult = updated;
+      } else {
+        const { data: updated, error: updateErr } = await supabaseAdmin
+          .from('products')
+          .update(payload)
+          .eq('id', productData.id)
+          .select()
+          .single();
+
+        if (updateErr) throw updateErr;
+        productResult = updated;
+      }
     } else {
       payload.id = productData.id;
       const { data: inserted, error: insertErr } = await supabaseAdmin
@@ -113,12 +153,14 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
     // Ensure TLS certificate bypass for Resend / external APIs on Node
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-    // Sync Variants: Atomic replace - delete old variants and insert exact current sizes list
+    // Sync Variants: Atomic replace - insert exact current sizes list
     if (Array.isArray(sizeVariants)) {
-      await supabaseAdmin
-        .from('product_variants')
-        .delete()
-        .eq('product_id', productData.id);
+      if (!isIdChanged) {
+        await supabaseAdmin
+          .from('product_variants')
+          .delete()
+          .eq('product_id', productData.id);
+      }
 
       if (sizeVariants.length > 0) {
         const variantsToInsert = sizeVariants.map(v => ({
@@ -136,7 +178,11 @@ export async function saveProductBatchAction(productData, sizeVariants = [], isE
     }
 
     // Trigger non-blocking background revalidation
-    triggerBackgroundRevalidate(['/', '/category/all', '/admin/products', `/product/${productData.id}`]);
+    const revalidatePaths = ['/', '/category/all', '/admin/products', `/product/${productData.id}`];
+    if (isIdChanged && originalId) {
+      revalidatePaths.push(`/product/${originalId}`);
+    }
+    triggerBackgroundRevalidate(revalidatePaths);
 
     return { success: true, product: productResult };
   } catch (err) {

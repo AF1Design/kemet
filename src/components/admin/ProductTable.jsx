@@ -132,11 +132,24 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     );
   });
 
+  // Helper to generate a clean, short product ID (e.g. kt-101, kt-248, kt-789)
+  const generateCleanShortId = (existingProducts = []) => {
+    const existingIds = new Set((existingProducts || []).map(p => String(p.id).toLowerCase()));
+    for (let i = 0; i < 100; i++) {
+      const num = Math.floor(100 + Math.random() * 900); // 100 to 999
+      const candidate = `kt-${num}`;
+      if (!existingIds.has(candidate)) {
+        return candidate;
+      }
+    }
+    return `kt-${Math.floor(1000 + Math.random() * 9000)}`;
+  };
+
   // Open Add New Product Modal
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setFormData({
-      id: `kit-${Date.now()}`,
+      id: generateCleanShortId(products),
       categoryId: cleanCategories[0]?.id || 'kits',
       nameAr: '',
       nameEn: '',
@@ -144,7 +157,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
       descriptionEn: '',
       price: 280,
       oldPrice: '', // Optional!
-      mainImage: '/assets/kemet-hero-banner.jpg',
+      mainImage: '',
       galleryImage1: '',
       galleryImage2: '',
       galleryImage3: '',
@@ -338,7 +351,17 @@ export function ProductTable({ initialProducts, categories: initialCategories })
         }));
       };
       reader.readAsDataURL(file);
+    } finally {
+      if (e.target) e.target.value = '';
     }
+  };
+
+  // Helper to remove / clear a product image
+  const handleRemoveImage = (fieldName) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: ''
+    }));
   };
 
   // Create New Category Submit
@@ -410,6 +433,12 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     e.preventDefault();
     setFormError(null);
 
+    const cleanId = (formData.id || '').trim();
+    if (!cleanId) {
+      setFormError('يرجى تحديد أو كتابة معرف / كود المنتج');
+      return;
+    }
+
     if (!formData.nameAr.trim() || !formData.price || !formData.mainImage.trim()) {
       setFormError('يرجى ملء اسم المنتج، السعر، والصورة الرئيسية الأولى (Front)');
       return;
@@ -427,8 +456,10 @@ export function ProductTable({ initialProducts, categories: initialCategories })
 
     startTransition(async () => {
       try {
+        const originalId = editingProduct ? editingProduct.id : cleanId;
         const productPayload = {
-          id: editingProduct ? editingProduct.id : formData.id,
+          id: cleanId,
+          originalId: originalId,
           categoryId: formData.categoryId,
           nameAr: formData.nameAr,
           nameEn: formData.nameEn,
@@ -458,9 +489,10 @@ export function ProductTable({ initialProducts, categories: initialCategories })
 
           if (editingProduct) {
             setProducts(prev =>
-              prev.map(p => p.id === editingProduct.id ? { 
+              prev.map(p => p.id === originalId ? { 
                 ...p, 
                 ...res.product, 
+                id: cleanId,
                 main_image: returnedMainImage,
                 gallery_images: returnedGalleryImages,
                 price: Number(formData.price),
@@ -475,6 +507,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
           } else {
             setProducts(prev => [{ 
               ...res.product, 
+              id: cleanId,
               main_image: returnedMainImage,
               gallery_images: returnedGalleryImages,
               price: Number(formData.price),
@@ -939,12 +972,49 @@ export function ProductTable({ initialProducts, categories: initialCategories })
             )}
 
             <form onSubmit={handleSubmitForm} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {!editingProduct && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.3rem' }}>معرف المنتج (ID)</label>
-                  <input type="text" value={formData.id} onChange={e => setFormData({ ...formData, id: e.target.value })} required style={{ width: '100%', padding: '0.75rem' }} />
+              {/* Product ID / Short Link Code */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--gold-primary)' }}>
+                    معرف المنتج (كود الرابط المختصر) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, id: generateCleanShortId(products) }))}
+                    style={{
+                      background: 'rgba(212, 175, 55, 0.12)',
+                      border: '1px solid var(--gold-primary)',
+                      color: 'var(--gold-primary)',
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '4px',
+                      fontSize: '0.74rem',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    توليد كود قصير عشوائي (مثل kt-101)
+                  </button>
                 </div>
-              )}
+                <input
+                  type="text"
+                  value={formData.id}
+                  onChange={e => setFormData({ ...formData, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })}
+                  required
+                  placeholder="مثال: kt-101 أو ahly-home"
+                  style={{ width: '100%', padding: '0.75rem', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#9CA3AF', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                  <span>رابط المنتج للمشاركة:</span>
+                  <code style={{ color: 'var(--gold-primary)', direction: 'ltr', background: 'rgba(0,0,0,0.4)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                    https://kemetmisr.com/product/{formData.id || '...'}
+                  </code>
+                </div>
+                {editingProduct && editingProduct.id !== formData.id && (
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#F59E0B' }}>
+                    ملاحظة: عند حفظ التعديل، سيتم تغيير معرف المنتج من ({editingProduct.id}) إلى ({formData.id}) وتحديث كافة السجلات والطلبات المرتبطة به تلقائياً.
+                  </div>
+                )}
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 <div>
@@ -1026,103 +1096,116 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     صور المنتج الأربعة (صورة الواجهة Front + 3 صور معرض الكتالوج)
                   </label>
                   <span style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10B981', color: '#10B981', fontSize: '0.72rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
-                    الضغط التلقائي مفعّل (تحويل لـ WebP وتصغير أبعاد 1200px)
+                    الضغط التلقائي مفعّل (تحويل لـ WebP مع كسر الكاش فوراً)
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  {/* Image 1: Main Front View */}
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--gold-primary)' }}>1. صورة الواجهة الأمامية (Front Main) *</span>
-                      {formData.mainImage && (
-                        <img src={formData.mainImage} alt="Main Preview" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--gold-primary)' }} />
-                      )}
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="رابط الصورة أو اختر ملف..." 
-                      value={formData.mainImage} 
-                      onChange={e => setFormData({ ...formData, mainImage: e.target.value })} 
-                      required 
-                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', marginBottom: '0.4rem' }} 
-                    />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={e => handleFileUpload(e, 'mainImage')} 
-                      style={{ fontSize: '0.75rem', width: '100%' }} 
-                    />
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                  {[
+                    { key: 'mainImage', title: '1. صورة الواجهة الأمامية (الرئيسية) *', required: true },
+                    { key: 'galleryImage1', title: '2. صورة إضافية 1 (الظهر / تفاصيل)', required: false },
+                    { key: 'galleryImage2', title: '3. صورة إضافية 2 (تفاصيل الخامات)', required: false },
+                    { key: 'galleryImage3', title: '4. صورة إضافية 3 (زاوية كتالوج)', required: false },
+                  ].map((imgSlot) => {
+                    const currentVal = formData[imgSlot.key];
+                    return (
+                      <div 
+                        key={imgSlot.key}
+                        style={{ 
+                          background: 'rgba(255,255,255,0.03)', 
+                          padding: '0.85rem', 
+                          borderRadius: 'var(--radius-sm)', 
+                          border: currentVal ? '1px solid var(--border-gold)' : '1px solid var(--border-color)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 900, color: imgSlot.required ? 'var(--gold-primary)' : '#E5E7EB' }}>
+                            {imgSlot.title}
+                          </span>
+                          {currentVal && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(imgSlot.key)}
+                              style={{
+                                background: 'rgba(244,63,94,0.15)',
+                                color: '#F43F5E',
+                                border: '1px solid #F43F5E',
+                                padding: '0.18rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                cursor: 'pointer'
+                              }}
+                              title="حذف هذه الصورة"
+                            >
+                              حذف الصورة
+                            </button>
+                          )}
+                        </div>
 
-                  {/* Image 2: Catalog Detail 1 */}
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900 }}>2. صورة الكتالوج الفرعية الأولى</span>
-                      {formData.galleryImage1 && (
-                        <img src={formData.galleryImage1} alt="Gallery 1 Preview" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-gold)' }} />
-                      )}
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="رابط الصورة أو اختر ملف..." 
-                      value={formData.galleryImage1} 
-                      onChange={e => setFormData({ ...formData, galleryImage1: e.target.value })} 
-                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', marginBottom: '0.4rem' }} 
-                    />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={e => handleFileUpload(e, 'galleryImage1')} 
-                      style={{ fontSize: '0.75rem', width: '100%' }} 
-                    />
-                  </div>
+                        {/* Preview Box */}
+                        {currentVal ? (
+                          <div style={{
+                            height: '110px',
+                            width: '100%',
+                            background: '#05070D',
+                            border: '1px solid rgba(212, 175, 55, 0.3)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden'
+                          }}>
+                            <img 
+                              src={currentVal} 
+                              alt={imgSlot.title}
+                              style={{ 
+                                maxHeight: '100%', 
+                                maxWidth: '100%', 
+                                objectFit: 'contain'
+                              }} 
+                            />
+                          </div>
+                        ) : (
+                          <div style={{
+                            height: '70px',
+                            width: '100%',
+                            background: 'rgba(0,0,0,0.25)',
+                            border: '1px dashed var(--border-color)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#6B7280',
+                            fontSize: '0.75rem'
+                          }}>
+                            لا توجد صورة محددة
+                          </div>
+                        )}
 
-                  {/* Image 3: Catalog Detail 2 */}
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900 }}>3. صورة الكتالوج الفرعية الثانية</span>
-                      {formData.galleryImage2 && (
-                        <img src={formData.galleryImage2} alt="Gallery 2 Preview" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-gold)' }} />
-                      )}
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="رابط الصورة أو اختر ملف..." 
-                      value={formData.galleryImage2} 
-                      onChange={e => setFormData({ ...formData, galleryImage2: e.target.value })} 
-                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', marginBottom: '0.4rem' }} 
-                    />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={e => handleFileUpload(e, 'galleryImage2')} 
-                      style={{ fontSize: '0.75rem', width: '100%' }} 
-                    />
-                  </div>
-
-                  {/* Image 4: Catalog Detail 3 */}
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.85rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900 }}>4. صورة الكتالوج الفرعية الثالثة</span>
-                      {formData.galleryImage3 && (
-                        <img src={formData.galleryImage3} alt="Gallery 3 Preview" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-gold)' }} />
-                      )}
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="رابط الصورة أو اختر ملف..." 
-                      value={formData.galleryImage3} 
-                      onChange={e => setFormData({ ...formData, galleryImage3: e.target.value })} 
-                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', marginBottom: '0.4rem' }} 
-                    />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={e => handleFileUpload(e, 'galleryImage3')} 
-                      style={{ fontSize: '0.75rem', width: '100%' }} 
-                    />
-                  </div>
+                        <input 
+                          type="text" 
+                          placeholder="رابط مباشر للصورة..." 
+                          value={currentVal} 
+                          onChange={e => setFormData({ ...formData, [imgSlot.key]: e.target.value })} 
+                          required={imgSlot.required}
+                          style={{ width: '100%', padding: '0.5rem', fontSize: '0.78rem' }} 
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>أو رفع واختيار صورة جديدة من جهازك:</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={e => handleFileUpload(e, imgSlot.key)} 
+                            style={{ fontSize: '0.72rem', width: '100%' }} 
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

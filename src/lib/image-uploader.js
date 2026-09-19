@@ -89,17 +89,18 @@ export async function processAndUploadProductImage({ imageInput, productName = '
       .webp({ quality: 82, effort: 4 })
       .toBuffer();
 
-    // Create SEO-friendly deterministic per-product filename (Ensures upsert replaces existing file for this specific product only)
+    // Create SEO-friendly filename with version stamp to bust CDN & browser cache on new uploads
     const cleanSlug = generateSeoSlug(productName, nameEn);
     const cleanId = productId ? String(productId).trim().replace(/[^a-z0-9-]/gi, '') : '';
-    const fileName = `kemet-${cleanId ? cleanId + '-' : ''}${cleanSlug}${suffix ? '-' + suffix : ''}.webp`;
+    const versionStamp = Date.now().toString(36);
+    const fileName = `kemet-${cleanId ? cleanId + '-' : ''}${cleanSlug}${suffix ? '-' + suffix : ''}-${versionStamp}.webp`;
 
     // Upload to Supabase Storage 'products' bucket
     const { data: uploadData, error: uploadErr } = await supabaseAdmin.storage
       .from('products')
       .upload(fileName, webpBuffer, {
         contentType: 'image/webp',
-        cacheControl: '31536000', // 1 year CDN cache
+        cacheControl: '3600',
         upsert: true
       });
 
