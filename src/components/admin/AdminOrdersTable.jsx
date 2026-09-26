@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { updateOrderStatusAction, deleteOrderAction, sendDirectCustomerEmailAction } from '../../app/admin/actions';
 import { AdminOrderEditModal } from './AdminOrderEditModal';
 import { SupplierPreparationManifestModal } from './SupplierPreparationManifestModal';
+import { WalletCompensationModal } from './WalletCompensationModal';
 
 const STATUS_OPTIONS = [
   'جديد',
@@ -140,11 +141,14 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
   // Supplier Preparation Manifest Modal State
   const [isManifestOpen, setIsManifestOpen] = useState(false);
 
+  // Wallet Compensation Modal State
+  const [walletModalOrder, setWalletModalOrder] = useState(null);
+
   const [isPending, startTransition] = useTransition();
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder || isManifestOpen;
+    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder || isManifestOpen || walletModalOrder;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -153,7 +157,7 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder, editingOrder, isManifestOpen]);
+  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder, editingOrder, isManifestOpen, walletModalOrder]);
 
   const handleCopyConfirmation = (order) => {
     const text = generateOrderConfirmationText(order);
@@ -653,6 +657,24 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
 
                         <button
                           type="button"
+                          onClick={() => setWalletModalOrder(order)}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.76rem',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid rgba(16, 185, 129, 0.45)',
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            color: '#10B981',
+                            fontWeight: 800,
+                            cursor: 'pointer'
+                          }}
+                          title="إيداع رصيد هدية في محفظة العميل وإرسال رسالة رسمية"
+                        >
+                          هدية (محفظة)
+                        </button>
+
+                        <button
+                          type="button"
                           className="btn-secondary"
                           onClick={() => setSelectedOrderDetails(order)}
                           style={{ padding: '0.35rem 0.6rem', fontSize: '0.76rem' }}
@@ -919,6 +941,26 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
                     }}
                   >
                     تعديل الطلب
+                  </button>
+
+                  {/* هدية المحفظة */}
+                  <button
+                    type="button"
+                    onClick={() => setWalletModalOrder(order)}
+                    style={{
+                      padding: '0.55rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(16, 185, 129, 0.45)',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      color: '#10B981',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                    title="إيداع رصيد هدية في محفظة العميل وإرسال رسالة رسمية"
+                  >
+                    هدية (محفظة)
                   </button>
 
                   {/* تفاصيل */}
@@ -1254,6 +1296,19 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
         orders={orders}
         catalogProducts={catalogProducts}
       />
+
+      {/* Wallet Store Credit / Compensation Modal */}
+      {walletModalOrder && (
+        <WalletCompensationModal
+          isOpen={Boolean(walletModalOrder)}
+          onClose={() => setWalletModalOrder(null)}
+          customerName={walletModalOrder.customer_name || walletModalOrder.customer?.fullName || walletModalOrder.customer?.name || ''}
+          customerPhone={walletModalOrder.customer_phone || walletModalOrder.customer?.phone || ''}
+          customerEmail={walletModalOrder.customer_email || walletModalOrder.customer?.email || ''}
+          userId={walletModalOrder.user_id || walletModalOrder.userId || null}
+          orderId={walletModalOrder.id}
+        />
+      )}
     </div>
   );
 }

@@ -10,13 +10,15 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
   const [mounted, setMounted] = useState(false);
   const [items, setItems] = useState([]);
   const [shippingFee, setShippingFee] = useState(50);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [couponCode, setCouponCode] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [governorate, setGovernorate] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
-  const [sendEmailNotification, setSendEmailNotification] = useState(true);
+  const [sendEmailNotification, setSendEmailNotification] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
@@ -44,15 +46,40 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
         price: Number(it.price !== undefined ? it.price : (it.unit_price || 0))
       }));
 
+      // Extract coupon code and discount amount accurately from notes or calculate from difference
+      let initialCoupon = '';
+      let initialDiscount = 0;
+
+      if (order.delivery_notes) {
+        const m = order.delivery_notes.match(/\[كود الخصم:\s*([^\]|]+)(?:\s*\|\s*خصم:\s*(\d+(?:\.\d+)?)\s*ج\.م)?\]/i);
+        if (m) {
+          initialCoupon = m[1].trim().toUpperCase();
+          if (m[2]) initialDiscount = Number(m[2]);
+        }
+      }
+
+      const calculatedItemsSubtotal = orderItems.reduce((s, it) => s + (Number(it.price || 0) * Number(it.quantity || 1)), 0);
+      const orderSubtotal = Number(order.subtotal || calculatedItemsSubtotal);
+      const orderShipping = Number(order.shipping_fee !== undefined ? order.shipping_fee : 50);
+      const orderTotal = Number(order.total_amount !== undefined ? order.total_amount : (order.total || 0));
+
+      if (initialDiscount === 0 && orderTotal > 0) {
+        const diff = (orderSubtotal + orderShipping) - orderTotal;
+        if (diff > 0) initialDiscount = diff;
+      }
+
       setItems(orderItems);
-      setShippingFee(Number(order.shipping_fee !== undefined ? order.shipping_fee : 50));
+      setShippingFee(orderShipping);
+      setDiscountAmount(initialDiscount);
+      setCouponCode(initialCoupon || order.coupon_code || order.couponCode || '');
       setCustomerName(order.customer_name || order.customer?.fullName || '');
       setCustomerPhone(order.customer_phone || order.customer?.phone || '');
       setCustomerEmail(order.customer_email || order.customer?.email || '');
       setGovernorate(order.governorate || order.customer?.governorate || '');
       setAddress(order.address || order.customer?.address || '');
       setNotes(order.notes || order.delivery_notes || order.customer?.notes || '');
-      setSendEmailNotification(Boolean(order.customer_email || order.customer?.email));
+      // Do NOT send notification email automatically by default to save Resend quotas
+      setSendEmailNotification(false);
       setSaveError(null);
 
       // Default selected product for adding
@@ -71,7 +98,8 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
 
   // Real-time calculations
   const subtotal = items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
-  const finalTotal = Math.max(0, subtotal + Math.max(0, Number(shippingFee || 0)));
+  const cleanDiscount = Math.max(0, Number(discountAmount || 0));
+  const finalTotal = Math.max(0, subtotal - cleanDiscount + Math.max(0, Number(shippingFee || 0)));
 
   // Selected product object for dynamic sizes in "Add Product"
   const currentCatalogProduct = catalogProducts.find(p => String(p.id) === String(selectedProductId)) || catalogProducts[0];
@@ -169,6 +197,8 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
             price: Number(it.price || 0)
           })),
           shippingFee: Math.max(0, Number(shippingFee || 0)),
+          discountAmount: cleanDiscount,
+          couponCode: couponCode.trim().toUpperCase(),
           sendNotificationEmail: Boolean(sendEmailNotification && customerEmail.includes('@')),
           isAdminEdit: true
         };
@@ -184,10 +214,13 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               customer_email: customerEmail.trim().toLowerCase(),
               governorate: governorate.trim(),
               address: address.trim(),
-              notes: notes.trim(),
+              notes: res.deliveryNotes !== undefined ? res.deliveryNotes : notes.trim(),
+              delivery_notes: res.deliveryNotes !== undefined ? res.deliveryNotes : notes.trim(),
               subtotal: res.subtotal !== undefined ? res.subtotal : subtotal,
               shipping_fee: res.shippingFee !== undefined ? res.shippingFee : shippingFee,
               total_amount: res.totalAmount !== undefined ? res.totalAmount : finalTotal,
+              discount: cleanDiscount,
+              coupon_code: couponCode.trim().toUpperCase() || null,
               items: payload.items,
               order_items: payload.items.map(it => ({
                 product_id: it.id,
@@ -693,7 +726,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
             </div>
           </div>
 
-          {/* Section 4: Financial Summary & Shipping Control */}
+          {/* Section 4: Financial Summary, Discount & Shipping Control */}
           <div
             style={{
               background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(11, 15, 25, 0.95) 100%)',
@@ -702,11 +735,102 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               padding: '1.25rem'
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'center' }}>
+            {/* Discount / Coupon Box */}
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.35)',
+              border: '1px solid rgba(212, 175, 55, 0.25)',
+              borderRadius: '8px',
+              padding: '0.85rem 1rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)' }}>
+                  كود الخصم المطبق للطلب:
+                </span>
+                <input
+                  type="text"
+                  placeholder="كود الخصم (مثال: KEMET22)"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase().trim())}
+                  style={{
+                    background: '#131A2A',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#FFFFFF',
+                    padding: '0.35rem 0.65rem',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    width: '140px',
+                    textAlign: 'center'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: '0.85rem', color: '#94A3B8', fontWeight: 700 }}>
+                  قيمة الخصم المخصومة:
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <input
+                    type="number"
+                    min="0"
+                    value={discountAmount}
+                    onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value) || 0))}
+                    style={{
+                      width: '90px',
+                      background: '#131A2A',
+                      border: '1px solid #10B981',
+                      color: '#10B981',
+                      padding: '0.35rem 0.6rem',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem',
+                      fontWeight: 800,
+                      textAlign: 'center'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 800 }}>ج.م</span>
+                  {cleanDiscount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountAmount(0); setCouponCode(''); }}
+                      style={{
+                        background: 'rgba(244, 63, 94, 0.15)',
+                        border: '1px solid #F43F5E',
+                        color: '#F43F5E',
+                        padding: '0.3rem 0.6rem',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      إلغاء الخصم
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Totals Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block' }}>إجمالي المنتجات</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF' }}>
                   {subtotal} ج.م
+                </span>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.8rem', color: '#10B981', display: 'block', fontWeight: 700 }}>
+                  الخصم المطبق {couponCode ? `(${couponCode})` : ''}
+                </span>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: cleanDiscount > 0 ? '#10B981' : '#64748B' }}>
+                  {cleanDiscount > 0 ? `-${cleanDiscount} ج.م` : '0 ج.م'}
                 </span>
               </div>
 
@@ -721,11 +845,11 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
                     value={shippingFee}
                     onChange={(e) => setShippingFee(Math.max(0, Number(e.target.value) || 0))}
                     style={{
-                      width: '90px',
+                      width: '80px',
                       background: '#131A2A',
                       border: '1px solid var(--border-gold)',
                       color: 'var(--gold-primary)',
-                      padding: '0.4rem 0.6rem',
+                      padding: '0.35rem 0.5rem',
                       borderRadius: '6px',
                       fontSize: '0.95rem',
                       fontWeight: 800,
@@ -739,9 +863,9 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
                       background: Number(shippingFee) === 0 ? 'var(--gold-primary)' : 'rgba(255, 255, 255, 0.08)',
                       color: Number(shippingFee) === 0 ? '#000000' : '#FFFFFF',
                       border: 'none',
-                      padding: '0.4rem 0.75rem',
+                      padding: '0.35rem 0.65rem',
                       borderRadius: '6px',
-                      fontSize: '0.78rem',
+                      fontSize: '0.75rem',
                       fontWeight: 800,
                       cursor: 'pointer'
                     }}
@@ -753,7 +877,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
 
               <div style={{ textAlign: 'left' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--gold-primary)', display: 'block', fontWeight: 700 }}>
-                  المبلغ الإجمالي المطلوب تحصيله
+                  المبلغ الإجمالي النهائي المطلوب
                 </span>
                 <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
                   {finalTotal} ج.م
@@ -761,7 +885,7 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
               </div>
             </div>
 
-            {/* Email Sync Toggle */}
+            {/* Email Sync Toggle (Unchecked by default to protect Resend quota) */}
             <div style={{ marginTop: '1.1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', userSelect: 'none' }}>
                 <input
@@ -775,11 +899,9 @@ export function AdminOrderEditModal({ order, catalogProducts = [], isOpen, onClo
                   إرسال إشعار فوري للعميل بالبريد الإلكتروني بتفاصيل البنود والأسعار المعدلة
                 </span>
               </label>
-              {!customerEmail.includes('@') && (
-                <div style={{ fontSize: '0.75rem', color: '#F59E0B', marginTop: '0.35rem', paddingRight: '1.65rem' }}>
-                  تنبيه: لا يوجد بريد إلكتروني مسجل للعميل. أضف بريده أعلاه لتفعيل الإشعار المباشر.
-                </div>
-              )}
+              <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '0.25rem', paddingRight: '1.65rem' }}>
+                اتركه غير محدد في التعديلات الداخلية لتوفير رصيد رسائل ريسيند (Resend) ومنع إرسال إيميلات غير ضرورية.
+              </div>
             </div>
           </div>
 

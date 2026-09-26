@@ -17,6 +17,8 @@ export const metadata = {
 export default async function AbandonedCartsPage() {
   let abandonedCarts = [];
   let registeredLeads = [];
+  let allRegisteredAccounts = [];
+  let buyers = [];
   let stats = {
     abandonedCartsCount: 0,
     potentialRevenue: 0,
@@ -31,6 +33,8 @@ export default async function AbandonedCartsPage() {
     if (res.success) {
       abandonedCarts = res.abandonedCarts || [];
       registeredLeads = res.registeredLeads || [];
+      allRegisteredAccounts = res.allRegisteredAccounts || [];
+      buyers = res.buyers || [];
       stats = res.stats || stats;
     }
   } catch (err) {
@@ -41,6 +45,8 @@ export default async function AbandonedCartsPage() {
     <AbandonedCartsControl
       initialAbandonedCarts={abandonedCarts}
       initialRegisteredLeads={registeredLeads}
+      initialAllRegisteredAccounts={allRegisteredAccounts}
+      initialBuyers={buyers}
       initialStats={stats}
     />
   );

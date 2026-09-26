@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { getRegisteredUsersStatsAction, sendMassPromoEmailAction } from '../../app/admin/actions';
 
-export function PromoEmailControl() {
-  const [totalUsers, setTotalUsers] = useState(0);
+export function PromoEmailControl({ initialTotalUsers = 122 }) {
+  const [totalUsers, setTotalUsers] = useState(initialTotalUsers);
   const [emailsSentCount, setEmailsSentCount] = useState(0);
   const [promoTextAr, setPromoTextAr] = useState('خصومات KEMET لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن');
   const [isSending, setIsSending] = useState(false);

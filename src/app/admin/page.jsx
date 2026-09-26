@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { getAdminSupabase } from '../../lib/supabase/admin';
+import { getRegisteredUsersStatsAction } from './actions';
 import { PromoEmailControl } from '../../components/admin/PromoEmailControl';
 import { CouponsControl } from '../../components/admin/CouponsControl';
 import { AnnouncementBarControl } from '../../components/admin/AnnouncementBarControl';
@@ -12,21 +13,26 @@ export default async function AdminDashboardPage() {
   let activeProducts = 0;
   let totalCategories = 0;
   let abandonedCartsCount = 0;
+  let registeredUsersCount = 122;
 
   try {
     const supabaseAdmin = getAdminSupabase();
 
-    const [{ count: prodCount }, { count: activeCount }, { count: catCount }, { count: abCount }] = await Promise.all([
+    const [{ count: prodCount }, { count: activeCount }, { count: catCount }, { count: abCount }, regStats] = await Promise.all([
       supabaseAdmin.from('products').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
       supabaseAdmin.from('categories').select('*', { count: 'exact', head: true }).not('name_en', 'eq', 'ABANDONED_CART').not('id', 'like', '_%'),
-      supabaseAdmin.from('categories').select('*', { count: 'exact', head: true }).eq('name_en', 'ABANDONED_CART')
+      supabaseAdmin.from('categories').select('*', { count: 'exact', head: true }).eq('name_en', 'ABANDONED_CART'),
+      getRegisteredUsersStatsAction()
     ]);
 
     totalProducts = prodCount || 0;
     activeProducts = activeCount || 0;
     totalCategories = catCount || 0;
     abandonedCartsCount = abCount || 0;
+    if (regStats?.success && typeof regStats.count === 'number') {
+      registeredUsersCount = regStats.count;
+    }
   } catch (err) {
     console.error('Error fetching admin counts:', err);
   }
@@ -88,7 +94,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Mass Promo Email Control & Stats Section */}
-      <PromoEmailControl />
+      <PromoEmailControl initialTotalUsers={registeredUsersCount} />
 
       {/* Quick Action Cards */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '2rem' }}>
@@ -98,6 +104,9 @@ export default async function AdminDashboardPage() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <Link href="/admin/products" className="btn-primary" style={{ padding: '0.85rem 1.75rem' }}>
             إدارة وتعديل الكتالوج والمخزون
+          </Link>
+          <Link href="/admin/customers-finance" className="btn-secondary" style={{ padding: '0.85rem 1.75rem', border: '1px solid #10B981', color: '#10B981', fontWeight: 800 }}>
+            الحساب المالي للعملاء والمحافظ
           </Link>
           <Link href="/admin/abandoned-carts" className="btn-secondary" style={{ padding: '0.85rem 1.75rem', border: '1px solid var(--gold-primary)', color: 'var(--gold-primary)' }}>
             متابعة السلات المتروكة والعملاء

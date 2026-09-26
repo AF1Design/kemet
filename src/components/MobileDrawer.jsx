@@ -83,6 +83,21 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
             <span>{user ? (lang === 'ar' ? `حسابي (${user.fullName || user.phone})` : `My Account (${user.fullName || user.phone})`) : (lang === 'ar' ? 'تسجيل الدخول / حساب جديد' : 'Sign In / Register')}</span>
           </Link>
 
+          {/* Gift Wallet Link in Mobile Drawer */}
+          <Link 
+            href="/my-orders" 
+            className="mobile-menu-link" 
+            onClick={onClose} 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#10B981', fontWeight: 800 }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+              <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+              <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+            </svg>
+            <span>محفظة رصيد الهدايا</span>
+          </Link>
+
           <Link href="/" className="mobile-menu-link" onClick={onClose}>
             {t('navHome')}
           </Link>
@@ -101,15 +116,15 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
             {t('navAllProducts')}
           </Link>
 
-          <div className="mobile-menu-section-title">{lang === 'ar' ? '⚙️ إدارة الحساب والطلبات' : '⚙️ Account & Orders'}</div>
+          <div className="mobile-menu-section-title">{lang === 'ar' ? 'إدارة الحساب والطلبات' : 'Account & Orders'}</div>
           <Link href="/login" className="mobile-menu-link" onClick={onClose} style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>
-            ⚙️ {t('accountSettingsTitle')}
+            {t('accountSettingsTitle')}
           </Link>
           <Link href="/my-orders" className="mobile-menu-link" onClick={onClose}>
-            📦 {t('navMyOrders')}
+            {t('navMyOrders')}
           </Link>
           <Link href="/track-order" className="mobile-menu-link" onClick={onClose}>
-            🚚 {t('navTrackOrder')}
+            {t('navTrackOrder')}
           </Link>
 
           <div className="mobile-menu-section-title">{lang === 'ar' ? 'المعلومات والسياسات' : 'Information & Policies'}</div>

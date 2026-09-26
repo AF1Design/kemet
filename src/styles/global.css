@@ -1012,6 +1012,15 @@ select option {
   color: var(--gold-primary);
 }
 
+.mobile-only {
+  display: none !important;
+}
+
+.wallet-active-badge {
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
+  border-color: var(--border-gold-bright) !important;
+}
+
 /* Borderless Cart Icon Button */
 .cart-action-btn {
   position: relative;
@@ -1873,6 +1882,10 @@ select option {
   .mobile-hamburger-btn,
   .mobile-header-icon-btn {
     display: flex;
+  }
+
+  .mobile-only {
+    display: inline-flex !important;
   }
 
   .nav-menu,

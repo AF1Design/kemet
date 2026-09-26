@@ -5,6 +5,16 @@ import { processAndUploadProductImage } from '../../lib/image-uploader.js';
 import { getResendClient, SENDER_EMAIL } from '../../lib/resend.js';
 import { DEFAULT_COUPONS } from '../../lib/coupons.js';
 import { DEFAULT_ANNOUNCEMENT_CONFIG } from '../../lib/announcement.js';
+import { 
+  getCustomerWalletData, 
+  creditCustomerWallet, 
+  debitCustomerWallet, 
+  adjustCustomerWallet,
+  getAllCustomerWallets,
+  normalizePhone,
+  generateWalletApologyMessage, 
+  getWalletApologyWhatsAppUrl 
+} from '../../lib/wallet.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
@@ -670,6 +680,8 @@ export async function updateCustomerOrderAction({
   customer,
   items = [],
   shippingFee = null,
+  discountAmount = null,
+  couponCode = null,
   sendNotificationEmail = false,
   isAdminEdit = false
 }) {
@@ -704,13 +716,47 @@ export async function updateCustomerOrderAction({
     if (shippingFee !== null && shippingFee !== undefined && !isNaN(Number(shippingFee))) {
       finalShippingFee = Math.max(0, Number(shippingFee));
     }
-    const totalAmount = subtotal + finalShippingFee;
+
+    // Determine existing or provided discount and coupon code
+    let finalDiscount = 0;
+    let finalCouponCode = couponCode ? String(couponCode).trim().toUpperCase() : null;
+
+    if (discountAmount !== null && discountAmount !== undefined && !isNaN(Number(discountAmount))) {
+      finalDiscount = Math.max(0, Number(discountAmount));
+    } else {
+      // Check existing order notes or price difference for previous discount
+      const couponRegex = /\[كود الخصم:\s*([^\]|]+)(?:\s*\|\s*خصم:\s*(\d+(?:\.\d+)?)\s*ج\.م)?\]/i;
+      const match = String(currOrder.delivery_notes || '').match(couponRegex);
+      if (match) {
+        if (!finalCouponCode && match[1]) finalCouponCode = match[1].trim().toUpperCase();
+        if (match[2]) finalDiscount = Number(match[2]);
+      }
+      if (finalDiscount === 0 && Number(currOrder.subtotal || 0) + Number(currOrder.shipping_fee || 0) > Number(currOrder.total_amount || 0)) {
+        finalDiscount = (Number(currOrder.subtotal || 0) + Number(currOrder.shipping_fee || 0)) - Number(currOrder.total_amount || 0);
+      }
+    }
+    finalDiscount = Math.max(0, finalDiscount);
+
+    // Recompute total amount respecting discount
+    const totalAmount = Math.max(0, subtotal - finalDiscount) + finalShippingFee;
+
+    // Handle notes & guarantee coupon tag is consistent with finalDiscount
+    const currentDeliveryNotes = String(customer?.notes ?? customer?.delivery_notes ?? currOrder.delivery_notes ?? '').trim();
+    // Strip existing coupon tag if present
+    const cleanNotesBase = currentDeliveryNotes.replace(/\s*\[كود الخصم:[^\]]+\]/g, '').trim();
+
+    let finalDeliveryNotes = cleanNotesBase;
+    if (finalDiscount > 0) {
+      const tag = `[كود الخصم: ${finalCouponCode || 'KEMET'} | خصم: ${finalDiscount} ج.م]`;
+      finalDeliveryNotes = cleanNotesBase ? `${cleanNotesBase} ${tag}` : tag;
+    }
 
     // 2. Update order customer details & total amount & shipping fee & subtotal
     const orderUpdatePayload = {
       subtotal: subtotal,
       shipping_fee: finalShippingFee,
       total_amount: totalAmount,
+      delivery_notes: finalDeliveryNotes,
       updated_at: new Date().toISOString()
     };
 
@@ -720,9 +766,6 @@ export async function updateCustomerOrderAction({
       if (customer.phone !== undefined) orderUpdatePayload.customer_phone = String(customer.phone).trim();
       if (customer.governorate !== undefined) orderUpdatePayload.governorate = String(customer.governorate).trim();
       if (customer.address !== undefined) orderUpdatePayload.address = String(customer.address).trim();
-      if (customer.notes !== undefined || customer.delivery_notes !== undefined) {
-        orderUpdatePayload.delivery_notes = String(customer.notes ?? customer.delivery_notes ?? '').trim();
-      }
 
       // Sync customer email to profiles table if valid
       if (customer.email) {
@@ -922,6 +965,12 @@ export async function updateCustomerOrderAction({
                     <span>المجموع الفرعي للمنتجات:</span>
                     <strong style="color: #0F172A;">${subtotal} ج.م</strong>
                   </div>
+                  ${finalDiscount > 0 ? `
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #16A34A; font-weight: 700;">
+                    <span>الخصم المطبق${finalCouponCode ? ` (${finalCouponCode})` : ''}:</span>
+                    <strong style="color: #16A34A;">-${finalDiscount} ج.م</strong>
+                  </div>
+                  ` : ''}
                   <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #475569;">
                     <span>مصاريف الشحن:</span>
                     <strong style="color: #0F172A;">${finalShippingFee === 0 ? 'مجاناً' : `${finalShippingFee} ج.م`}</strong>
@@ -970,7 +1019,10 @@ export async function updateCustomerOrderAction({
       success: true,
       subtotal,
       shippingFee: finalShippingFee,
+      discount: finalDiscount,
+      couponCode: finalCouponCode,
       totalAmount,
+      deliveryNotes: finalDeliveryNotes,
       emailSent
     };
   } catch (err) {
@@ -1299,7 +1351,7 @@ export async function sendMassPromoEmailAction(params) {
       const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (!userErr && userData && userData.users) {
         userData.users.forEach(u => {
-          if (u.email && u.email.includes('@') && u.email !== 'admin@kemet.eg') {
+          if (u.email && u.email.includes('@') && u.email !== 'admin@kemet.eg' && u.email !== 'kemet.ya1@gmail.com') {
             emailSet.add(u.email.trim().toLowerCase());
           }
         });
@@ -1313,7 +1365,7 @@ export async function sendMassPromoEmailAction(params) {
       const { data: profiles, error: profErr } = await supabaseAdmin.from('profiles').select('email, role');
       if (!profErr && profiles) {
         profiles.forEach(p => {
-          if (p.email && p.email.includes('@') && p.role !== 'admin' && p.email !== 'admin@kemet.eg') {
+          if (p.email && p.email.includes('@') && p.role !== 'admin' && p.email !== 'admin@kemet.eg' && p.email !== 'kemet.ya1@gmail.com') {
             emailSet.add(p.email.trim().toLowerCase());
           }
         });
@@ -1536,7 +1588,7 @@ export async function getRegisteredUsersStatsAction() {
       const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (!userErr && userData && userData.users) {
         userData.users.forEach(u => {
-          if (u.email && u.email.includes('@') && u.email !== 'admin@kemet.eg') {
+          if (u.email && u.email.includes('@') && u.email !== 'admin@kemet.eg' && u.email !== 'kemet.ya1@gmail.com') {
             emailSet.add(u.email.trim().toLowerCase());
           }
         });
@@ -1549,7 +1601,7 @@ export async function getRegisteredUsersStatsAction() {
       const { data: profiles, error: profErr } = await supabaseAdmin.from('profiles').select('email, role');
       if (!profErr && profiles) {
         profiles.forEach(p => {
-          if (p.email && p.email.includes('@') && p.role !== 'admin' && p.email !== 'admin@kemet.eg') {
+          if (p.email && p.email.includes('@') && p.role !== 'admin' && p.email !== 'admin@kemet.eg' && p.email !== 'kemet.ya1@gmail.com') {
             emailSet.add(p.email.trim().toLowerCase());
           }
         });
@@ -2395,11 +2447,16 @@ export async function getAbandonedCartsAction() {
       } catch (e) {}
     });
 
-    // 2. Fetch profiles and orders to cross-reference registered leads
-    const [{ data: profiles }, { data: orders }] = await Promise.all([
+    // 2. Fetch profiles, auth users, and orders in parallel
+    const [{ data: profiles }, { data: authData }, { data: orders, error: ordersErr }] = await Promise.all([
       supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
-      supabaseAdmin.from('orders').select('id, user_id, customer_phone, customer_email, total_amount, created_at')
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      supabaseAdmin.from('orders').select('id, user_id, customer_name, customer_phone, total_amount, status, created_at').order('created_at', { ascending: false })
     ]);
+
+    if (ordersErr) {
+      console.error('getAbandonedCartsAction orders fetch error:', ordersErr);
+    }
 
     const cleanPhone = (s) => {
       if (!s) return '';
@@ -2408,69 +2465,130 @@ export async function getAbandonedCartsAction() {
     };
     const cleanEmail = (s) => (s || '').toLowerCase().trim();
 
-    const buyersUserId = new Set();
-    const buyersPhone = new Set();
-    const buyersEmail = new Set();
+    // Index valid buyers and all orders
+    const validBuyerUserIds = new Set();
+    const validBuyerPhones = new Set();
+    const allOrderUserIds = new Set();
+    const allOrderPhones = new Set();
 
     (orders || []).forEach(o => {
-      if (o.user_id) buyersUserId.add(String(o.user_id).trim());
-      if (o.customer_phone) {
-        const p = cleanPhone(o.customer_phone);
-        if (p) buyersPhone.add(p);
-      }
-      if (o.customer_email) {
-        const e = cleanEmail(o.customer_email);
-        if (e) buyersEmail.add(e);
+      const isCancelled = o.status === 'cancelled' || o.status === 'ملغي' || o.status === 'canceled';
+      const p = cleanPhone(o.customer_phone);
+      const uid = o.user_id ? String(o.user_id).trim() : null;
+
+      if (uid) allOrderUserIds.add(uid);
+      if (p) allOrderPhones.add(p);
+
+      if (!isCancelled) {
+        if (uid) validBuyerUserIds.add(uid);
+        if (p) validBuyerPhones.add(p);
       }
     });
 
-    const registeredLeads = [];
+    // Unified customer accounts map (excluding admin accounts)
+    const customerMap = new Map();
+
     (profiles || []).forEach(p => {
-      const pPhone = cleanPhone(p.phone);
-      const pEmail = cleanEmail(p.email);
-      const hasOrdered = buyersUserId.has(p.id) || (pPhone && buyersPhone.has(pPhone)) || (pEmail && buyersEmail.has(pEmail));
+      const email = cleanEmail(p.email);
+      const role = p.role || 'customer';
+      if (role === 'admin' || email === 'admin@kemet.eg' || email === 'kemet.ya1@gmail.com') return;
 
-      if (!hasOrdered && p.role !== 'admin' && p.email !== 'admin@kemet.eg') {
-        let stage = 'تصفح المتجر بعد تسجيل الدخول';
-        if (p.address && p.address.trim().length > 3) {
-          stage = 'أدخل العنوان التفصيلي في حسابه وتوقف';
-        } else if (p.governorate && p.governorate.trim().length > 0 && p.governorate !== 'القاهرة') {
-          stage = `حدد محافظة ${p.governorate} وتوقف`;
-        }
+      customerMap.set(p.id, {
+        id: p.id,
+        fullName: p.full_name || 'عميل مسجل',
+        phone: p.phone || '',
+        email: p.email || '',
+        governorate: p.governorate || 'القاهرة',
+        address: p.address || '',
+        createdAt: p.created_at
+      });
+    });
 
-        // Link active abandoned cart if this user has one
-        const leadCart = abandonedCarts.find(c =>
-          (c.userId && String(c.userId).trim() === String(p.id).trim()) ||
-          (pPhone && c.customerPhone && cleanPhone(c.customerPhone) === pPhone) ||
-          (pEmail && c.customerEmail && cleanEmail(c.customerEmail) === pEmail)
-        );
+    // Merge any registered auth users missing in profiles table
+    const authUsers = authData?.users || [];
+    const existingEmails = new Set(Array.from(customerMap.values()).map(c => cleanEmail(c.email)).filter(Boolean));
 
-        if (leadCart) {
-          stage = `أضاف ${leadCart.itemsCount || leadCart.items?.length || 1} منتج للسلة بقيمة ${leadCart.totalAmount} ج.م وتوقف`;
-        }
-
-        registeredLeads.push({
-          id: p.id,
-          fullName: p.full_name || 'عميل مسجل',
-          phone: p.phone || '',
-          email: p.email || '',
-          governorate: p.governorate || 'القاهرة',
-          address: p.address || '',
-          createdAt: p.created_at,
-          stage,
-          cart: leadCart || null
+    authUsers.forEach(u => {
+      const email = cleanEmail(u.email);
+      if (!email || email === 'admin@kemet.eg' || email === 'kemet.ya1@gmail.com') return;
+      if (!customerMap.has(u.id) && !existingEmails.has(email)) {
+        customerMap.set(u.id, {
+          id: u.id,
+          fullName: u.user_metadata?.full_name || u.user_metadata?.name || email.split('@')[0] || 'عميل مسجل',
+          phone: u.phone || u.user_metadata?.phone || '',
+          email: u.email || '',
+          governorate: 'القاهرة',
+          address: '',
+          createdAt: u.created_at
         });
+        existingEmails.add(email);
       }
     });
 
-    const totalAccounts = profiles?.length || 0;
-    const buyersCount = totalAccounts - registeredLeads.length;
+    // Classify into real buyers, non-buyer leads, and full accounts list
+    const allRegisteredAccounts = [];
+    const buyers = [];
+    const registeredLeads = [];
+
+    for (const [id, customer] of customerMap.entries()) {
+      const pPhone = cleanPhone(customer.phone);
+      const hasActiveOrder = (id && validBuyerUserIds.has(id)) || (pPhone && validBuyerPhones.has(pPhone));
+      const hasAnyOrder = (id && allOrderUserIds.has(id)) || (pPhone && allOrderPhones.has(pPhone));
+
+      let stage = 'تصفح المتجر بعد تسجيل الدخول';
+      if (hasActiveOrder) {
+        stage = 'أتم طلب شراء بنجاح (عميل مشتري)';
+      } else if (hasAnyOrder) {
+        stage = 'لديه طلب ملغي سابقاً ولم يكرر الشراء';
+      } else if (customer.address && customer.address.trim().length > 3) {
+        stage = 'أدخل العنوان التفصيلي في حسابه وتوقف';
+      } else if (customer.governorate && customer.governorate.trim().length > 0 && customer.governorate !== 'القاهرة') {
+        stage = `حدد محافظة ${customer.governorate} وتوقف`;
+      }
+
+      // Link active abandoned cart if this user has one
+      const leadCart = abandonedCarts.find(c =>
+        (c.userId && String(c.userId).trim() === String(customer.id).trim()) ||
+        (pPhone && c.customerPhone && cleanPhone(c.customerPhone) === pPhone) ||
+        (customer.email && c.customerEmail && cleanEmail(c.customerEmail) === cleanEmail(customer.email))
+      );
+
+      if (leadCart && !hasActiveOrder) {
+        stage = `أضاف ${leadCart.itemsCount || leadCart.items?.length || 1} منتج للسلة بقيمة ${leadCart.totalAmount} ج.م وتوقف`;
+      }
+
+      const accountItem = {
+        id: customer.id,
+        fullName: customer.fullName,
+        phone: customer.phone,
+        email: customer.email,
+        governorate: customer.governorate,
+        address: customer.address,
+        createdAt: customer.createdAt,
+        isBuyer: Boolean(hasActiveOrder),
+        stage,
+        cart: leadCart || null
+      };
+
+      allRegisteredAccounts.push(accountItem);
+
+      if (hasActiveOrder) {
+        buyers.push(accountItem);
+      } else {
+        registeredLeads.push(accountItem);
+      }
+    }
+
+    const totalAccounts = customerMap.size;
+    const buyersCount = buyers.length;
     const conversionRate = totalAccounts > 0 ? `${((buyersCount / totalAccounts) * 100).toFixed(1)}%` : '0%';
 
     return {
       success: true,
       abandonedCarts,
       registeredLeads,
+      allRegisteredAccounts,
+      buyers,
       stats: {
         abandonedCartsCount: abandonedCarts.length,
         potentialRevenue: abandonedCarts.reduce((s, c) => s + Number(c.totalAmount || 0), 0),
@@ -2485,4 +2603,590 @@ export async function getAbandonedCartsAction() {
     return { success: false, error: err.message, abandonedCarts: [], registeredLeads: [], stats: {} };
   }
 }
+
+/**
+ * Server Action: Fetches customer wallet balance and transaction ledger
+ */
+export async function getCustomerWalletAction({ userId = null, phone = null, email = null }) {
+  try {
+    const data = await getCustomerWalletData({ userId, phone, email });
+    return {
+      success: true,
+      wallet: data
+    };
+  } catch (err) {
+    console.error('getCustomerWalletAction error:', err);
+    return {
+      success: false,
+      error: err.message || 'فشل جلب بيانات المحفظة',
+      wallet: { balance: 0, transactions: [] }
+    };
+  }
+}
+
+/**
+ * Server Action: Admin credits customer wallet with compensation funds
+ */
+/**
+ * Server Action: Sends official KEMET wallet compensation email to customer via Resend
+ */
+export async function sendWalletCompensationEmailAction({
+  recipientEmail,
+  customerName = '',
+  amount,
+  balance = null,
+  reason = 'هدية ورصيد مشتريات',
+  orderId = null
+}) {
+  try {
+    const cleanEmail = String(recipientEmail || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'البريد الإلكتروني للعميل غير صحيح أو غير موجود.' };
+    }
+
+    const cleanAmount = Math.max(0, Math.round(Number(amount || 0)));
+    if (cleanAmount <= 0) {
+      return { success: false, error: 'قيمة الرصيد المودع يجب أن تكون أكبر من صفر.' };
+    }
+
+    const cleanName = (customerName && String(customerName).trim()) || 'عزيزنا العميل';
+    const cleanBalance = balance !== null && balance !== undefined ? Math.max(0, Math.round(Number(balance))) : cleanAmount;
+    const cleanReason = String(reason || 'هدية ورصيد مشتريات من إدارة KEMET').trim();
+
+    const resend = getResendClient();
+
+    const emailSubject = orderId
+      ? `إيداع هدية ورصيد مالي في محفظة حسابكم بخصوص طلبكم #${orderId} - KEMET`
+      : `إيداع هدية ورصيد مالي في محفظة حسابكم - KEMET`;
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@700;800;900&display=swap" rel="stylesheet" />
+        <title>${emailSubject}</title>
+      </head>
+      <body style="margin: 0; padding: 24px 0; background-color: #F8FAFC; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; text-align: right;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 32px 28px; border: 1px solid #E2E8F0; border-radius: 14px; background-color: #FFFFFF; box-shadow: 0 4px 16px rgba(0,0,0,0.06); direction: rtl; text-align: right;">
+          <div style="text-align: left; margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
+            <a href="https://kemetmisr.com" target="_blank" style="text-decoration: none;">
+              <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px; border: 0;" />
+            </a>
+          </div>
+          
+          <h2 style="color: #0F172A; font-family: 'Cairo', 'Tajawal', sans-serif; font-size: 22px; font-weight: 900; margin: 0 0 16px 0; line-height: 1.4; text-align: right;">
+            إيداع رصيد مالي في محفظة حسابكم كهدية خاصة من KEMET
+          </h2>
+          
+          <p style="color: #334155; font-family: 'Cairo', 'Tajawal', sans-serif; font-size: 16px; font-weight: 700; line-height: 1.7; margin-bottom: 18px; text-align: right;">
+            عزيزنا العميل ${cleanName}،<br />
+            تقديراً لثقتكم واختياركم لـ KEMET، يسرنا إبلاغكم بأنه تم إيداع رصيد مالي بقيمة <strong style="color: #10B981;">(${cleanAmount} ج.م)</strong> في محفظة حسابكم لدى متجر KEMET كهدية خاصة.
+          </p>
+
+          <div style="background: #F8FAFC; padding: 20px; border-radius: 10px; margin: 24px 0; border: 1px solid #E2E8F0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 15px; color: #475569;">
+              <span>قيمة الرصيد المودع:</span>
+              <strong style="color: #10B981; font-size: 20px; font-weight: 900;">+${cleanAmount} ج.م</strong>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 15px; color: #475569;">
+              <span>إجمالي الرصيد المتاح في محفظتكم الآن:</span>
+              <strong style="color: #B8860B; font-size: 22px; font-weight: 900;">${cleanBalance} ج.م</strong>
+            </div>
+
+            ${orderId ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; color: #64748B;">
+              <span>مرجع الطلب:</span>
+              <strong style="color: #0F172A; font-weight: 800;">#${orderId}</strong>
+            </div>
+            ` : ''}
+
+            ${cleanReason ? `
+            <div style="display: flex; justify-content: space-between; font-size: 14px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; margin-top: 6px;">
+              <span>بيان المعاملة:</span>
+              <span style="color: #334155; font-weight: 700;">${cleanReason}</span>
+            </div>
+            ` : ''}
+          </div>
+
+          <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+            <div style="font-size: 14px; font-weight: 800; color: #B8860B; margin-bottom: 4px;">
+              كيفية استخدام الرصيد:
+            </div>
+            <div style="font-size: 13px; color: #334155; line-height: 1.6; font-weight: 600;">
+              يمكنكم استخدام هذا الرصيد بالكامل لخصمه فورياً من قيمة مشترياتكم في طلبكم القادم عبر الموقع؛ ببساطة قم بتحديد خيار (استخدام رصيد المحفظة) في صفحة إتمام الطلب (Checkout).
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 28px; margin-bottom: 20px;">
+            <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: #0F172A; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', sans-serif; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 800; margin: 6px;">
+              تصفح الكولكشن والتسوق الآن
+            </a>
+            <a href="https://api.whatsapp.com/send?phone=201114687759&text=${encodeURIComponent(`مرحباً KEMET، بخصوص إشعار إيداع رصيد الهدية في محفظتي بقيمة (${cleanAmount} ج.م)`)}" target="_blank" style="display: inline-block; background: #25D366; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', sans-serif; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 800; margin: 6px;">
+              تواصل معنا واتساب
+            </a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+          
+          <p style="color: #94A3B8; font-family: 'Cairo', 'Tajawal', sans-serif; font-size: 12px; text-align: center; margin: 0;">
+            KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
+            <span style="display: block; font-size: 10px; color: #CBD5E1; margin-top: 4px;">#WALLET-REF-${Date.now().toString().slice(-6)}</span>
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const { data: mailData, error: mailErr } = await resend.emails.send({
+      from: SENDER_EMAIL,
+      to: [cleanEmail],
+      subject: emailSubject,
+      html: emailHtml
+    });
+
+    if (mailErr) {
+      console.error('sendWalletCompensationEmailAction Resend error:', mailErr);
+      return { success: false, error: mailErr.message || 'فشل إرسال الإيميل عبر خادم البريد.' };
+    }
+
+    return {
+      success: true,
+      messageId: mailData?.id
+    };
+  } catch (err) {
+    console.error('sendWalletCompensationEmailAction exception:', err);
+    return { success: false, error: err.message || 'حدث خطأ أثناء إرسال إيميل الهدية.' };
+  }
+}
+
+/**
+ * Server Action: Admin credits customer wallet with gift funds & optionally sends email
+ */
+export async function creditCustomerWalletAction({
+  userId = null,
+  phone = null,
+  email = null,
+  customerName = '',
+  amount,
+  reason = 'هدية ورصيد مشتريات',
+  adminName = 'إدارة KEMET',
+  orderId = null,
+  giftType = 'general',
+  sendEmailNotification = false
+}) {
+  try {
+    const numAmount = Math.max(0, Math.round(Number(amount || 0)));
+    if (numAmount <= 0) {
+      return { success: false, error: 'قيمة الرصيد المضاف يجب أن تكون أكبر من صفر.' };
+    }
+
+    const res = await creditCustomerWallet({
+      userId,
+      phone,
+      email,
+      amount: numAmount,
+      reason,
+      adminName,
+      orderId,
+      giftType
+    });
+
+    const apologyText = generateWalletApologyMessage({
+      customerName,
+      amount: numAmount,
+      reason,
+      orderId,
+      giftType
+    });
+
+    const whatsAppUrl = getWalletApologyWhatsAppUrl({
+      phone: phone || res.phone,
+      customerName,
+      amount: numAmount,
+      reason,
+      orderId,
+      giftType
+    });
+
+    let emailSent = false;
+    let emailError = null;
+
+    if (sendEmailNotification && email && String(email).includes('@')) {
+      const mailRes = await sendWalletCompensationEmailAction({
+        recipientEmail: email,
+        customerName,
+        amount: numAmount,
+        balance: res.balance,
+        reason,
+        orderId
+      });
+      if (mailRes.success) {
+        emailSent = true;
+      } else {
+        emailError = mailRes.error;
+      }
+    }
+
+    triggerBackgroundRevalidate(['/my-orders', '/checkout', '/admin/orders', '/admin', '/admin/customers-finance']);
+
+    return {
+      success: true,
+      balance: res.balance,
+      previousBalance: res.previousBalance,
+      creditedAmount: res.creditedAmount,
+      transaction: res.transaction,
+      apologyText,
+      whatsAppUrl,
+      emailSent,
+      emailError,
+      recipientEmail: email || null
+    };
+  } catch (err) {
+    console.error('creditCustomerWalletAction error:', err);
+    return { success: false, error: err.message || 'فشل إيداع الرصيد في المحفظة.' };
+  }
+}
+
+/**
+ * Server Action: Debits customer wallet when applying store credit to order
+ */
+export async function debitCustomerWalletAction({
+  userId = null,
+  phone = null,
+  email = null,
+  amount,
+  reason = 'استخدام الرصيد في طلب شراء',
+  orderId = null
+}) {
+  try {
+    const numAmount = Math.max(0, Math.round(Number(amount || 0)));
+    if (numAmount <= 0) {
+      return { success: false, error: 'مبلغ الخصم يجب أن يكون أكبر من صفر.' };
+    }
+
+    const res = await debitCustomerWallet({
+      userId,
+      phone,
+      email,
+      amount: numAmount,
+      reason,
+      orderId
+    });
+
+    if (!res.success) {
+      return res;
+    }
+
+    triggerBackgroundRevalidate(['/my-orders', '/checkout', '/admin/orders', '/admin', '/admin/customers-finance']);
+
+    return {
+      success: true,
+      balance: res.balance,
+      debitedAmount: res.debitedAmount,
+      transaction: res.transaction
+    };
+  } catch (err) {
+    console.error('debitCustomerWalletAction error:', err);
+    return { success: false, error: err.message || 'فشل خصم الرصيد من المحفظة.' };
+  }
+}
+
+/**
+ * Server Action: Directly sets or corrects customer wallet balance (fixes accidental excess deposits)
+ */
+export async function adjustCustomerWalletAction({
+  userId = null,
+  phone = null,
+  email = null,
+  newBalance = 0,
+  reason = 'تعديل وتصحيح رصيد المحفظة بواسطة الإدارة',
+  adminName = 'إدارة KEMET'
+}) {
+  try {
+    const numBalance = Math.max(0, Math.round(Number(newBalance || 0)));
+    const res = await adjustCustomerWallet({
+      userId,
+      phone,
+      email,
+      newBalance: numBalance,
+      reason,
+      adminName
+    });
+
+    if (!res.success) {
+      return res;
+    }
+
+    triggerBackgroundRevalidate(['/my-orders', '/checkout', '/admin/orders', '/admin', '/admin/customers-finance']);
+
+    return {
+      success: true,
+      balance: res.balance,
+      previousBalance: res.previousBalance,
+      diff: res.diff,
+      transaction: res.transaction
+    };
+  } catch (err) {
+    console.error('adjustCustomerWalletAction error:', err);
+    return { success: false, error: err.message || 'فشل تعديل رصيد المحفظة.' };
+  }
+}
+
+/**
+ * Server Action: Aggregates comprehensive financial profiles for all registered & guest customers
+ */
+export async function getCustomersFinancialOverviewAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    // 1. Fetch profiles, auth users, orders, and wallets in parallel
+    const [{ data: profiles, error: profErr }, { data: authData, error: authErr }, { data: orders, error: ordersErr }, wallets] = await Promise.all([
+      supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      supabaseAdmin.from('orders').select('id, user_id, customer_name, customer_phone, total_amount, subtotal, shipping_fee, status, created_at, delivery_notes').order('created_at', { ascending: false }),
+      getAllCustomerWallets()
+    ]);
+
+    if (profErr) console.warn('getCustomersFinancialOverviewAction profiles note:', profErr.message);
+    if (authErr) console.warn('getCustomersFinancialOverviewAction auth note:', authErr.message);
+    if (ordersErr) console.warn('getCustomersFinancialOverviewAction orders note:', ordersErr.message);
+
+    const customersMap = new Map();
+    const phoneToKey = new Map();
+    const emailToKey = new Map();
+    const userIdToKey = new Map();
+
+    const getOrInitCustomer = (key, initialProps = {}) => {
+      if (!customersMap.has(key)) {
+        customersMap.set(key, {
+          id: key,
+          userId: null,
+          name: '',
+          phone: '',
+          email: '',
+          isRegistered: false,
+          role: 'customer',
+          registeredAt: null,
+          currentBalance: 0,
+          walletTransactions: [],
+          walletStorageKey: null,
+          orders: [],
+          ordersCount: 0,
+          totalSpent: 0,
+          lastOrderDate: null,
+          totalGiftCredited: 0,
+          totalCreditUsed: 0,
+          ...initialProps
+        });
+      }
+      return customersMap.get(key);
+    };
+
+    // 1. Index Profiles
+    (profiles || []).forEach(p => {
+      const cleanE = (p.email || '').trim().toLowerCase();
+      if (p.role === 'admin' || cleanE === 'admin@kemet.eg' || cleanE === 'kemet.ya1@gmail.com') return;
+
+      const uKey = `u_${p.id}`;
+      const normP = normalizePhone(p.phone);
+
+      const c = getOrInitCustomer(uKey, {
+        userId: p.id,
+        name: p.full_name || '',
+        phone: normP || '',
+        email: cleanE,
+        isRegistered: true,
+        role: p.role || 'customer',
+        registeredAt: p.created_at || null
+      });
+
+      userIdToKey.set(String(p.id).trim(), uKey);
+      if (c.phone) phoneToKey.set(c.phone, uKey);
+      if (c.email) emailToKey.set(c.email, uKey);
+    });
+
+    // 2. Index Auth Users (in case user created in Auth before Profile record)
+    ((authData && authData.users) || []).forEach(u => {
+      const cleanE = (u.email || '').trim().toLowerCase();
+      if (cleanE === 'admin@kemet.eg' || cleanE === 'kemet.ya1@gmail.com') return;
+      const uIdStr = String(u.id).trim();
+      let cKey = userIdToKey.get(uIdStr);
+      const normP = normalizePhone(u.phone || u.user_metadata?.phone);
+
+      if (!cKey && cleanE && emailToKey.has(cleanE)) cKey = emailToKey.get(cleanE);
+
+      if (!cKey) {
+        cKey = `u_${u.id}`;
+        userIdToKey.set(uIdStr, cKey);
+      }
+
+      const c = getOrInitCustomer(cKey, {
+        userId: u.id,
+        isRegistered: true,
+        registeredAt: u.created_at || null
+      });
+
+      if (!c.userId) c.userId = u.id;
+      c.isRegistered = true;
+      if (!c.email && cleanE) c.email = cleanE;
+      if (!c.phone && normP) c.phone = normP;
+      if (!c.name) {
+        c.name = u.user_metadata?.full_name || u.user_metadata?.name || '';
+      }
+
+      if (c.phone) phoneToKey.set(c.phone, cKey);
+      if (c.email) emailToKey.set(c.email, cKey);
+    });
+
+    // 3. Map Orders
+    (orders || []).forEach(o => {
+      const uId = o.user_id ? String(o.user_id).trim() : null;
+      const oPhone = normalizePhone(o.customer_phone);
+      const oEmail = (o.customer_email || '').trim().toLowerCase();
+
+      let targetKey = null;
+      if (uId && userIdToKey.has(uId)) {
+        targetKey = userIdToKey.get(uId);
+      } else if (oPhone && phoneToKey.has(oPhone)) {
+        targetKey = phoneToKey.get(oPhone);
+      } else if (oEmail && emailToKey.has(oEmail)) {
+        targetKey = emailToKey.get(oEmail);
+      }
+
+      if (!targetKey) {
+        targetKey = uId ? `u_${uId}` : (oPhone ? `p_${oPhone}` : `ord_${o.id}`);
+        if (uId) userIdToKey.set(uId, targetKey);
+        if (oPhone) phoneToKey.set(oPhone, targetKey);
+        if (oEmail) emailToKey.set(oEmail, targetKey);
+      }
+
+      const c = getOrInitCustomer(targetKey);
+      if (uId && !c.userId) c.userId = uId;
+      if (!c.phone && oPhone) c.phone = oPhone;
+      if (!c.email && oEmail) c.email = oEmail;
+      if (!c.name && o.customer_name) c.name = o.customer_name;
+
+      c.orders.push({
+        id: o.id,
+        created_at: o.created_at,
+        status: o.status,
+        total_amount: Number(o.total_amount || 0),
+        subtotal: Number(o.subtotal || 0),
+        shipping_fee: Number(o.shipping_fee || 0),
+        notes: o.delivery_notes || ''
+      });
+    });
+
+    // 4. Map Wallets
+    (wallets || []).forEach(w => {
+      const uId = w.userId ? String(w.userId).trim() : null;
+      const wPhone = normalizePhone(w.phone);
+      const wEmail = (w.email || '').trim().toLowerCase();
+
+      if (wEmail === 'admin@kemet.eg' || wEmail === 'kemet.ya1@gmail.com' || wPhone === '01114687759') return;
+
+      let targetKey = null;
+      if (uId && userIdToKey.has(uId)) {
+        targetKey = userIdToKey.get(uId);
+      } else if (wPhone && phoneToKey.has(wPhone)) {
+        targetKey = phoneToKey.get(wPhone);
+      } else if (wEmail && emailToKey.has(wEmail)) {
+        targetKey = emailToKey.get(wEmail);
+      }
+
+      if (!targetKey) {
+        targetKey = uId ? `u_${uId}` : (wPhone ? `p_${wPhone}` : `w_${w.id}`);
+      }
+
+      const c = getOrInitCustomer(targetKey);
+      if (uId && !c.userId) c.userId = uId;
+      if (!c.phone && wPhone) c.phone = wPhone;
+      if (!c.email && wEmail) c.email = wEmail;
+      c.currentBalance = Math.max(0, Number(w.balance || 0));
+      c.walletTransactions = Array.isArray(w.transactions) ? w.transactions : [];
+      c.walletStorageKey = w.id;
+    });
+
+    // 5. Compute Customer Summaries & Global KPIs
+    let totalWalletBalances = 0;
+    let totalRevenue = 0;
+    let totalGiftsIssued = 0;
+    let totalRegisteredCount = 0;
+
+    const customersList = Array.from(customersMap.values()).map(c => {
+      if (c.isRegistered) totalRegisteredCount++;
+      totalWalletBalances += c.currentBalance;
+
+      c.ordersCount = c.orders.length;
+      c.totalSpent = c.orders.reduce((acc, o) => {
+        const isCancelled = o.status === 'cancelled' || o.status === 'ملغي' || o.status === 'canceled';
+        return isCancelled ? acc : acc + (o.total_amount || 0);
+      }, 0);
+      totalRevenue += c.totalSpent;
+
+      if (c.orders.length > 0) {
+        c.lastOrderDate = c.orders[0].created_at;
+      }
+
+      let giftsSum = 0;
+      let usedSum = 0;
+      c.walletTransactions.forEach(t => {
+        if (t.type === 'credit' || t.type === 'gift' || t.type === 'adjustment_credit') {
+          giftsSum += Number(t.amount || 0);
+        } else if (t.type === 'debit' || t.type === 'adjustment_debit') {
+          usedSum += Number(t.amount || 0);
+        }
+      });
+
+      c.totalGiftCredited = giftsSum;
+      c.totalCreditUsed = usedSum;
+      totalGiftsIssued += giftsSum;
+
+      if (!c.name) {
+        c.name = c.isRegistered ? 'عميل مسجل' : (c.phone ? `عميل (${c.phone})` : 'عميل زائر');
+      }
+
+      return c;
+    });
+
+    // Default sort: highest wallet balance first, then total spent, then orders count
+    customersList.sort((a, b) => {
+      if (b.currentBalance !== a.currentBalance) return b.currentBalance - a.currentBalance;
+      if (b.totalSpent !== a.totalSpent) return b.totalSpent - a.totalSpent;
+      return b.ordersCount - a.ordersCount;
+    });
+
+    return {
+      success: true,
+      stats: {
+        totalCustomers: customersList.length,
+        totalRegistered: totalRegisteredCount,
+        totalWalletBalances,
+        totalRevenue,
+        totalGiftsIssued
+      },
+      customers: customersList
+    };
+  } catch (err) {
+    console.error('getCustomersFinancialOverviewAction error:', err);
+    return {
+      success: false,
+      error: err.message || 'فشل جلب الحساب المالي للعملاء.',
+      stats: {
+        totalCustomers: 0,
+        totalRegistered: 0,
+        totalWalletBalances: 0,
+        totalRevenue: 0,
+        totalGiftsIssued: 0
+      },
+      customers: []
+    };
+  }
+}
+
 

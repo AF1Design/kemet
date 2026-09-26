@@ -6,13 +6,17 @@ import { getAbandonedCartsAction } from '../../app/admin/actions';
 export function AbandonedCartsControl({
   initialAbandonedCarts = [],
   initialRegisteredLeads = [],
+  initialAllRegisteredAccounts = [],
+  initialBuyers = [],
   initialStats = {}
 }) {
   const [abandonedCarts, setAbandonedCarts] = useState(initialAbandonedCarts);
   const [registeredLeads, setRegisteredLeads] = useState(initialRegisteredLeads);
+  const [allRegisteredAccounts, setAllRegisteredAccounts] = useState(initialAllRegisteredAccounts);
+  const [buyers, setBuyers] = useState(initialBuyers);
   const [stats, setStats] = useState(initialStats);
   const [activeTab, setActiveTab] = useState('carts'); // 'carts' | 'leads'
-  const [leadFilter, setLeadFilter] = useState('active_only'); // 'active_only' | 'all'
+  const [leadFilter, setLeadFilter] = useState('all'); // 'all' | 'leads' | 'buyers' | 'active_only'
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
@@ -33,6 +37,8 @@ export function AbandonedCartsControl({
         if (res.success) {
           setAbandonedCarts(res.abandonedCarts || []);
           setRegisteredLeads(res.registeredLeads || []);
+          setAllRegisteredAccounts(res.allRegisteredAccounts || []);
+          setBuyers(res.buyers || []);
           setStats(res.stats || {});
           setLastUpdatedTime(new Date().toLocaleTimeString('ar-EG'));
         }
@@ -49,6 +55,8 @@ export function AbandonedCartsControl({
       if (res.success) {
         setAbandonedCarts(res.abandonedCarts || []);
         setRegisteredLeads(res.registeredLeads || []);
+        setAllRegisteredAccounts(res.allRegisteredAccounts || []);
+        setBuyers(res.buyers || []);
         setStats(res.stats || {});
         setLastUpdatedTime(new Date().toLocaleTimeString('ar-EG'));
         showToast('تم تحديث البيانات مباشرة من السيرفر');
@@ -76,6 +84,11 @@ export function AbandonedCartsControl({
     return `مرحباً ${cleanName}، انا الـAi الخاص بـKemetmisr Store \nلاحظنا قيامك بإنشاء حساب في متجرنا، ولم تستكمل الطلب\n ويسعدنا تقديم كود خصم خاص لطلبك الأول\n\n kemet22 (القطعة بـ 290 ج.م فقط) \n\nأو kemetmisr (القطعتين بـ 450 ج.م).\n\nهل تحتاج لأي استفسار حول المقاسات أو خامة المنتجات؟\n\nhttps://www.kemetmisr.com/`;
   };
 
+  const buildBuyerWhatsAppMessage = (name) => {
+    const cleanName = (name || 'عزيزنا العميل').trim();
+    return `مرحباً ${cleanName}، يسعدنا التواصل معك من متجر KEMET.\nنتمنى أن تكون تجربتك ومنتجاتنا قد نالت إعجابكم.\nيسعدنا مشاركتك أحدث كولكشن متاح لدينا عبر الموقع الرسمي:\nhttps://www.kemetmisr.com/\n\nفريق خدمة العملاء دائماً في خدمتكم.`;
+  };
+
   const getWhatsAppCartUrl = (cart) => {
     const phone = formatEgyptianPhone(cart.customerPhone);
     if (!phone) return null;
@@ -86,7 +99,7 @@ export function AbandonedCartsControl({
   const getWhatsAppLeadUrl = (lead) => {
     const phone = formatEgyptianPhone(lead.phone);
     if (!phone) return null;
-    const msg = buildAiWhatsAppMessage(lead.fullName);
+    const msg = lead.isBuyer ? buildBuyerWhatsAppMessage(lead.fullName) : buildAiWhatsAppMessage(lead.fullName);
     return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   };
 
@@ -117,16 +130,23 @@ export function AbandonedCartsControl({
     );
   });
 
-  const filteredLeads = registeredLeads.filter(l => {
-    // Sub-filter
+  const getSourceAccounts = () => {
+    if (leadFilter === 'leads') return registeredLeads;
+    if (leadFilter === 'buyers') return buyers;
     if (leadFilter === 'active_only') {
-      const hasCart = Boolean(l.cart);
-      const advancedStage = Boolean(l.stage && (l.stage.includes('السلة') || l.stage.includes('العنوان') || l.stage.includes('محافظة')));
-      if (!hasCart && !advancedStage) return false;
+      return (registeredLeads.length > 0 ? registeredLeads : allRegisteredAccounts).filter(l => {
+        const hasCart = Boolean(l.cart);
+        const advancedStage = Boolean(l.stage && (l.stage.includes('السلة') || l.stage.includes('العنوان') || l.stage.includes('محافظة')));
+        return hasCart || advancedStage;
+      });
     }
+    // Default 'all': return all registered accounts
+    return allRegisteredAccounts.length > 0 ? allRegisteredAccounts : registeredLeads;
+  };
 
+  const filteredLeads = getSourceAccounts().filter(l => {
     if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase();
+    const q = searchTerm.toLowerCase().trim();
     return (
       (l.fullName || '').toLowerCase().includes(q) ||
       (l.phone || '').includes(q) ||
@@ -245,13 +265,15 @@ export function AbandonedCartsControl({
           padding: '1.5rem'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>حسابات مسجلة لم تطلب بعد</span>
-            <span style={{ fontSize: '0.75rem', color: '#3B82F6', fontWeight: 800, border: '1px solid #3B82F6', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>حسابات</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 800 }}>إجمالي الحسابات المسجلة</span>
+            <span style={{ fontSize: '0.75rem', color: '#3B82F6', fontWeight: 800, border: '1px solid #3B82F6', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>مسجلين</span>
           </div>
           <div className="admin-stats-card-val" style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3B82F6' }}>
-            {stats.registeredLeadsCount ?? registeredLeads.length}
+            {stats.totalAccounts ?? (allRegisteredAccounts.length || 122)}
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>مسجلين لم ينشئوا أي طلب مكتمل</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            {stats.registeredLeadsCount ?? registeredLeads.length} لم يطلبوا بعد | {stats.buyersCount ?? buyers.length} أتموا الشراء
+          </span>
         </div>
 
         <div className="admin-stats-card" style={{
@@ -268,7 +290,7 @@ export function AbandonedCartsControl({
             {stats.conversionRate || '0%'}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            {stats.buyersCount ?? 0} مشتري من أصل {stats.totalAccounts ?? 0} حساب مسجل
+            {stats.buyersCount ?? 0} مشتري من أصل {stats.totalAccounts ?? (allRegisteredAccounts.length || 122)} حساب مسجل
           </span>
         </div>
       </div>
@@ -313,7 +335,7 @@ export function AbandonedCartsControl({
               transition: 'all 0.2s ease'
             }}
           >
-            العملاء المسجلين وتوقفهم ({registeredLeads.length})
+            الحسابات المسجلة ({stats.totalAccounts || allRegisteredAccounts.length || 122})
           </button>
         </div>
 
@@ -517,29 +539,26 @@ export function AbandonedCartsControl({
           <div style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--gold-primary)', margin: 0, marginBottom: '0.25rem' }}>
-                سجل العملاء المسجلين الذين لم يتمموا أول طلب
+                {leadFilter === 'all'
+                  ? `كافة الحسابات المسجلة بالمتجر (${stats.totalAccounts || allRegisteredAccounts.length || 122})`
+                  : (leadFilter === 'buyers'
+                    ? `الحسابات التي أتمت الشراء (${stats.buyersCount || buyers.length || 29})`
+                    : (leadFilter === 'leads'
+                      ? `الحسابات المسجلة التي لم تطلب بعد (${stats.registeredLeadsCount || registeredLeads.length || 93})`
+                      : 'العملاء الذين تفاعلوا مع السلة وخطوات الشراء'))}
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0 }}>
-                {leadFilter === 'active_only' ? 'عرض العملاء الذين بدأوا خطوات شراء أو تفاعلوا مع السلة والعنوان' : 'عرض كافة الحسابات الـ 25 المسجلة في المتجر بدون طلبات'}
+                {leadFilter === 'all'
+                  ? `عرض كافة الـ (${stats.totalAccounts || allRegisteredAccounts.length || 122}) حساب مسجل بالكامل مع حالة كل حساب`
+                  : (leadFilter === 'buyers'
+                    ? 'عرض العملاء المسجلين الذين لديهم طلبات شراء ناجحة ومكتملة'
+                    : (leadFilter === 'leads'
+                      ? 'عرض الحسابات التي لم تكمل أي طلب شراء حتى الآن لمتابعتهم'
+                      : 'عرض العملاء الذين بدأوا خطوات شراء أو أضافوا منتجات للسلة والعنوان'))}
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.3rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-              <button
-                onClick={() => setLeadFilter('active_only')}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  border: 'none',
-                  borderRadius: '3px',
-                  cursor: 'pointer',
-                  background: leadFilter === 'active_only' ? 'var(--gold-primary)' : 'transparent',
-                  color: leadFilter === 'active_only' ? '#000' : 'var(--text-secondary)'
-                }}
-              >
-                تفاعلوا مع الشراء / السلة
-              </button>
+            <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.3)', padding: '0.3rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setLeadFilter('all')}
                 style={{
@@ -553,7 +572,52 @@ export function AbandonedCartsControl({
                   color: leadFilter === 'all' ? '#000' : 'var(--text-secondary)'
                 }}
               >
-                كافة الحسابات المسجلة ({registeredLeads.length})
+                كافة الحسابات ({stats.totalAccounts || allRegisteredAccounts.length || 122})
+              </button>
+              <button
+                onClick={() => setLeadFilter('leads')}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  border: 'none',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  background: leadFilter === 'leads' ? 'var(--gold-primary)' : 'transparent',
+                  color: leadFilter === 'leads' ? '#000' : 'var(--text-secondary)'
+                }}
+              >
+                لم يطلبوا بعد ({stats.registeredLeadsCount || registeredLeads.length || 93})
+              </button>
+              <button
+                onClick={() => setLeadFilter('buyers')}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  border: 'none',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  background: leadFilter === 'buyers' ? 'var(--gold-primary)' : 'transparent',
+                  color: leadFilter === 'buyers' ? '#000' : 'var(--text-secondary)'
+                }}
+              >
+                أتموا الشراء ({stats.buyersCount || buyers.length || 29})
+              </button>
+              <button
+                onClick={() => setLeadFilter('active_only')}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  border: 'none',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  background: leadFilter === 'active_only' ? 'var(--gold-primary)' : 'transparent',
+                  color: leadFilter === 'active_only' ? '#000' : 'var(--text-secondary)'
+                }}
+              >
+                تفاعلوا مع السلة
               </button>
             </div>
           </div>
@@ -566,7 +630,7 @@ export function AbandonedCartsControl({
                   <th style={{ padding: '0.85rem 1rem' }}>رقم الهاتف</th>
                   <th style={{ padding: '0.85rem 1rem' }}>المحافظة والعنوان</th>
                   <th style={{ padding: '0.85rem 1rem' }}>تاريخ التسجيل</th>
-                  <th style={{ padding: '0.85rem 1rem' }}>مرحلة التوقف</th>
+                  <th style={{ padding: '0.85rem 1rem' }}>مرحلة التوقف / الحالة</th>
                   <th style={{ padding: '0.85rem 1rem' }}>الإجراء</th>
                 </tr>
               </thead>
@@ -574,7 +638,7 @@ export function AbandonedCartsControl({
                 {filteredLeads.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      {leadFilter === 'active_only' ? 'لا يوجد عملاء في هذا التصنيف حالياً. يمكنك الضغط على "كافة الحسابات المسجلة" لعرض جميع الـ 25 حساب.' : 'لا توجد نتائج تطابق البحث'}
+                      {leadFilter === 'active_only' ? 'لا يوجد عملاء في هذا التصنيف حالياً. يمكنك الضغط على "كافة الحسابات" لعرض جميع الحسابات.' : 'لا توجد نتائج تطابق البحث'}
                     </td>
                   </tr>
                 ) : (
@@ -589,11 +653,24 @@ export function AbandonedCartsControl({
                         }}
                       >
                         <td style={{ padding: '0.85rem 1rem' }}>
-                          <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                            {lead.fullName || 'عميل مسجل'}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <strong style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                              {lead.fullName || 'عميل مسجل'}
+                            </strong>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              padding: '0.12rem 0.45rem',
+                              borderRadius: '4px',
+                              background: lead.isBuyer ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: lead.isBuyer ? '#10B981' : '#F59E0B',
+                              border: `1px solid ${lead.isBuyer ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                            }}>
+                              {lead.isBuyer ? 'مشتري' : 'لم يطلب بعد'}
+                            </span>
                           </div>
                           {lead.email && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', direction: 'ltr', textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', direction: 'ltr', textAlign: 'right', marginTop: '0.15rem' }}>
                               {lead.email}
                             </div>
                           )}

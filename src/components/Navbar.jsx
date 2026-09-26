@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import { AnimatedLogo } from './AnimatedLogo';
 import { CartIcon } from './CartIcon';
+import { WalletHeaderButton } from './WalletHeaderButton';
 import { supabase } from '../lib/supabase/client';
 import { trackSearch } from '../lib/analytics';
 
@@ -285,6 +286,9 @@ export const Navbar = ({ onOpenMobileMenu }) => {
             )}
           </div>
 
+          {/* Gift Wallet Header Button (Desktop - Right next to Search) */}
+          <WalletHeaderButton isMobile={false} />
+
           {/* Admin Dashboard Quick Access Button (Prominent when user is Admin) */}
           {user && user.role === 'admin' && (
             <Link 
@@ -293,9 +297,12 @@ export const Navbar = ({ onOpenMobileMenu }) => {
               style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '0.35rem', background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}
               title="دخول لوحة تحكم الأدمن الإدارية"
             >
-              👑 لوحة التحكم
+              لوحة التحكم
             </Link>
           )}
+
+          {/* Gift Wallet Header Button (Mobile) */}
+          <WalletHeaderButton isMobile={true} />
 
           {/* Mobile Search Toggle Icon */}
           <button 

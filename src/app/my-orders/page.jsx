@@ -6,7 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { products as storeProducts } from '../../data/products';
 import { Footer } from '../../components/Footer';
 import { supabase } from '../../lib/supabase/client';
-import { updateOrderStatusAction, getCustomerOrdersAction, updateCustomerOrderAction } from '../admin/actions';
+import { updateOrderStatusAction, getCustomerOrdersAction, updateCustomerOrderAction, getCustomerWalletAction } from '../admin/actions';
 import { updateUserProfileAction } from '../actions/auth-actions';
 
 function extractOrderCouponCode(order) {
@@ -149,6 +149,11 @@ export default function MyOrdersPage() {
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'profile'
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  // Customer Store Credit / Wallet State
+  const [walletData, setWalletData] = useState({ balance: 0, transactions: [] });
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false);
+  const [showWalletTransactions, setShowWalletTransactions] = useState(false);
+
   const [profileName, setProfileName] = useState(user?.fullName || '');
   const [profilePhone, setProfilePhone] = useState(user?.phone || '');
   const [profileGov, setProfileGov] = useState(user?.governorate || 'القاهرة');
@@ -161,6 +166,33 @@ export default function MyOrdersPage() {
       setProfileGov(user.governorate || 'القاهرة');
       setProfileAddress(user.address || '');
     }
+  }, [user]);
+
+  // Load live customer wallet balance
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadWallet() {
+      if (!user?.id && !user?.phone) return;
+      setIsLoadingWallet(true);
+      try {
+        const res = await getCustomerWalletAction({
+          userId: user?.id || null,
+          phone: user?.phone || null,
+          email: user?.email || null
+        });
+        if (!isCancelled && res.success && res.wallet) {
+          setWalletData(res.wallet);
+        }
+      } catch (e) {
+        console.warn('Customer wallet load note:', e);
+      } finally {
+        if (!isCancelled) setIsLoadingWallet(false);
+      }
+    }
+    loadWallet();
+    return () => {
+      isCancelled = true;
+    };
   }, [user]);
 
   const handleSaveProfile = async (e) => {
@@ -676,6 +708,125 @@ export default function MyOrdersPage() {
                     {lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}
                   </button>
                 </div>
+              </div>
+
+              {/* Customer Store Credit / Wallet Card */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%)',
+                border: '1px solid var(--border-gold)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1.25rem 1.5rem',
+                boxShadow: 'var(--shadow-glow)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '8px',
+                      background: 'rgba(212, 175, 55, 0.2)',
+                      border: '1px solid var(--border-gold)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--gold-primary)',
+                      fontWeight: 900,
+                      fontSize: '1.1rem'
+                    }}>
+                      K
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
+                        محفظة رصيد الهدايا والمشتريات
+                      </h3>
+                      <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: '#94A3B8' }}>
+                        رصيد مالي معتمد لحسابك يمكنك استخدامه كخصم مباشر في طلباتك القادمة
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ textAlign: 'left', direction: 'ltr' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', textAlign: 'right' }}>الرصيد المتاح:</span>
+                      <strong style={{ fontSize: '1.35rem', fontWeight: 900, color: Number(walletData?.balance || 0) > 0 ? '#10B981' : 'var(--gold-primary)' }}>
+                        {Number(walletData?.balance || 0)} ج.م
+                      </strong>
+                    </div>
+
+                    {Array.isArray(walletData?.transactions) && walletData.transactions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowWalletTransactions(!showWalletTransactions)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(212, 175, 55, 0.3)',
+                          color: 'var(--gold-primary)',
+                          borderRadius: '6px',
+                          padding: '0.4rem 0.75rem',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {showWalletTransactions ? 'إخفاء الحركات' : `سجل العمليات (${walletData.transactions.length})`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Collapsible Transactions History */}
+                {showWalletTransactions && Array.isArray(walletData?.transactions) && walletData.transactions.length > 0 && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    borderTop: '1px solid rgba(212, 175, 55, 0.2)',
+                    paddingTop: '0.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    maxHeight: '220px',
+                    overflowY: 'auto'
+                  }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--gold-primary)' }}>
+                      سجل حركات المحفظة السابقة:
+                    </div>
+                    {walletData.transactions.map((txn, idx) => (
+                      <div
+                        key={txn.id || idx}
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.35)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '6px',
+                          padding: '0.6rem 0.85rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '0.82rem'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 800, color: '#FFF' }}>
+                            {txn.reason || (txn.type === 'credit' ? 'إيداع رصيد هدية' : 'استخدام في طلب')}
+                            {txn.orderId ? ` (طلب #${txn.orderId})` : ''}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '0.15rem' }}>
+                            {txn.createdAt ? new Date(txn.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US') : ''}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontWeight: 900,
+                          fontSize: '0.95rem',
+                          color: txn.type === 'credit' ? '#10B981' : '#F43F5E',
+                          direction: 'ltr'
+                        }}>
+                          {txn.type === 'credit' ? `+${txn.amount} ج.م` : `-${txn.amount} ج.م`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Navigation Tabs */}

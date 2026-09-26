@@ -94,6 +94,9 @@ export default async function AdminLayout({ children }) {
             <Link href="/admin/orders" className="admin-nav-pill btn-secondary">
               إدارة الطلبات
             </Link>
+            <Link href="/admin/customers-finance" className="admin-nav-pill btn-secondary">
+              الحساب المالي للعملاء
+            </Link>
             <Link href="/admin/abandoned-carts" className="admin-nav-pill btn-primary" style={{ background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
               السلات المتروكة والعملاء
             </Link>

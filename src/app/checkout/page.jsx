@@ -4,7 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
 import { Footer } from '../../components/Footer';
-import { createOrderAction, getCouponsAction, recordCouponUsageAction, syncCustomerCartAction } from '../admin/actions';
+import { 
+  createOrderAction, 
+  getCouponsAction, 
+  recordCouponUsageAction, 
+  syncCustomerCartAction,
+  getCustomerWalletAction,
+  debitCustomerWalletAction
+} from '../admin/actions';
 import { DEFAULT_COUPONS } from '../../lib/coupons';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 
@@ -67,6 +74,11 @@ export default function CheckoutPage() {
   const [availableCoupons, setAvailableCoupons] = useState(DEFAULT_COUPONS || []);
   const hasTrackedBeginCheckout = useRef(false);
 
+  // Wallet Store Credit States
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [isWalletApplied, setIsWalletApplied] = useState(false);
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false);
+
   useEffect(() => {
     // Clear legacy local coupons cache to enforce strict server-side validation
     try {
@@ -87,6 +99,39 @@ export default function CheckoutPage() {
     loadCoupons();
   }, []);
 
+  // Load customer wallet balance dynamically
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadWallet() {
+      let savedGuestPhone = null;
+      try {
+        savedGuestPhone = localStorage.getItem('kemet_guest_wallet_phone');
+      } catch (e) {}
+
+      const candidatePhone = user?.phone || formData.phone || savedGuestPhone;
+      if (!user?.id && !candidatePhone) return;
+      setIsLoadingWallet(true);
+      try {
+        const res = await getCustomerWalletAction({
+          userId: user?.id || null,
+          phone: candidatePhone || null,
+          email: user?.email || null
+        });
+        if (!isCancelled && res.success && res.wallet) {
+          setWalletBalance(Math.max(0, Number(res.wallet.balance || 0)));
+        }
+      } catch (err) {
+        console.warn('Wallet load note:', err);
+      } finally {
+        if (!isCancelled) setIsLoadingWallet(false);
+      }
+    }
+    loadWallet();
+    return () => {
+      isCancelled = true;
+    };
+  }, [user, formData.phone]);
+
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
   const totalCartPieces = cart.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
   const rawShippingFee = rates[formData.governorate] ?? 50;
@@ -94,8 +139,10 @@ export default function CheckoutPage() {
 
   // Calculate discount amount (shipping is strictly NON-discountable and added on top)
   // Respects maxDiscountedPieces limit if configured for the coupon
+  // STRICT RULE: Mutual exclusivity between coupon discount and wallet store credit
   let discountAmount = 0;
   let discountedPiecesCount = 0;
+  let walletUsedAmount = 0;
 
   if (appliedCoupon) {
     const minPiecesRequired = Number(appliedCoupon.minOrderPieces) > 0 ? Number(appliedCoupon.minOrderPieces) : 1;
@@ -105,41 +152,45 @@ export default function CheckoutPage() {
         : Infinity;
 
       if (appliedCoupon.type === 'fixed_price') {
-      let remainingAllowed = maxPieces;
-      const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
+        let remainingAllowed = maxPieces;
+        const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
 
-      for (const item of cart) {
-        if (remainingAllowed <= 0) break;
-        const itemPrice = Number(item.price) || 450;
-        const discountPerPiece = Math.max(0, itemPrice - target);
-        const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
+        for (const item of cart) {
+          if (remainingAllowed <= 0) break;
+          const itemPrice = Number(item.price) || 450;
+          const discountPerPiece = Math.max(0, itemPrice - target);
+          const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
 
-        discountAmount += (discountPerPiece * piecesToApply);
-        discountedPiecesCount += piecesToApply;
-        remainingAllowed -= piecesToApply;
+          discountAmount += (discountPerPiece * piecesToApply);
+          discountedPiecesCount += piecesToApply;
+          remainingAllowed -= piecesToApply;
+        }
+      } else if (appliedCoupon.type === 'percentage') {
+        let remainingAllowed = maxPieces;
+        let eligibleSubtotal = 0;
+
+        for (const item of cart) {
+          if (remainingAllowed <= 0) break;
+          const itemPrice = Number(item.price) || 450;
+          const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
+
+          eligibleSubtotal += (itemPrice * piecesToApply);
+          discountedPiecesCount += piecesToApply;
+          remainingAllowed -= piecesToApply;
+        }
+
+        discountAmount = Math.round((eligibleSubtotal * Number(appliedCoupon.value)) / 100);
+      } else {
+        // Fixed amount discount
+        discountAmount = Math.min(subtotal, Number(appliedCoupon.value));
+        discountedPiecesCount = Math.min(totalCartPieces, maxPieces === Infinity ? totalCartPieces : maxPieces);
       }
-    } else if (appliedCoupon.type === 'percentage') {
-      let remainingAllowed = maxPieces;
-      let eligibleSubtotal = 0;
-
-      for (const item of cart) {
-        if (remainingAllowed <= 0) break;
-        const itemPrice = Number(item.price) || 450;
-        const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
-
-        eligibleSubtotal += (itemPrice * piecesToApply);
-        discountedPiecesCount += piecesToApply;
-        remainingAllowed -= piecesToApply;
-      }
-
-      discountAmount = Math.round((eligibleSubtotal * Number(appliedCoupon.value)) / 100);
-    } else {
-      // Fixed amount discount
-      discountAmount = Math.min(subtotal, Number(appliedCoupon.value));
-      discountedPiecesCount = Math.min(totalCartPieces, maxPieces === Infinity ? totalCartPieces : maxPieces);
     }
+  } else if (isWalletApplied && walletBalance > 0) {
+    // Wallet store credit applies when no coupon is applied
+    walletUsedAmount = Math.min(subtotal, walletBalance);
+    discountAmount = walletUsedAmount;
   }
-}
 
   const totalAmount = Math.max(0, subtotal - discountAmount) + shippingFee;
 
@@ -231,6 +282,15 @@ export default function CheckoutPage() {
 
   // Handle Apply Coupon
   const handleApplyCoupon = (explicitCode = null) => {
+    // STRICT RULE: Mutual exclusivity between promo coupon and wallet store credit
+    if (isWalletApplied) {
+      setCouponMsg({ 
+        type: 'error', 
+        text: 'لا يمكن استخدام كود الخصم أثناء تفعيل رصيد المحفظة. يرجى إلغاء تفعيل رصيد المحفظة أولاً.' 
+      });
+      return;
+    }
+
     const rawCode = (typeof explicitCode === 'string' && explicitCode.trim()) ? explicitCode : couponInput;
     const code = rawCode.trim().toUpperCase();
     if (!code) return;
@@ -310,6 +370,24 @@ export default function CheckoutPage() {
     setCouponMsg(null);
   };
 
+  // Toggle Wallet Store Credit Application
+  const handleToggleWallet = (checked) => {
+    if (checked) {
+      // If a coupon was active, remove it to enforce strict mutual exclusivity
+      if (appliedCoupon) {
+        setAppliedCoupon(null);
+        setCouponInput('');
+        setCouponMsg({
+          type: 'info',
+          text: 'تم تطبيق رصيد المحفظة وإلغاء كود الخصم (لا يمكن الجمع بينهما في نفس الطلب).'
+        });
+      }
+      setIsWalletApplied(true);
+    } else {
+      setIsWalletApplied(false);
+    }
+  };
+
   // Ensure user is logged in before accessing checkout
   useEffect(() => {
     if (!user && typeof window !== 'undefined') {
@@ -367,9 +445,22 @@ export default function CheckoutPage() {
       }
     }
 
+    // Safety re-check: Verify mutual exclusivity between coupon and wallet store credit
+    if (appliedCoupon && isWalletApplied) {
+      setIsWalletApplied(false);
+    }
+
     setIsSubmitting(true);
 
     const orderId = `KT-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    let finalDeliveryNotes = String(formData.notes || '').trim();
+    if (isWalletApplied && walletUsedAmount > 0) {
+      finalDeliveryNotes = finalDeliveryNotes 
+        ? `${finalDeliveryNotes} [خصم المحفظة: ${walletUsedAmount} ج.م]`
+        : `[خصم المحفظة: ${walletUsedAmount} ج.م]`;
+    }
+
     const newOrder = {
       id: orderId,
       userId: user?.id || null,
@@ -393,11 +484,15 @@ export default function CheckoutPage() {
         value: appliedCoupon.value || null,
         discountAmount: discountAmount
       } : null,
+      wallet_discount: (isWalletApplied && walletUsedAmount > 0) ? walletUsedAmount : 0,
       customer: {
         ...formData,
+        notes: finalDeliveryNotes,
+        delivery_notes: finalDeliveryNotes,
         email: user?.email || formData.email || null
       },
-      customer_email: user?.email || formData.email || null
+      customer_email: user?.email || formData.email || null,
+      delivery_notes: finalDeliveryNotes
     };
 
     // Update coupon usage & record order statistics in database
@@ -417,6 +512,23 @@ export default function CheckoutPage() {
       await createOrderAction(newOrder);
     } catch (err) {
       console.warn('Order save note:', err);
+    }
+
+    // Debit customer wallet if wallet store credit was applied
+    if (isWalletApplied && walletUsedAmount > 0) {
+      try {
+        await debitCustomerWalletAction({
+          userId: user?.id || null,
+          phone: formData.phone || user?.phone || null,
+          email: user?.email || formData.email || null,
+          amount: walletUsedAmount,
+          reason: `استخدام رصيد المحفظة في الطلب #${orderId}`,
+          orderId
+        });
+        setWalletBalance(prev => Math.max(0, prev - walletUsedAmount));
+      } catch (wErr) {
+        console.warn('Wallet debit on checkout note:', wErr);
+      }
     }
 
     // Marketing Analytics: Track Purchase Event (Idempotent by Order ID)
@@ -589,6 +701,85 @@ export default function CheckoutPage() {
               <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid var(--border-gold)', borderRadius: 'var(--radius-md)', padding: '0.9rem', fontSize: '0.85rem', color: 'var(--gold-primary)', fontWeight: 800 }}>
                 {t('codNotice')}
               </div>
+
+              {/* Wallet Store Credit / Compensation Balance Section */}
+              {walletBalance > 0 && (
+                <div style={{
+                  background: isWalletApplied ? 'rgba(16, 185, 129, 0.08)' : 'rgba(0, 0, 0, 0.35)',
+                  border: isWalletApplied ? '1px solid #10B981' : '1px solid var(--border-gold)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.1rem',
+                  marginTop: '0.5rem',
+                  marginBottom: '0.75rem',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                  transition: 'all 0.2s ease'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 900, color: 'var(--gold-primary)' }}>
+                      محفظة رصيد الهدايا والمشتريات
+                    </span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10B981', background: 'rgba(16, 185, 129, 0.12)', padding: '0.2rem 0.65rem', borderRadius: '4px' }}>
+                      الرصيد المتاح: {walletBalance} ج.م
+                    </span>
+                  </div>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.65rem',
+                    cursor: appliedCoupon ? 'not-allowed' : 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: appliedCoupon ? '#94A3B8' : '#FFF'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={isWalletApplied}
+                      disabled={Boolean(appliedCoupon)}
+                      onChange={(e) => handleToggleWallet(e.target.checked)}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        accentColor: 'var(--gold-primary)',
+                        cursor: appliedCoupon ? 'not-allowed' : 'pointer'
+                      }}
+                    />
+                    <span>
+                      استخدام رصيد المحفظة لخصم ({Math.min(walletBalance, subtotal)} ج.م) من إجمالي الطلب
+                    </span>
+                  </label>
+
+                  {appliedCoupon && (
+                    <div style={{
+                      fontSize: '0.8rem',
+                      color: '#F59E0B',
+                      marginTop: '0.5rem',
+                      fontWeight: 700,
+                      background: 'rgba(245, 158, 11, 0.1)',
+                      padding: '0.4rem 0.65rem',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(245, 158, 11, 0.3)'
+                    }}>
+                      ملاحظة: لا يمكن الجمع بين كود الخصم ورصيد المحفظة في نفس الطلب (الكود مفعل حالياً).
+                    </div>
+                  )}
+
+                  {isWalletApplied && (
+                    <div style={{
+                      fontSize: '0.8rem',
+                      color: '#10B981',
+                      marginTop: '0.5rem',
+                      fontWeight: 700,
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      padding: '0.4rem 0.65rem',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(16, 185, 129, 0.3)'
+                    }}>
+                      تم تفعيل رصيد المحفظة. سيتم خصم {walletUsedAmount} ج.م من قيمة مشترياتك فورياً.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Coupon Code Section - Placed prominently above the submit button for easy mobile access */}
               <div style={{
@@ -799,6 +990,45 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Active Wallet Store Credit Banner in Order Summary */}
+              {isWalletApplied && walletUsedAmount > 0 && (
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10B981' }}>
+                      تم تطبيق رصيد المحفظة
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      خصم {walletUsedAmount} {t('currency')} من قيمة المنتجات
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsWalletApplied(false)}
+                    style={{
+                      background: 'rgba(244, 63, 94, 0.12)',
+                      border: '1px solid rgba(244, 63, 94, 0.3)',
+                      color: '#F43F5E',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '0.3rem 0.65rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    إلغاء الخصم
+                  </button>
+                </div>
+              )}
+
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                   <span>المجموع الفرعي للمنتجات:</span>
@@ -816,6 +1046,13 @@ export default function CheckoutPage() {
                         ملاحظة: يسري الخصم على ({discountedPiecesCount}) قطعة فقط وفق شروط الكود، والقطع الإضافية ({totalCartPieces - discountedPiecesCount}) بسعرها الطبيعي.
                       </div>
                     )}
+                  </div>
+                )}
+
+                {isWalletApplied && walletUsedAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#10B981', fontWeight: 800 }}>
+                    <span>خصم رصيد المحفظة:</span>
+                    <span>- {walletUsedAmount} ج.م</span>
                   </div>
                 )}
 
