@@ -23,6 +23,10 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
   const title = lang === 'ar' ? product.nameAr : product.nameEn;
   const description = lang === 'ar' ? product.descriptionAr : product.descriptionEn;
 
+  const isWinterCategory = product.category === 'winter' || (product.nameAr && product.nameAr.includes('تراك'));
+  const isSlimFit = product.id === 'trc-asb' || (product.descriptionAr && product.descriptionAr.includes('سليم'));
+  const isOversize = (isWinterCategory && !isSlimFit) || (product.descriptionAr && product.descriptionAr.includes('أوفر سايز'));
+
   const isSelectedOutOfStock = selectedSizeObj ? selectedSizeObj.stock <= 0 : false;
   const isAllOutOfStock = initialVariants.every(v => v.stock <= 0);
 
@@ -127,6 +131,51 @@ export const ProductDetailClient = ({ product, initialVariants, relatedData }) =
 
               {/* Sizes Selection with Out-of-Stock and Low-Stock Handling */}
               <div style={{ marginBottom: '2rem' }}>
+                {/* Sizing Fit Banner for Winter Tracksuits */}
+                {isSlimFit ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.65rem 1rem',
+                    marginBottom: '1rem',
+                    color: '#10B981',
+                    fontWeight: 800,
+                    fontSize: '0.88rem'
+                  }}>
+                    <span>⚡</span>
+                    <span>
+                      {lang === 'ar'
+                        ? 'نوع المقاس: سليم فيت ومضبوط (Slim Fit / مقاس عادي قياسي وليست أوفر سايز)'
+                        : 'Sizing: Slim Fit / Regular Standard Fit (Not Oversized)'}
+                    </span>
+                  </div>
+                ) : isOversize ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    background: 'rgba(212, 175, 55, 0.12)',
+                    border: '1px solid var(--border-gold)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.65rem 1rem',
+                    marginBottom: '1rem',
+                    color: 'var(--gold-primary)',
+                    fontWeight: 800,
+                    fontSize: '0.88rem'
+                  }}>
+                    <span>❄️</span>
+                    <span>
+                      {lang === 'ar'
+                        ? 'تنبيه المقاس: قَصّة أوفر سايز واسعة (Oversize) — مقاس لارج (L) يعتبر إكس لارج (XL)'
+                        : 'Sizing Note: Oversized Fit — Size Large (L) fits like X-Large (XL)'}
+                    </span>
+                  </div>
+                ) : null}
+
                 <div style={{ fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
                   {t('selectSizeLabel')}
                 </div>
