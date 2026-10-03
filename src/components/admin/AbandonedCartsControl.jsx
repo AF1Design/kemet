@@ -2,6 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAbandonedCartsAction } from '../../app/admin/actions';
+import {
+  buildCartRecoveryWhatsAppMessage,
+  buildLeadWelcomeWhatsAppMessage,
+  buildBuyerVipWhatsAppMessage,
+  buildWhatsAppClickUrl,
+  formatEgyptianPhone
+} from '../../lib/promo-whatsapp-template';
 
 export function AbandonedCartsControl({
   initialAbandonedCarts = [],
@@ -70,37 +77,49 @@ export function AbandonedCartsControl({
     }
   };
 
-  const formatEgyptianPhone = (rawPhone) => {
-    if (!rawPhone) return '';
-    const digits = String(rawPhone).replace(/\D/g, '');
-    if (digits.startsWith('20')) return digits;
-    if (digits.startsWith('0')) return '2' + digits;
-    if (digits.length === 10) return '20' + digits;
-    return '20' + digits;
+  const handleCopyMessage = async (text) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (typeof document !== 'undefined') {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      showToast('تم نسخ نص الرسالة الترويجية بنجاح');
+    } catch (err) {
+      showToast('تعذر نسخ الرسالة تلقائياً');
+    }
   };
 
-  const buildAiWhatsAppMessage = (name) => {
-    const cleanName = (name || 'عزيزنا العميل').trim();
-    return `مرحباً ${cleanName}، انا الـAi الخاص بـKemetmisr Store \nلاحظنا قيامك بإنشاء حساب في متجرنا، ولم تستكمل الطلب\n ويسعدنا تقديم كود خصم خاص لطلبك الأول\n\n kemet22 (القطعة بـ 290 ج.م فقط) \n\nأو kemetmisr (القطعتين بـ 450 ج.م).\n\nهل تحتاج لأي استفسار حول المقاسات أو خامة المنتجات؟\n\nhttps://www.kemetmisr.com/`;
-  };
-
-  const buildBuyerWhatsAppMessage = (name) => {
-    const cleanName = (name || 'عزيزنا العميل').trim();
-    return `مرحباً ${cleanName}، يسعدنا التواصل معك من متجر KEMET.\nنتمنى أن تكون تجربتك ومنتجاتنا قد نالت إعجابكم.\nيسعدنا مشاركتك أحدث كولكشن متاح لدينا عبر الموقع الرسمي:\nhttps://www.kemetmisr.com/\n\nفريق خدمة العملاء دائماً في خدمتكم.`;
+  const getCartWhatsAppMessage = (cart) => {
+    const lastItemName = cart.items?.[0]?.nameAr || '';
+    return buildCartRecoveryWhatsAppMessage({
+      customerName: cart.customerName,
+      itemsCount: cart.itemsCount || cart.items?.length || 0,
+      cartTotal: cart.cartTotal || 0,
+      lastItemName
+    });
   };
 
   const getWhatsAppCartUrl = (cart) => {
-    const phone = formatEgyptianPhone(cart.customerPhone);
-    if (!phone) return null;
-    const msg = buildAiWhatsAppMessage(cart.customerName);
-    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    const msg = getCartWhatsAppMessage(cart);
+    return buildWhatsAppClickUrl(cart.customerPhone, msg);
+  };
+
+  const getLeadWhatsAppMessage = (lead) => {
+    if (lead.isBuyer) {
+      return buildBuyerVipWhatsAppMessage({ customerName: lead.fullName });
+    }
+    return buildLeadWelcomeWhatsAppMessage({ customerName: lead.fullName });
   };
 
   const getWhatsAppLeadUrl = (lead) => {
-    const phone = formatEgyptianPhone(lead.phone);
-    if (!phone) return null;
-    const msg = lead.isBuyer ? buildBuyerWhatsAppMessage(lead.fullName) : buildAiWhatsAppMessage(lead.fullName);
-    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    const msg = getLeadWhatsAppMessage(lead);
+    return buildWhatsAppClickUrl(lead.phone, msg);
   };
 
   const formatDate = (isoString) => {
@@ -269,7 +288,7 @@ export function AbandonedCartsControl({
             <span style={{ fontSize: '0.75rem', color: '#3B82F6', fontWeight: 800, border: '1px solid #3B82F6', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>مسجلين</span>
           </div>
           <div className="admin-stats-card-val" style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3B82F6' }}>
-            {stats.totalAccounts ?? (allRegisteredAccounts.length || 122)}
+            {stats.totalAccounts ?? allRegisteredAccounts.length}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             {stats.registeredLeadsCount ?? registeredLeads.length} لم يطلبوا بعد | {stats.buyersCount ?? buyers.length} أتموا الشراء
@@ -290,7 +309,7 @@ export function AbandonedCartsControl({
             {stats.conversionRate || '0%'}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            {stats.buyersCount ?? 0} مشتري من أصل {stats.totalAccounts ?? (allRegisteredAccounts.length || 122)} حساب مسجل
+            {stats.buyersCount ?? 0} مشتري من أصل {stats.totalAccounts ?? allRegisteredAccounts.length} حساب مسجل
           </span>
         </div>
       </div>
@@ -432,27 +451,46 @@ export function AbandonedCartsControl({
                       </div>
                     </div>
 
-                    {/* WhatsApp Action Button */}
+                    {/* WhatsApp Action Buttons: Direct WhatsApp & Copy Text */}
                     {waUrl && (
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          background: '#10B981',
-                          color: '#000',
-                          padding: '0.6rem 1.25rem',
-                          borderRadius: 'var(--radius-md)',
-                          fontWeight: 800,
-                          fontSize: '0.85rem',
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        <span>تواصل واتساب مع العميل</span>
-                      </a>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            background: '#10B981',
+                            color: '#000',
+                            padding: '0.6rem 1.25rem',
+                            borderRadius: 'var(--radius-md)',
+                            fontWeight: 800,
+                            fontSize: '0.85rem',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          <span>تواصل واتساب مع العميل</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(getCartWhatsAppMessage(cart))}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid var(--border-color)',
+                            color: 'var(--text-primary)',
+                            padding: '0.6rem 0.95rem',
+                            borderRadius: 'var(--radius-md)',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            cursor: 'pointer'
+                          }}
+                          title="نسخ نص الرسالة الترويجية"
+                        >
+                          نسخ نص الرسالة
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -572,7 +610,7 @@ export function AbandonedCartsControl({
                   color: leadFilter === 'all' ? '#000' : 'var(--text-secondary)'
                 }}
               >
-                كافة الحسابات ({stats.totalAccounts || allRegisteredAccounts.length || 122})
+                كافة الحسابات ({stats.totalAccounts ?? allRegisteredAccounts.length})
               </button>
               <button
                 onClick={() => setLeadFilter('leads')}
@@ -587,7 +625,7 @@ export function AbandonedCartsControl({
                   color: leadFilter === 'leads' ? '#000' : 'var(--text-secondary)'
                 }}
               >
-                لم يطلبوا بعد ({stats.registeredLeadsCount || registeredLeads.length || 93})
+                لم يطلبوا بعد ({stats.registeredLeadsCount ?? registeredLeads.length})
               </button>
               <button
                 onClick={() => setLeadFilter('buyers')}
@@ -602,7 +640,7 @@ export function AbandonedCartsControl({
                   color: leadFilter === 'buyers' ? '#000' : 'var(--text-secondary)'
                 }}
               >
-                أتموا الشراء ({stats.buyersCount || buyers.length || 29})
+                أتموا الشراء ({stats.buyersCount ?? buyers.length})
               </button>
               <button
                 onClick={() => setLeadFilter('active_only')}
@@ -702,25 +740,45 @@ export function AbandonedCartsControl({
                           </span>
                         </td>
                         <td style={{ padding: '0.85rem 1rem' }}>
-                          {waUrl ? (
-                            <a
-                              href={waUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                background: '#10B981',
-                                color: '#000',
-                                padding: '0.35rem 0.75rem',
-                                borderRadius: 'var(--radius-sm)',
-                                fontWeight: 800,
-                                fontSize: '0.75rem',
-                                textDecoration: 'none',
-                                whiteSpace: 'nowrap',
-                                display: 'inline-block'
-                              }}
-                            >
-                              واتساب ترويجي
-                            </a>
+                          {lead.phone ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
+                              <a
+                                href={getWhatsAppLeadUrl(lead)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  background: '#10B981',
+                                  color: '#000',
+                                  padding: '0.35rem 0.75rem',
+                                  borderRadius: 'var(--radius-sm)',
+                                  fontWeight: 800,
+                                  fontSize: '0.75rem',
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap',
+                                  display: 'inline-block'
+                                }}
+                              >
+                                واتساب
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyMessage(getLeadWhatsAppMessage(lead))}
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.06)',
+                                  border: '1px solid var(--border-color)',
+                                  color: 'var(--text-secondary)',
+                                  padding: '0.35rem 0.6rem',
+                                  borderRadius: 'var(--radius-sm)',
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="نسخ نص الرسالة الترويجية"
+                              >
+                                نسخ
+                              </button>
+                            </div>
                           ) : (
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>-</span>
                           )}

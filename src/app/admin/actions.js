@@ -1378,70 +1378,47 @@ export async function sendMassPromoEmailAction(params) {
     emailSet.add('support@kemetmisr.com');
 
     const recipients = Array.from(emailSet);
-    let rawText = '';
+    
+    // Parse campaign parameters (supporting both legacy string and new structured studio format)
+    let emailSubject = 'عرض خاص وحصري من KEMET';
+    let emailHeadline = 'عرض ترويجي حصري لعملاء KEMET';
+    let emailBadge = 'عرض خاص';
+    let couponCode = '';
+    let discountNote = '';
+    let bodyText = '';
+    let ctaText = 'تصفّح المتجر واستفد بالعرض الآن';
+    let ctaUrl = 'https://kemetmisr.com';
+
     if (typeof params === 'string') {
-      rawText = params.trim();
+      bodyText = params.trim();
     } else if (params && typeof params === 'object') {
-      rawText = params.promoTextAr || params.textAr || params.promoText || '';
+      emailSubject = params.subject || params.emailSubject || emailSubject;
+      emailHeadline = params.headline || params.title || emailHeadline;
+      emailBadge = params.badge || emailBadge;
+      couponCode = params.couponCode || params.coupon || '';
+      discountNote = params.discountNote || '';
+      bodyText = params.promoTextAr || params.textAr || params.promoText || params.bodyText || '';
+      ctaText = params.ctaText || ctaText;
+      ctaUrl = params.ctaUrl || ctaUrl;
     }
 
-    const promoContent = rawText ? String(rawText).trim() : 'خصومات KEMET 2027 لفترة محدودة - تسوّق أطقم المنتخبات والأندية الرسمية الآن!';
-    
-    // Format promo paragraphs with strong bold typography and natural email flow (no restrictive box frame)
-    const normalizedPromo = promoContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const promoParagraphs = normalizedPromo.split(/\n\s*\n/);
-    const formattedPromoHtml = promoParagraphs.map(p => {
-      const lines = p.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      return `<p style="font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif !important; font-size: 19px !important; font-weight: 800 !important; line-height: 2 !important; color: #000000 !important; margin: 0 0 16px 0 !important; text-align: right !important; direction: rtl !important;"><b style="font-weight: 800 !important; font-size: 19px !important; color: #000000 !important;">${lines.join('<br />')}</b></p>`;
-    }).join('');
+    if (!bodyText) {
+      bodyText = 'يسعدنا تقديم أقوى العروض الحصرية على تشكيلة أطقم المنتخبات والأندية لموسم 2026/2027 بأعلى خامات Player Edition الرسمية، مع سرعة التوصيل وضمان استبدال فوري للمقاس.';
+    }
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html lang="ar" dir="rtl">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@700;800;900&display=swap" rel="stylesheet" />
-        <title>عرض خاص من KEMET</title>
-      </head>
-      <body style="margin: 0; padding: 20px 0; background-color: #F8FAFC; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; text-align: right;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 32px 28px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF; box-shadow: 0 4px 14px rgba(0,0,0,0.06); direction: rtl; text-align: right;">
-          <div style="text-align: left; margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
-            <a href="https://kemetmisr.com" target="_blank" style="text-decoration: none;">
-              <img src="https://kemetmisr.com/assets/kemet-text-logo.png" alt="KEMET" style="height: 32px; border: 0;" />
-            </a>
-          </div>
-          
-          <h2 style="color: #000000; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 23px; font-weight: 900; margin: 0 0 20px 0; line-height: 1.4; text-align: right;">
-            عرض ترويجي حصري من KEMET
-          </h2>
-          
-          <div style="margin: 22px 0 28px 0; text-align: right; direction: rtl;">
-            ${formattedPromoHtml}
-          </div>
-
-          <div style="text-align: center; margin: 30px 0 24px 0;">
-            <a href="https://kemetmisr.com" target="_blank" style="display: inline-block; background: linear-gradient(90deg, #D4AF37, #FFDF73); color: #000000; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; font-weight: 900; padding: 15px 36px; border-radius: 8px; text-decoration: none; font-size: 17px; box-shadow: 0 4px 12px rgba(212,175,55,0.35); letter-spacing: 0.5px;">
-              تصفّح المتجر واستفد بالعرض الآن
-            </a>
-          </div>
-
-          <p style="color: #64748B; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 13px; font-weight: 600; text-align: right; margin-top: 24px; line-height: 1.6;">
-            وصلك هذا البريد لأنك مسجّل في متجر KEMET الرسمي.
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
-          
-          <p style="color: #94A3B8; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 12px; text-align: center; margin: 0;">
-            KEMET — جميع الحقوق محفوظة &copy; 2026 (kemetmisr.com)
-            <span style="display: block; font-size: 10px; color: #CBD5E1; margin-top: 4px;">#PROMO-${Date.now().toString().slice(-4)}</span>
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const { buildLuxuryPromoEmailHtml } = await import('../../lib/promo-email-template.js');
+    const emailHtml = buildLuxuryPromoEmailHtml({
+      headline: emailHeadline,
+      badge: emailBadge,
+      couponCode,
+      discountNote,
+      bodyText,
+      ctaText,
+      ctaUrl,
+      whatsappChannelText: params?.whatsappChannelText || 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل أي حد',
+      whatsappChannelUrl: params?.whatsappChannelUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
+      images: Array.isArray(params?.images) && params.images.length > 0 ? params.images : undefined
+    });
 
     const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
     const resend = getResendClient();
@@ -1455,7 +1432,7 @@ export async function sendMassPromoEmailAction(params) {
         const resendRes = await resend.emails.send({
           from: SENDER_SUPPORT,
           to: [email],
-          subject: 'عرض خاص وحصري من KEMET!',
+          subject: emailSubject,
           html: emailHtml
         });
 
@@ -1479,6 +1456,64 @@ export async function sendMassPromoEmailAction(params) {
   } catch (err) {
     console.error('sendMassPromoEmailAction error:', err);
     return { success: false, error: err.message || 'فشل إرسال البريد الجماعي' };
+  }
+}
+
+/**
+ * Server Action: Sends a single test promotional email to an admin's address only
+ */
+export async function sendTestPromoEmailAction({
+  targetEmail = 'amaarfekry5@gmail.com',
+  subject = '',
+  headline = '',
+  badge = '',
+  couponCode = '',
+  discountNote = '',
+  promoTextAr = '',
+  ctaText = '',
+  ctaUrl = '',
+  whatsappChannelText = '',
+  whatsappChannelUrl = '',
+  images = []
+} = {}) {
+  try {
+    const cleanEmail = String(targetEmail || 'amaarfekry5@gmail.com').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'البريد الإلكتروني التجريبي غير صالح' };
+    }
+
+    const { buildLuxuryPromoEmailHtml } = await import('../../lib/promo-email-template.js');
+    const emailHtml = buildLuxuryPromoEmailHtml({
+      headline: headline || 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
+      badge: badge || '',
+      couponCode: couponCode || '',
+      discountNote: discountNote || '',
+      bodyText: promoTextAr || '',
+      ctaText: ctaText || 'اختر تراك فريقك واطلب الآن',
+      ctaUrl: ctaUrl || 'https://kemetmisr.com',
+      whatsappChannelText: whatsappChannelText || 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل أي حد',
+      whatsappChannelUrl: whatsappChannelUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
+      images: Array.isArray(images) && images.length > 0 ? images : undefined
+    });
+
+    const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
+    const resend = getResendClient();
+
+    const resendRes = await resend.emails.send({
+      from: SENDER_SUPPORT,
+      to: [cleanEmail],
+      subject: subject || 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
+      html: emailHtml
+    });
+
+    if (resendRes?.data?.id) {
+      return { success: true, emailId: resendRes.data.id, recipient: cleanEmail };
+    } else {
+      return { success: false, error: resendRes?.error?.message || 'فشل إرسال الإيميل التجريبي' };
+    }
+  } catch (err) {
+    console.error('sendTestPromoEmailAction error:', err);
+    return { success: false, error: err.message || 'فشل إرسال الإيميل التجريبي' };
   }
 }
 

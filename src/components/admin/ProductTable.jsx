@@ -621,6 +621,25 @@ export function ProductTable({ initialProducts, categories: initialCategories })
           <button
             type="button"
             className="btn-secondary"
+            onClick={() => setIsCategoryModalOpen(true)}
+            style={{
+              padding: '0.75rem 1.25rem',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              border: '1px solid var(--border-gold)',
+              background: 'rgba(212,175,55,0.08)',
+              color: 'var(--gold-primary)',
+              fontSize: '0.85rem'
+            }}
+          >
+            + إضافة قسم جديد
+          </button>
+
+          <button
+            type="button"
+            className="btn-secondary"
             onClick={handleOpenSectionsModal}
             style={{
               padding: '0.75rem 1.25rem',
@@ -1632,7 +1651,8 @@ export function ProductTable({ initialProducts, categories: initialCategories })
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
