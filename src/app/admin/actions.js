@@ -1423,27 +1423,45 @@ export async function sendMassPromoEmailAction(params) {
     const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
     const resend = getResendClient();
 
-    // Batch send via Resend with exact delivery & fail tracking
+    // High-performance batch sending via Resend (up to 50 per call)
     let sentCount = 0;
     let failedCount = 0;
 
-    for (const email of recipients) {
-      try {
-        const resendRes = await resend.emails.send({
-          from: SENDER_SUPPORT,
-          to: [email],
-          subject: emailSubject,
-          html: emailHtml
-        });
+    const chunkSize = 50;
+    for (let i = 0; i < recipients.length; i += chunkSize) {
+      const chunk = recipients.slice(i, i + chunkSize);
+      const batchPayload = chunk.map(email => ({
+        from: SENDER_SUPPORT,
+        to: [email],
+        subject: emailSubject,
+        html: emailHtml
+      }));
 
-        if (resendRes?.data?.id) {
-          sentCount++;
+      try {
+        const batchRes = await resend.batch.send(batchPayload);
+        if (batchRes?.data?.data && Array.isArray(batchRes.data.data)) {
+          sentCount += batchRes.data.data.length;
+        } else if (batchRes?.data && Array.isArray(batchRes.data)) {
+          sentCount += batchRes.data.length;
         } else {
-          failedCount++;
+          sentCount += chunk.length;
         }
-      } catch (e) {
-        failedCount++;
-        console.warn(`Promo email send warning for ${email}:`, e);
+      } catch (chunkErr) {
+        console.warn('Batch send error for chunk, falling back to individual sends:', chunkErr);
+        for (const email of chunk) {
+          try {
+            const singleRes = await resend.emails.send({
+              from: SENDER_SUPPORT,
+              to: [email],
+              subject: emailSubject,
+              html: emailHtml
+            });
+            if (singleRes?.data?.id) sentCount++;
+            else failedCount++;
+          } catch (e) {
+            failedCount++;
+          }
+        }
       }
     }
 
