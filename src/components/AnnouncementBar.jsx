@@ -58,11 +58,55 @@ export const AnnouncementBar = () => {
     };
   }, [config?.isActive, slides.length, intervalSeconds, isPaused]);
 
+  const currentSlide = slides[currentIndex] || slides[0];
+
+  // Live countdown timer state for slide expiration
+  const [timeLeft, setTimeLeft] = useState(null);
+
+  useEffect(() => {
+    // If the slide has expiresAt or endsAt, OR if it's the KEMET12 coupon
+    const targetExpiresAt = currentSlide?.expiresAt || currentSlide?.endsAt || (
+      currentSlide?.code?.toUpperCase() === 'KEMET12' ? '2026-10-09T13:30:00.000Z' : null
+    );
+
+    if (!targetExpiresAt) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const calculateTimeRemaining = () => {
+      const now = Date.now();
+      const diff = new Date(targetExpiresAt).getTime() - now;
+
+      if (diff <= 0) {
+        setTimeLeft({ expired: true, text: 'انتهى العرض' });
+        return;
+      }
+
+      const totalSecs = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSecs / 3600);
+      const minutes = Math.floor((totalSecs % 3600) / 60);
+      const seconds = totalSecs % 60;
+
+      const pad = (n) => String(n).padStart(2, '0');
+      setTimeLeft({
+        expired: false,
+        hours: pad(hours),
+        minutes: pad(minutes),
+        seconds: pad(seconds),
+        text: `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+      });
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentSlide]);
+
   if (!isLoaded || !config?.isActive || slides.length === 0) {
     return null;
   }
-
-  const currentSlide = slides[currentIndex] || slides[0];
 
   const handleCopyCode = (e, codeToCopy) => {
     e.stopPropagation();
@@ -150,41 +194,80 @@ export const AnnouncementBar = () => {
         </span>
 
         {currentSlide.code && (
-          <button
-            type="button"
-            onClick={(e) => handleCopyCode(e, currentSlide.code)}
-            title="انقر لنسخ الكود"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              padding: '0.15rem 0.65rem',
-              borderRadius: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-              background: copiedCode === currentSlide.code ? '#10B981' : 'rgba(0, 0, 0, 0.45)',
-              backdropFilter: 'blur(4px)',
-              color: '#FFFFFF',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              fontFamily: "var(--font-en), monospace",
-              boxShadow: '0 2px 5px rgba(0, 0, 0, 0.25)',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <span style={{ letterSpacing: '0.5px' }}>{currentSlide.code}</span>
-            <span style={{ 
-              fontSize: '0.7rem', 
-              fontWeight: 700, 
-              fontFamily: "var(--font-ar), 'Cairo', sans-serif",
-              background: 'rgba(255, 255, 255, 0.22)', 
-              padding: '0.08rem 0.4rem', 
-              borderRadius: '12px',
-              color: '#FFFFFF'
-            }}>
-              {copiedCode === currentSlide.code ? 'تم النسخ' : 'نسخ'}
-            </span>
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={(e) => handleCopyCode(e, currentSlide.code)}
+              title="انقر لنسخ الكود"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.18rem 0.65rem',
+                borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                background: copiedCode === currentSlide.code ? '#10B981' : 'rgba(0, 0, 0, 0.45)',
+                backdropFilter: 'blur(4px)',
+                color: '#FFFFFF',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                fontFamily: "var(--font-en), monospace",
+                boxShadow: '0 2px 5px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{ letterSpacing: '0.5px' }}>{currentSlide.code}</span>
+              <span style={{ 
+                fontSize: '0.7rem', 
+                fontWeight: 700, 
+                fontFamily: "var(--font-ar), 'Cairo', sans-serif",
+                background: 'rgba(255, 255, 255, 0.22)', 
+                padding: '0.08rem 0.4rem', 
+                borderRadius: '12px',
+                color: '#FFFFFF'
+              }}>
+                {copiedCode === currentSlide.code ? 'تم النسخ' : 'نسخ'}
+              </span>
+            </button>
+
+            {timeLeft && !timeLeft.expired && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.18rem 0.6rem',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(255, 225, 120, 0.75)',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(4px)',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.35), 0 0 10px rgba(255, 215, 0, 0.2)',
+                  color: '#FEF08A',
+                  fontSize: '0.78rem',
+                  fontWeight: 900,
+                  direction: 'ltr',
+                  fontFamily: "var(--font-en), monospace",
+                  lineHeight: 1
+                }}
+                title="الوقت المتبقي لانتهاء كود الخصم (عد تنازلي)"
+              >
+                <span style={{ fontSize: '0.82rem', animation: 'timerTick 1s infinite alternate ease-in-out' }}>⏳</span>
+                <span style={{ letterSpacing: '0.75px', color: '#FFFFFF', fontWeight: 900 }}>
+                  {timeLeft.text}
+                </span>
+                <span style={{
+                  fontSize: '0.68rem',
+                  fontFamily: "var(--font-ar), 'Cairo', sans-serif",
+                  color: '#FDE047',
+                  fontWeight: 800,
+                  marginRight: '0.15rem'
+                }}>
+                  متبقي
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -197,6 +280,14 @@ export const AnnouncementBar = () => {
           to {
             opacity: 1;
             transform: translateY(0);
+          }
+        }
+        @keyframes timerTick {
+          from {
+            transform: scale(1);
+          }
+          to {
+            transform: scale(1.18);
           }
         }
       `}</style>

@@ -229,6 +229,9 @@ export function CouponsControl() {
   };
 
   const getDiscountLabel = (coupon) => {
+    if (coupon.type === 'free_shipping' || coupon.code?.toUpperCase() === 'KEMET12') {
+      return 'شحن مجاني لكافة المحافظات (0 ج.م)';
+    }
     if (coupon.type === 'fixed_price') {
       return `سعر التيشيرت: ${coupon.targetPrice || coupon.value || 220} ج.م`;
     }
@@ -741,6 +744,7 @@ export function CouponsControl() {
                   }}
                 >
                   <option value="fixed_price">سعر ثابت للقطعة (Fixed Price per Piece - مثل 220 ج.م)</option>
+                  <option value="free_shipping">شحن مجاني لكافة المحافظات (Free Shipping - 0 ج.م)</option>
                   <option value="percentage">نسبة مئوية (Percentage %)</option>
                   <option value="fixed_amount">مبلغ خصم كاش (Fixed Amount EGP)</option>
                 </select>

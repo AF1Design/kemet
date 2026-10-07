@@ -1,6 +1,24 @@
 // Default system coupons including KEMETFAMILY
 export const DEFAULT_COUPONS = [
   {
+    code: 'KEMET12',
+    type: 'free_shipping',
+    targetPrice: null,
+    value: 0,
+    description: 'شحن مجاني لكافة محافظات مصر لمدة 48 ساعة',
+    isActive: true,
+    isSuggested: true,
+    suggestionLabel: 'شحن مجاني لكل المحافظات (كود kemet12)',
+    expiresAt: '2026-10-09T13:00:00.000Z',
+    totalMaxUses: 2000,
+    remainingUses: 2000,
+    maxUsesPerUser: 1,
+    minOrderPieces: 1,
+    maxDiscountedPieces: null,
+    usedBy: [],
+    userUsage: {}
+  },
+  {
     code: 'KEMETMISR',
     type: 'fixed_price',
     targetPrice: 225,

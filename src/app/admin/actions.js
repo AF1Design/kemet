@@ -1998,7 +1998,7 @@ export async function addOrUpdateCouponAction(couponData) {
 
     const type = couponData.type || 'fixed_price';
     const targetPrice = type === 'fixed_price' ? Number(couponData.targetPrice || couponData.value || 220) : null;
-    const value = type === 'fixed_price' ? targetPrice : Number(couponData.value || 0);
+    const value = type === 'fixed_price' ? targetPrice : (type === 'free_shipping' ? 0 : Number(couponData.value || 0));
 
     const maxUsesPerUser = couponData.maxUsesPerUser != null && Number(couponData.maxUsesPerUser) > 0
       ? Number(couponData.maxUsesPerUser)
@@ -2021,6 +2021,7 @@ export async function addOrUpdateCouponAction(couponData) {
       isActive: couponData.isActive !== false,
       isSuggested: couponData.isSuggested === true,
       suggestionLabel: couponData.suggestionLabel ? String(couponData.suggestionLabel).trim() : null,
+      expiresAt: couponData.expiresAt || null,
       totalMaxUses: Number(couponData.totalMaxUses || 1000),
       remainingUses: Number(couponData.remainingUses ?? couponData.totalMaxUses ?? 1000),
       maxUsesPerUser: maxUsesPerUser,
@@ -2043,6 +2044,7 @@ export async function addOrUpdateCouponAction(couponData) {
             ...newCoupon,
             isSuggested: couponData.isSuggested !== undefined ? Boolean(couponData.isSuggested) : (c.isSuggested ?? false),
             suggestionLabel: couponData.suggestionLabel !== undefined ? couponData.suggestionLabel : (c.suggestionLabel || null),
+            expiresAt: couponData.expiresAt !== undefined ? couponData.expiresAt : (c.expiresAt || null),
             usedBy: c.usedBy || [],
             userUsage: c.userUsage || {},
             orders: c.orders || [],

@@ -135,7 +135,11 @@ export default function CheckoutPage() {
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
   const totalCartPieces = cart.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
   const rawShippingFee = rates[formData.governorate] ?? 50;
-  const shippingFee = isFreeShippingPromo ? 0 : rawShippingFee;
+  const isCouponFreeShipping = appliedCoupon && (
+    appliedCoupon.type === 'free_shipping' || 
+    appliedCoupon.code?.toUpperCase() === 'KEMET12'
+  );
+  const shippingFee = (isFreeShippingPromo || isCouponFreeShipping) ? 0 : rawShippingFee;
 
   // Calculate discount amount (shipping is strictly NON-discountable and added on top)
   // Respects maxDiscountedPieces limit if configured for the coupon
@@ -180,6 +184,9 @@ export default function CheckoutPage() {
         }
 
         discountAmount = Math.round((eligibleSubtotal * Number(appliedCoupon.value)) / 100);
+      } else if (appliedCoupon.type === 'free_shipping' || appliedCoupon.code?.toUpperCase() === 'KEMET12') {
+        discountAmount = 0;
+        discountedPiecesCount = totalCartPieces;
       } else {
         // Fixed amount discount
         discountAmount = Math.min(subtotal, Number(appliedCoupon.value));
@@ -311,6 +318,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) {
+      setCouponMsg({ type: 'error', text: 'عذراً، انتهت صلاحية هذا الكود.' });
+      return;
+    }
+
     // 1. Check total max uses for the entire store
     const totalMax = coupon.totalMaxUses ?? 1000;
     const remaining = coupon.remainingUses ?? (totalMax - (coupon.usedBy || []).length);
@@ -355,6 +367,11 @@ export default function CheckoutPage() {
       setCouponMsg({ 
         type: 'success', 
         text: `تم تطبيق كود (${coupon.code}) بنجاح! أصبح سعر التيشيرت ${target} ج.م بدلاً من السعر الأصلي${piecesNotice} + مصاريف الشحن` 
+      });
+    } else if (coupon.type === 'free_shipping' || coupon.code?.toUpperCase() === 'KEMET12') {
+      setCouponMsg({ 
+        type: 'success', 
+        text: `تم تطبيق كود (${coupon.code}) بنجاح! شحن مجاني لكافة محافظات مصر 🚚✨` 
       });
     } else {
       setCouponMsg({ 
@@ -420,8 +437,17 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Safety re-check: Verify user usage limits on final submission to prevent bypassing
+    // Safety re-check: Verify user usage limits & expiration on final submission to prevent bypassing
     if (appliedCoupon) {
+      if (appliedCoupon.expiresAt && new Date(appliedCoupon.expiresAt).getTime() < Date.now()) {
+        setCouponMsg({ 
+          type: 'error', 
+          text: 'عذراً، انتهت صلاحية هذا الكود.' 
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const maxPerUser = Number(appliedCoupon.maxUsesPerUser) > 0 ? Number(appliedCoupon.maxUsesPerUser) : 1;
       const userUses = checkCouponUserUsage(appliedCoupon, user?.email || formData.email, formData.phone, user?.id);
       if (userUses >= maxPerUser) {
@@ -482,7 +508,8 @@ export default function CheckoutPage() {
         type: appliedCoupon.type,
         targetPrice: appliedCoupon.targetPrice || null,
         value: appliedCoupon.value || null,
-        discountAmount: discountAmount
+        discountAmount: isCouponFreeShipping ? rawShippingFee : discountAmount,
+        isFreeShipping: isCouponFreeShipping
       } : null,
       wallet_discount: (isWalletApplied && walletUsedAmount > 0) ? walletUsedAmount : 0,
       customer: {
@@ -968,7 +995,9 @@ export default function CheckoutPage() {
                       تم تفعيل كود الخصم ({appliedCoupon.code})
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                      وفرت {discountAmount} {t('currency')} من قيمة المنتجات
+                      {isCouponFreeShipping 
+                        ? `شحن مجاني لكافة محافظات مصر (وفرت ${rawShippingFee} ج.م مصاريف شحن)` 
+                        : `وفرت ${discountAmount} ${t('currency')} من قيمة المنتجات`}
                     </div>
                   </div>
                   <button
@@ -1035,7 +1064,7 @@ export default function CheckoutPage() {
                   <span>{subtotal} ج.م</span>
                 </div>
 
-                {appliedCoupon && (
+                {appliedCoupon && !isCouponFreeShipping && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#10B981', fontWeight: 800 }}>
                       <span>خصم الكوبون ({appliedCoupon.code}):</span>
@@ -1058,7 +1087,13 @@ export default function CheckoutPage() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                   <span>مصاريف الشحن ({formData.governorate}):</span>
-                  <span>+ {shippingFee} ج.م</span>
+                  {shippingFee === 0 ? (
+                    <span style={{ color: '#10B981', fontWeight: 800 }}>
+                      مجاني (0 ج.م) {isCouponFreeShipping ? `[كود ${appliedCoupon.code}]` : ''}
+                    </span>
+                  ) : (
+                    <span>+ {shippingFee} ج.م</span>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.35rem', fontWeight: 900, color: 'var(--gold-primary)', paddingTop: '0.75rem', borderTop: '1px solid var(--border-gold)' }}>
