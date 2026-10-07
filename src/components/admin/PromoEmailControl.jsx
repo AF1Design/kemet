@@ -1,8 +1,44 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getRegisteredUsersStatsAction, sendMassPromoEmailAction, sendTestPromoEmailAction } from '../../app/admin/actions';
+import { 
+  getRegisteredUsersStatsAction, 
+  sendMassPromoEmailAction, 
+  sendTestPromoEmailAction,
+  uploadPromoImageAction 
+} from '../../app/admin/actions';
 import { PROMO_CAMPAIGN_PRESETS } from '../../lib/promo-email-template';
+
+const QUICK_LIBRARY_ITEMS = [
+  {
+    title: 'تراك الأهلي الأسود الشتوي',
+    url: 'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-ahly.jpg'
+  },
+  {
+    title: 'تراك برشلونة الشتوي',
+    url: 'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-barca.jpg'
+  },
+  {
+    title: 'تراك فرنسا الشتوي',
+    url: 'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-france.jpg'
+  },
+  {
+    title: 'طقم ريال مدريد الأبيض 2027',
+    url: 'https://kemetmisr.com/assets/kit-real-madrid-white-2027.jpg'
+  },
+  {
+    title: 'طقم ريال مدريد الكحلي 2027',
+    url: 'https://kemetmisr.com/assets/kit-real-madrid-navy-2027.jpg'
+  },
+  {
+    title: 'طقم أتلتيكو مدريد 2027',
+    url: 'https://kemetmisr.com/assets/kit-atletico-madrid-2027.jpg'
+  },
+  {
+    title: 'بانر KEMET الهيرو الرياضي',
+    url: 'https://kemetmisr.com/assets/kemet-hero-banner.jpg'
+  }
+];
 
 export function PromoEmailControl({ initialTotalUsers = 129 }) {
   const [totalUsers, setTotalUsers] = useState(initialTotalUsers);
@@ -22,6 +58,8 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
   const [whatsappChannelText, setWhatsappChannelText] = useState(defaultPreset.whatsappChannelText || 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل أي حد');
   const [whatsappChannelUrl, setWhatsappChannelUrl] = useState(defaultPreset.whatsappChannelUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q');
   const [images, setImages] = useState(defaultPreset.images || []);
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Studio UI states
   const [activeView, setActiveView] = useState('edit'); // 'edit' | 'preview'
@@ -147,6 +185,63 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
     } finally {
       setIsSendingTest(false);
     }
+  };
+
+  // Handle adding an image
+  const handleAddImage = (urlToAdd = null) => {
+    const targetUrl = typeof urlToAdd === 'string' ? urlToAdd.trim() : newImageUrl.trim();
+    if (!targetUrl) return;
+    setImages(prev => [...prev, targetUrl]);
+    if (!urlToAdd) setNewImageUrl('');
+  };
+
+  // Handle removing an image
+  const handleRemoveImage = (indexToRemove) => {
+    setImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  // Handle reordering images
+  const handleMoveImage = (currentIndex, direction) => {
+    const targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= images.length) return;
+    setImages(prev => {
+      const updated = [...prev];
+      const temp = updated[currentIndex];
+      updated[currentIndex] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated;
+    });
+  };
+
+  // Handle file upload from user device
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً (الحد الأقصى 10 ميجابايت)');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Data = event.target.result;
+      try {
+        const res = await uploadPromoImageAction(base64Data, file.name);
+        if (res?.success && res.url) {
+          setImages(prev => [...prev, res.url]);
+        } else {
+          setImages(prev => [...prev, base64Data]);
+        }
+      } catch (err) {
+        setImages(prev => [...prev, base64Data]);
+      } finally {
+        setIsUploadingImage(false);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // Format body text for live preview
@@ -542,6 +637,245 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
               />
             </div>
           </div>
+
+          {/* Row 6: Image Showcase Management (Apple-Style Full Width Vertical Cards) */}
+          <div style={{
+            background: 'rgba(212, 175, 55, 0.04)',
+            border: '1px solid var(--border-gold)',
+            borderRadius: 'var(--radius-md)',
+            padding: '1.35rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.65rem' }}>
+              <div>
+                <span style={{ fontSize: '0.98rem', fontWeight: 900, color: 'var(--gold-primary)', display: 'block', marginBottom: '0.2rem' }}>
+                  📸 صور المنتجات المعروضة داخل الإيميل (Apple-Style Full-Width Vertical Cards)
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  تُعرض كل صورة بالطول وبحجم كامل يملأ عرض الرسالة كبطاقات أبل الترويجية الفاخرة، لتبرز تفاصيل كل منتج بأعلى دقة.
+                </span>
+              </div>
+              <span style={{ fontSize: '0.84rem', fontWeight: 900, background: 'rgba(212, 175, 55, 0.18)', color: 'var(--gold-primary)', border: '1px solid var(--border-gold)', padding: '0.25rem 0.75rem', borderRadius: '4px' }}>
+                عدد الصور: {images.length}
+              </span>
+            </div>
+
+            {/* Add Image Inputs */}
+            <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="أدخل رابط أي صورة مباشرة (https://...)"
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                style={{
+                  flex: '1 1 280px',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  color: '#FFFFFF',
+                  fontSize: '0.88rem',
+                  direction: 'ltr',
+                  textAlign: 'left'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => handleAddImage()}
+                className="btn-primary"
+                style={{ padding: '0.75rem 1.35rem', fontSize: '0.88rem', fontWeight: 800, whiteSpace: 'nowrap' }}
+              >
+                + إضافة الصورة
+              </button>
+              <label style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                background: isUploadingImage ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.75rem 1.25rem',
+                color: '#FFFFFF',
+                fontSize: '0.88rem',
+                fontWeight: 800,
+                cursor: isUploadingImage ? 'wait' : 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease'
+              }}>
+                <span>{isUploadingImage ? '⏳ جاري المعالجة والرفع...' : '📤 رفع صورة من جهازك'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploadingImage}
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+
+            {/* Quick Preset Library */}
+            <div style={{ marginBottom: '1.25rem', background: 'rgba(0,0,0,0.25)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--gold-primary)', display: 'block', marginBottom: '0.6rem' }}>
+                ⚡ مكتبة المنتجات والتراكات الجاهزة (اضغط على أي تراك أو طقم لإضافته فورياً للحملة):
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {QUICK_LIBRARY_ITEMS.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleAddImage(item.url)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '6px',
+                      padding: '0.35rem 0.75rem',
+                      color: '#FFFFFF',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <img src={item.url} alt="" style={{ width: '22px', height: '22px', borderRadius: '3px', objectFit: 'cover' }} />
+                    <span>+ {item.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Currently Added Images List */}
+            {images.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '1.75rem', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                لا توجد صور مضافة حالياً. اختر من المكتبة السريعة بالأعلى أو ارفع صوراً لعرضها بالطول داخل الإيميل.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {images.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      background: 'rgba(0,0,0,0.35)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.75rem 1rem',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <span style={{
+                      background: 'var(--gold-primary)',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '0.78rem',
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '4px',
+                      minWidth: '32px',
+                      textAlign: 'center'
+                    }}>
+                      #{idx + 1}
+                    </span>
+
+                    <div style={{
+                      width: '58px',
+                      height: '74px',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      flexShrink: 0,
+                      background: '#000'
+                    }}>
+                      <img
+                        src={imgUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+
+                    <div style={{ flex: '1 1 200px' }}>
+                      <input
+                        type="text"
+                        value={imgUrl}
+                        onChange={(e) => {
+                          const updated = [...images];
+                          updated[idx] = e.target.value;
+                          setImages(updated);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.55rem 0.85rem',
+                          background: 'rgba(0,0,0,0.4)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: '#FFFFFF',
+                          fontSize: '0.82rem',
+                          direction: 'ltr',
+                          textAlign: 'left'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => handleMoveImage(idx, -1)}
+                        style={{
+                          padding: '0.4rem 0.7rem',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid var(--border-color)',
+                          color: idx === 0 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
+                          borderRadius: '4px',
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.82rem'
+                        }}
+                        title="تحريك لأعلى"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === images.length - 1}
+                        onClick={() => handleMoveImage(idx, 1)}
+                        style={{
+                          padding: '0.4rem 0.7rem',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid var(--border-color)',
+                          color: idx === images.length - 1 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
+                          borderRadius: '4px',
+                          cursor: idx === images.length - 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.82rem'
+                        }}
+                        title="تحريك لأسفل"
+                      >
+                        ▼
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        style={{
+                          padding: '0.4rem 0.85rem',
+                          background: 'rgba(244, 63, 94, 0.15)',
+                          border: '1px solid rgba(244, 63, 94, 0.4)',
+                          color: '#F43F5E',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.82rem',
+                          fontWeight: 800
+                        }}
+                        title="حذف الصورة"
+                      >
+                        🗑️ حذف
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -655,35 +989,40 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
               </div>
             )}
 
-            {/* 3 Product Showcase Cards */}
-            {images && images.length >= 3 ? (
+            {/* Apple-Style Vertical Showcase Cards (Full Width & Portrait) */}
+            {images && images.length > 0 && (
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '8px',
-                margin: '20px 0 24px 0'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px',
+                margin: '24px 0 26px 0'
               }}>
-                {images.slice(0, 3).map((imgUrl, idx) => (
-                  <div key={idx} style={{
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    border: '1px solid #E2E8F0',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-                  }}>
+                {images.map((imgUrl, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                      background: '#F8FAFC'
+                    }}
+                  >
                     <img
                       src={imgUrl}
-                      alt={`تراك شتوي ${idx + 1}`}
+                      alt={`منتج ${idx + 1}`}
                       style={{
                         width: '100%',
-                        height: 'auto',
+                        maxHeight: '680px',
+                        objectFit: 'contain',
                         display: 'block',
-                        objectFit: 'cover'
+                        margin: '0 auto'
                       }}
                     />
                   </div>
                 ))}
               </div>
-            ) : null}
+            )}
 
             {/* Dual Action Buttons */}
             <div style={{ margin: '26px 0 18px 0', textAlign: 'center' }}>

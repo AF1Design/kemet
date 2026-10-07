@@ -1536,6 +1536,28 @@ export async function sendTestPromoEmailAction({
 }
 
 /**
+ * Server Action: Uploads an image for promotional emails and returns its clean public URL
+ */
+export async function uploadPromoImageAction(base64Data, fileName = 'promo') {
+  try {
+    if (!base64Data) return { success: false, error: 'لم يتم تحديد صورة' };
+    const uploadedUrl = await processAndUploadProductImage({
+      imageInput: base64Data,
+      productName: fileName || 'kemet-promo-email',
+      nameEn: 'promo',
+      suffix: `promo-${Date.now()}`
+    });
+    if (uploadedUrl) {
+      return { success: true, url: uploadedUrl };
+    }
+    return { success: true, url: base64Data };
+  } catch (err) {
+    console.warn('uploadPromoImageAction warning:', err);
+    return { success: true, url: base64Data };
+  }
+}
+
+/**
  * Server Action: Fetches live Banner Control Settings from Supabase DB
  */
 export async function getBannerSettingsAction() {

@@ -123,26 +123,33 @@ export function buildLuxuryPromoEmailHtml({
     `;
   }).join('');
 
-  // 3 Images Showcase (clean table, no heavy background boxes)
-  const productImages = Array.isArray(images) && images.length >= 3 ? images : [
-    'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-ahly.jpg',
-    'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-barca.jpg',
-    'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-france.jpg'
-  ];
+  // Apple-Style Full-Width Vertical Images Showcase
+  const validImages = Array.isArray(images) 
+    ? images.map(img => String(img || '').trim()).filter(Boolean) 
+    : [];
 
-  const imagesHtml = productImages.length >= 3 ? `
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0 24px 0; border-collapse: collapse;">
-      <tr>
-        <td width="33.33%" align="center" valign="top" style="padding: 4px;">
-          <img src="${productImages[0]}" alt="تراك النادي الأهلي الشتوي" width="170" style="width: 100%; max-width: 170px; height: auto; border-radius: 8px; display: block; border: 1px solid #E2E8F0;" />
-        </td>
-        <td width="33.33%" align="center" valign="top" style="padding: 4px;">
-          <img src="${productImages[1]}" alt="تراك نادي برشلونة الشتوي" width="170" style="width: 100%; max-width: 170px; height: auto; border-radius: 8px; display: block; border: 1px solid #E2E8F0;" />
-        </td>
-        <td width="33.33%" align="center" valign="top" style="padding: 4px;">
-          <img src="${productImages[2]}" alt="تراك منتخب فرنسا الشتوي" width="170" style="width: 100%; max-width: 170px; height: auto; border-radius: 8px; display: block; border: 1px solid #E2E8F0;" />
-        </td>
-      </tr>
+  const imagesHtml = validImages.length > 0 ? `
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 22px 0 26px 0; border-collapse: collapse;">
+      ${validImages.map((imgUrl, idx) => {
+        const cleanImgUrl = imgUrl.startsWith('http://') || imgUrl.startsWith('https://')
+          ? imgUrl
+          : (imgUrl.startsWith('/') ? `https://kemetmisr.com${imgUrl}` : `https://kemetmisr.com/${imgUrl}`);
+
+        return `
+        <tr>
+          <td align="center" valign="top" style="padding: 0 0 20px 0;">
+            <a href="${cleanCtaUrl}" target="_blank" style="text-decoration: none; display: block;">
+              <img 
+                src="${cleanImgUrl}" 
+                alt="${cleanHeadline} - منتج ${idx + 1}" 
+                width="560" 
+                style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; display: block; border: 1px solid #E2E8F0; box-shadow: 0 4px 16px rgba(0,0,0,0.06); outline: none; text-decoration: none; margin: 0 auto;" 
+              />
+            </a>
+          </td>
+        </tr>
+        `;
+      }).join('')}
     </table>
   ` : '';
 
