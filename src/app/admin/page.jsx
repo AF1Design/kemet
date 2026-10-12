@@ -5,6 +5,7 @@ import { getRegisteredUsersStatsAction } from './actions';
 import { PromoEmailControl } from '../../components/admin/PromoEmailControl';
 import { CouponsControl } from '../../components/admin/CouponsControl';
 import { AnnouncementBarControl } from '../../components/admin/AnnouncementBarControl';
+import { WhatsAppBroadcastControl } from '../../components/admin/WhatsAppBroadcastControl';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,6 +92,11 @@ export default async function AdminDashboardPage() {
       {/* Coupons / Promo Codes Management */}
       <div id="coupons">
         <CouponsControl />
+      </div>
+
+      {/* WhatsApp Broadcast & Offers Management */}
+      <div id="whatsapp">
+        <WhatsAppBroadcastControl />
       </div>
 
       {/* Mass Promo Email Control & Stats Section */}

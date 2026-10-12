@@ -12,7 +12,7 @@ import {
   getCustomerWalletAction,
   debitCustomerWalletAction
 } from '../admin/actions';
-import { DEFAULT_COUPONS } from '../../lib/coupons';
+import { DEFAULT_COUPONS, isWinterProduct, isSummerProduct } from '../../lib/coupons';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 
 // Shipping rates by governorate in EGP
@@ -149,8 +149,17 @@ export default function CheckoutPage() {
   let walletUsedAmount = 0;
 
   if (appliedCoupon) {
+    let eligibleItems = cart;
+    if (appliedCoupon.targetCategory === 'winter') {
+      eligibleItems = cart.filter(isWinterProduct);
+    } else if (appliedCoupon.targetCategory === 'summer') {
+      eligibleItems = cart.filter(isSummerProduct);
+    }
+
+    const eligiblePieces = eligibleItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
     const minPiecesRequired = Number(appliedCoupon.minOrderPieces) > 0 ? Number(appliedCoupon.minOrderPieces) : 1;
-    if (totalCartPieces >= minPiecesRequired) {
+
+    if (eligiblePieces >= minPiecesRequired) {
       const maxPieces = (appliedCoupon.maxDiscountedPieces && Number(appliedCoupon.maxDiscountedPieces) > 0)
         ? Number(appliedCoupon.maxDiscountedPieces)
         : Infinity;
@@ -159,9 +168,9 @@ export default function CheckoutPage() {
         let remainingAllowed = maxPieces;
         const target = Number(appliedCoupon.targetPrice || appliedCoupon.value || 220);
 
-        for (const item of cart) {
+        for (const item of eligibleItems) {
           if (remainingAllowed <= 0) break;
-          const itemPrice = Number(item.price) || 450;
+          const itemPrice = Number(item.price) || (isWinterProduct(item) ? 450 : 280);
           const discountPerPiece = Math.max(0, itemPrice - target);
           const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
 
@@ -173,9 +182,9 @@ export default function CheckoutPage() {
         let remainingAllowed = maxPieces;
         let eligibleSubtotal = 0;
 
-        for (const item of cart) {
+        for (const item of eligibleItems) {
           if (remainingAllowed <= 0) break;
-          const itemPrice = Number(item.price) || 450;
+          const itemPrice = Number(item.price) || (isWinterProduct(item) ? 450 : 280);
           const piecesToApply = Math.min(Number(item.quantity || 1), remainingAllowed);
 
           eligibleSubtotal += (itemPrice * piecesToApply);
@@ -189,8 +198,9 @@ export default function CheckoutPage() {
         discountedPiecesCount = totalCartPieces;
       } else {
         // Fixed amount discount
-        discountAmount = Math.min(subtotal, Number(appliedCoupon.value));
-        discountedPiecesCount = Math.min(totalCartPieces, maxPieces === Infinity ? totalCartPieces : maxPieces);
+        const eligibleSubtotal = eligibleItems.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
+        discountAmount = Math.min(eligibleSubtotal, Number(appliedCoupon.value));
+        discountedPiecesCount = Math.min(eligiblePieces, maxPieces === Infinity ? eligiblePieces : maxPieces);
       }
     }
   } else if (isWalletApplied && walletBalance > 0) {
@@ -344,14 +354,51 @@ export default function CheckoutPage() {
       return;
     }
 
-    // 3. Check minimum order pieces requirement
+    // 3. Check category scope & minimum order pieces requirement
     const minPiecesRequired = Number(coupon.minOrderPieces) > 0 ? Number(coupon.minOrderPieces) : 1;
-    if (totalCartPieces < minPiecesRequired) {
-      setCouponMsg({
-        type: 'error',
-        text: `يشترط كود (${coupon.code}) طلب ${minPiecesRequired} قطع على الأقل في السلة للاستفادة من العرض (لديك حالياً ${totalCartPieces} قطعة).`
-      });
-      return;
+
+    if (coupon.targetCategory === 'winter') {
+      const winterItems = cart.filter(isWinterProduct);
+      if (winterItems.length === 0) {
+        setCouponMsg({
+          type: 'error',
+          text: 'عذراً، هذا الكود خاص بالكولكشن الشتوي فقط.'
+        });
+        return;
+      }
+      const winterPieces = winterItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+      if (winterPieces < minPiecesRequired) {
+        setCouponMsg({
+          type: 'error',
+          text: `يشترط كود (${coupon.code}) طلب ${minPiecesRequired} قطع على الأقل من الكولكشن الشتوي للاستفادة من العرض (لديك حالياً ${winterPieces} قطعة).`
+        });
+        return;
+      }
+    } else if (coupon.targetCategory === 'summer') {
+      const summerItems = cart.filter(isSummerProduct);
+      if (summerItems.length === 0) {
+        setCouponMsg({
+          type: 'error',
+          text: 'عذراً، هذا الكود خاص بالكولكشن الصيفي فقط.'
+        });
+        return;
+      }
+      const summerPieces = summerItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+      if (summerPieces < minPiecesRequired) {
+        setCouponMsg({
+          type: 'error',
+          text: `يشترط كود (${coupon.code}) طلب ${minPiecesRequired} قطع على الأقل من الكولكشن الصيفي للاستفادة من العرض (لديك حالياً ${summerPieces} قطعة).`
+        });
+        return;
+      }
+    } else {
+      if (totalCartPieces < minPiecesRequired) {
+        setCouponMsg({
+          type: 'error',
+          text: `يشترط كود (${coupon.code}) طلب ${minPiecesRequired} قطع على الأقل في السلة للاستفادة من العرض (لديك حالياً ${totalCartPieces} قطعة).`
+        });
+        return;
+      }
     }
 
     setAppliedCoupon(coupon);
@@ -361,12 +408,15 @@ export default function CheckoutPage() {
       : null;
 
     const piecesNotice = piecesLimit ? ` (يسري الخصم على حتى ${piecesLimit} قطعة في الطلب)` : '';
+    const categoryLabel = coupon.targetCategory === 'winter' 
+      ? ' على الكولكشن الشتوي' 
+      : (coupon.targetCategory === 'summer' ? ' على الكولكشن الصيفي' : '');
 
     if (coupon.type === 'fixed_price') {
       const target = coupon.targetPrice || coupon.value || 220;
       setCouponMsg({ 
         type: 'success', 
-        text: `تم تطبيق كود (${coupon.code}) بنجاح! أصبح سعر التيشيرت ${target} ج.م بدلاً من السعر الأصلي${piecesNotice} + مصاريف الشحن` 
+        text: `تم تطبيق كود (${coupon.code}) بنجاح${categoryLabel}! أصبح سعر القطعة ${target} ج.م بدلاً من السعر الأصلي${piecesNotice} + مصاريف الشحن` 
       });
     } else if (coupon.type === 'free_shipping' || coupon.code?.toUpperCase() === 'KEMET12') {
       setCouponMsg({ 
@@ -376,7 +426,7 @@ export default function CheckoutPage() {
     } else {
       setCouponMsg({ 
         type: 'success', 
-        text: `تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`} على المنتجات${piecesNotice} + مصاريف الشحن` 
+        text: `تم تطبيق الكوبون (${coupon.code}) بخصم ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value} ج.م`}${categoryLabel}${piecesNotice} + مصاريف الشحن` 
       });
     }
   };
@@ -459,15 +509,50 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Safety re-check: Verify minOrderPieces on final submission
+      // Safety re-check: Verify category requirements and minOrderPieces on final submission
       const minPiecesRequired = Number(appliedCoupon.minOrderPieces) > 0 ? Number(appliedCoupon.minOrderPieces) : 1;
-      if (totalCartPieces < minPiecesRequired) {
-        setCouponMsg({
-          type: 'error',
-          text: `عذراً، لا يمكن إتمام الطلب بهذا الكود لأن الحد الأدنى للقطع هو ${minPiecesRequired} قطعة (السلة بها ${totalCartPieces} قطعة فقط).`
-        });
-        setIsSubmitting(false);
-        return;
+
+      if (appliedCoupon.targetCategory === 'winter') {
+        const winterItems = cart.filter(isWinterProduct);
+        if (winterItems.length === 0) {
+          setCouponMsg({ type: 'error', text: 'عذراً، هذا الكود خاص بالكولكشن الشتوي فقط.' });
+          setIsSubmitting(false);
+          return;
+        }
+        const winterPieces = winterItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        if (winterPieces < minPiecesRequired) {
+          setCouponMsg({
+            type: 'error',
+            text: `عذراً، لا يمكن إتمام الطلب بهذا الكود لأن الحد الأدنى للقطع الشتوية هو ${minPiecesRequired} قطعة (السلة بها ${winterPieces} قطعة فقط).`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (appliedCoupon.targetCategory === 'summer') {
+        const summerItems = cart.filter(isSummerProduct);
+        if (summerItems.length === 0) {
+          setCouponMsg({ type: 'error', text: 'عذراً، هذا الكود خاص بالكولكشن الصيفي فقط.' });
+          setIsSubmitting(false);
+          return;
+        }
+        const summerPieces = summerItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        if (summerPieces < minPiecesRequired) {
+          setCouponMsg({
+            type: 'error',
+            text: `عذراً، لا يمكن إتمام الطلب بهذا الكود لأن الحد الأدنى للقطع الصيفية هو ${minPiecesRequired} قطعة (السلة بها ${summerPieces} قطعة فقط).`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        if (totalCartPieces < minPiecesRequired) {
+          setCouponMsg({
+            type: 'error',
+            text: `عذراً، لا يمكن إتمام الطلب بهذا الكود لأن الحد الأدنى للقطع هو ${minPiecesRequired} قطعة (السلة بها ${totalCartPieces} قطعة فقط).`
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
     }
 

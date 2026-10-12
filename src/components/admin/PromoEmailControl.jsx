@@ -1174,8 +1174,30 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
               boxShadow: '0 4px 15px rgba(212, 175, 55, 0.3)'
             }}
           >
-            {isSending ? 'جاري بث الحملة الترويجية...' : `إرسال العرض لكافة المستخدمين (${totalUsers} عميل)`}
+            {isSending ? 'جاري بث الحملة الترويجية...' : `إرسال الإيميل الترويجي (${totalUsers} عميل)`}
           </button>
+
+          <a
+            href="#whatsapp"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              padding: '0.9rem 1.6rem',
+              fontSize: '0.9rem',
+              fontWeight: 900,
+              background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+              color: '#FFFFFF',
+              borderRadius: 'var(--radius-md)',
+              textDecoration: 'none',
+              boxShadow: '0 4px 15px rgba(37, 211, 102, 0.35)',
+              transition: 'all 0.2s ease',
+              cursor: 'pointer'
+            }}
+          >
+            <span>💬</span>
+            <span>إرسال عبر الواتساب للعملاء</span>
+          </a>
         </div>
       </div>
 

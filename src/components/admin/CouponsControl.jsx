@@ -10,7 +10,7 @@ import {
   toggleCouponSuggestedAction,
   getCouponAnalyticsAction
 } from '../../app/admin/actions';
-import { DEFAULT_COUPONS } from '../../lib/coupons';
+import { DEFAULT_COUPONS, COUPON_CATEGORIES } from '../../lib/coupons';
 
 export function CouponsControl() {
   const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
@@ -44,6 +44,7 @@ export function CouponsControl() {
   // Form State
   const [code, setCode] = useState('');
   const [type, setType] = useState('fixed_price');
+  const [targetCategory, setTargetCategory] = useState('all');
   const [targetPrice, setTargetPrice] = useState(220);
   const [percentageValue, setPercentageValue] = useState(10);
   const [fixedAmountValue, setFixedAmountValue] = useState(50);
@@ -128,6 +129,7 @@ export function CouponsControl() {
     setCode('');
     setOriginalCode(null);
     setType('fixed_price');
+    setTargetCategory('all');
     setTargetPrice(220);
     setPercentageValue(10);
     setFixedAmountValue(50);
@@ -147,6 +149,7 @@ export function CouponsControl() {
     setCode(c.code);
     setOriginalCode(c.code);
     setType(c.type || 'fixed_price');
+    setTargetCategory(c.targetCategory || 'all');
     setTargetPrice(c.targetPrice || c.value || 220);
     setPercentageValue(c.type === 'percentage' ? (c.value || 10) : 10);
     setFixedAmountValue(c.type === 'fixed' ? (c.value || 50) : 50);
@@ -175,6 +178,7 @@ export function CouponsControl() {
         code: code.trim().toUpperCase(),
         originalCode: originalCode,
         type: type,
+        targetCategory: targetCategory || 'all',
         targetPrice: type === 'fixed_price' ? Number(targetPrice) : null,
         value: val,
         description: description.trim(),
@@ -197,6 +201,64 @@ export function CouponsControl() {
         setStatusMsg(res.error || 'فشل حفظ كود الخصم');
       }
     });
+  };
+
+  const getCategoryBadge = (cat) => {
+    if (cat === 'winter') {
+      return (
+        <span style={{ 
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          gap: '0.35rem', 
+          padding: '0.25rem 0.65rem', 
+          borderRadius: '4px', 
+          fontSize: '0.8rem', 
+          fontWeight: 800,
+          background: 'rgba(56, 189, 248, 0.14)', 
+          color: '#38BDF8',
+          border: '1px solid rgba(56, 189, 248, 0.35)',
+          whiteSpace: 'nowrap'
+        }}>
+          ❄️ شتوي فقط (تراكات)
+        </span>
+      );
+    }
+    if (cat === 'summer') {
+      return (
+        <span style={{ 
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          gap: '0.35rem', 
+          padding: '0.25rem 0.65rem', 
+          borderRadius: '4px', 
+          fontSize: '0.8rem', 
+          fontWeight: 800,
+          background: 'rgba(251, 146, 60, 0.14)', 
+          color: '#FB923C',
+          border: '1px solid rgba(251, 146, 60, 0.35)',
+          whiteSpace: 'nowrap'
+        }}>
+          ☀️ صيفي فقط (أطقم وتيشيرتات)
+        </span>
+      );
+    }
+    return (
+      <span style={{ 
+        display: 'inline-flex', 
+        alignItems: 'center', 
+        gap: '0.35rem', 
+        padding: '0.25rem 0.65rem', 
+        borderRadius: '4px', 
+        fontSize: '0.8rem', 
+        fontWeight: 800,
+        background: 'rgba(212, 175, 55, 0.12)', 
+        color: 'var(--gold-primary)',
+        border: '1px solid rgba(212, 175, 55, 0.3)',
+        whiteSpace: 'nowrap'
+      }}>
+        🌐 عام (جميع الأقسام)
+      </span>
+    );
   };
 
   const handleToggleStatus = (couponCode) => {
@@ -290,6 +352,7 @@ export function CouponsControl() {
             <thead>
               <tr style={{ background: 'rgba(212, 175, 55, 0.08)', borderBottom: '1px solid var(--border-gold)' }}>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>كود الخصم</th>
+                <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>القسم المستهدف</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>نوع الخصم والسعر</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحد الأدنى للقطع</th>
                 <th style={{ padding: '0.9rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>الحد للحساب</th>
@@ -310,6 +373,9 @@ export function CouponsControl() {
                   <tr key={c.code} style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td style={{ padding: '1rem', fontWeight: 900, color: 'var(--gold-primary)', direction: 'ltr', textAlign: 'right', letterSpacing: '1px' }}>
                       {c.code}
+                    </td>
+                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                      {getCategoryBadge(c.targetCategory)}
                     </td>
                     <td style={{ padding: '1rem', fontWeight: 800, color: '#FFF' }}>
                       {getDiscountLabel(c)}
@@ -748,6 +814,34 @@ export function CouponsControl() {
                   <option value="percentage">نسبة مئوية (Percentage %)</option>
                   <option value="fixed_amount">مبلغ خصم كاش (Fixed Amount EGP)</option>
                 </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
+                  القسم المخصص للخصم (تحديد الكولكشن المستهدف):
+                </label>
+                <select
+                  value={targetCategory}
+                  onChange={e => setTargetCategory(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '0.9rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-gold)',
+                    background: 'var(--bg-deep)',
+                    color: 'var(--gold-primary)',
+                    cursor: 'pointer',
+                    fontWeight: 800
+                  }}
+                >
+                  <option value="all">🌐 عام لجميع المنتجات والأقسام (كافة المنتجات)</option>
+                  <option value="winter">❄️ الكولكشن الشتوي فقط (تراكات - Winter Collection)</option>
+                  <option value="summer">☀️ الكولكشن الصيفي فقط (أطقم وتيشيرتات - Summer Collection)</option>
+                </select>
+                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.35rem', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  عند تخصيص الكود للشتوي فقط، لن يُقبل في السلة إلا لمنتجات الكولكشن الشتوي. وعند تخصيصه للصيفي، لن يُقبل لشراء التراكات الشتوية منعاً لاستغلال السعر.
+                </small>
               </div>
 
               {type === 'fixed_price' && (

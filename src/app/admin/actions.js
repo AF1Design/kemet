@@ -2013,10 +2013,21 @@ export async function getCouponsAction() {
     if (!error && data && data.name_ar) {
       const parsed = JSON.parse(data.name_ar);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const normalized = parsed.map(c => ({
-          ...c,
-          isSuggested: c.isSuggested !== undefined ? Boolean(c.isSuggested) : false
-        }));
+        const normalized = parsed.map(c => {
+          let targetCategory = c.targetCategory || 'all';
+          if (!c.targetCategory) {
+            if (['KEMET12', 'KEMET10', 'OFF50'].includes(c.code?.toUpperCase())) {
+              targetCategory = 'all';
+            } else if (['KEMETMISR', 'KEMET22', 'KEMET1', 'KEMETFAMILY'].includes(c.code?.toUpperCase())) {
+              targetCategory = 'summer';
+            }
+          }
+          return {
+            ...c,
+            targetCategory,
+            isSuggested: c.isSuggested !== undefined ? Boolean(c.isSuggested) : false
+          };
+        });
         return { success: true, coupons: normalized };
       }
     }
@@ -2072,6 +2083,7 @@ export async function addOrUpdateCouponAction(couponData) {
     }
 
     const type = couponData.type || 'fixed_price';
+    const targetCategory = couponData.targetCategory || 'all';
     const targetPrice = type === 'fixed_price' ? Number(couponData.targetPrice || couponData.value || 220) : null;
     const value = type === 'fixed_price' ? targetPrice : (type === 'free_shipping' ? 0 : Number(couponData.value || 0));
 
@@ -2090,6 +2102,7 @@ export async function addOrUpdateCouponAction(couponData) {
     const newCoupon = {
       code: cleanCode,
       type: type,
+      targetCategory: targetCategory,
       targetPrice: targetPrice,
       value: value,
       description: couponData.description ? String(couponData.description).trim() : '',
@@ -2117,6 +2130,7 @@ export async function addOrUpdateCouponAction(couponData) {
           return {
             ...c,
             ...newCoupon,
+            targetCategory: couponData.targetCategory !== undefined ? couponData.targetCategory : (c.targetCategory || 'all'),
             isSuggested: couponData.isSuggested !== undefined ? Boolean(couponData.isSuggested) : (c.isSuggested ?? false),
             suggestionLabel: couponData.suggestionLabel !== undefined ? couponData.suggestionLabel : (c.suggestionLabel || null),
             expiresAt: couponData.expiresAt !== undefined ? couponData.expiresAt : (c.expiresAt || null),
@@ -3318,5 +3332,168 @@ export async function getCustomersFinancialOverviewAction() {
     };
   }
 }
+
+/**
+ * Server Action: Fetches all customers with verified phone numbers for WhatsApp marketing & broadcast campaigns
+ */
+export async function getWhatsAppBroadcastCustomersAction() {
+  try {
+    const supabaseAdmin = getAdminSupabase();
+
+    const [{ data: profiles, error: profErr }, { data: authData }, { data: orders, error: ordersErr }, { data: abCarts }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      supabaseAdmin.from('orders').select('id, user_id, customer_name, customer_phone, total_amount, status, created_at').order('created_at', { ascending: false }),
+      supabaseAdmin.from('categories').select('*').eq('name_en', 'ABANDONED_CART').order('created_at', { ascending: false })
+    ]);
+
+    if (profErr) console.warn('getWhatsAppBroadcastCustomers profiles note:', profErr.message);
+    if (ordersErr) console.warn('getWhatsAppBroadcastCustomers orders note:', ordersErr.message);
+
+    const cleanPhone = (s) => {
+      if (!s) return '';
+      const digits = String(s).replace(/\D/g, '');
+      return digits.length >= 10 ? digits.slice(-10) : digits;
+    };
+
+    const formatWaPhone = (s) => {
+      if (!s) return '';
+      const digits = String(s).replace(/\D/g, '');
+      if (!digits) return '';
+      if (digits.startsWith('01') && digits.length === 11) return '2' + digits;
+      if (digits.startsWith('1') && digits.length === 10) return '20' + digits;
+      if (digits.startsWith('20') && digits.length >= 12) return digits;
+      return digits;
+    };
+
+    const customerMap = new Map();
+
+    // 1. Index Orders to count orders per phone & user
+    const orderStatsByPhone = new Map();
+    const orderStatsByUid = new Map();
+    (orders || []).forEach(o => {
+      const p = cleanPhone(o.customer_phone);
+      const uid = o.user_id ? String(o.user_id).trim() : null;
+      if (p) {
+        orderStatsByPhone.set(p, (orderStatsByPhone.get(p) || 0) + 1);
+      }
+      if (uid) {
+        orderStatsByUid.set(uid, (orderStatsByUid.get(uid) || 0) + 1);
+      }
+    });
+
+    // 2. Add Profiles
+    (profiles || []).forEach(p => {
+      const cleanE = (p.email || '').trim().toLowerCase();
+      if (p.role === 'admin' || cleanE === 'admin@kemet.eg' || cleanE === 'kemet.ya1@gmail.com') return;
+
+      const pKey = cleanPhone(p.phone) || `u_${p.id}`;
+      const waPhone = formatWaPhone(p.phone);
+      const ordersCount = (cleanPhone(p.phone) && orderStatsByPhone.get(cleanPhone(p.phone))) || (orderStatsByUid.get(p.id) || 0);
+
+      customerMap.set(pKey, {
+        id: p.id,
+        name: p.full_name || 'عميل مسجل',
+        phone: p.phone || '',
+        waPhone: waPhone,
+        email: p.email || '',
+        governorate: p.governorate || 'القاهرة',
+        source: 'عميل مسجل (حساب)',
+        ordersCount: ordersCount,
+        hasPhone: Boolean(waPhone),
+        createdAt: p.created_at
+      });
+    });
+
+    // 3. Add Orders Customers (if not already indexed or missing phone)
+    (orders || []).forEach(o => {
+      const p = cleanPhone(o.customer_phone);
+      if (!p) return;
+      const waPhone = formatWaPhone(o.customer_phone);
+
+      if (customerMap.has(p)) {
+        const existing = customerMap.get(p);
+        if (!existing.phone && o.customer_phone) {
+          existing.phone = o.customer_phone;
+          existing.waPhone = waPhone;
+          existing.hasPhone = Boolean(waPhone);
+        }
+        if (o.customer_name && (!existing.name || existing.name === 'عميل مسجل')) {
+          existing.name = o.customer_name;
+        }
+      } else {
+        customerMap.set(p, {
+          id: o.id || `order_${p}`,
+          name: o.customer_name || 'عميل المتجر',
+          phone: o.customer_phone || '',
+          waPhone: waPhone,
+          email: '',
+          governorate: 'القاهرة',
+          source: 'عميل طلبات',
+          ordersCount: orderStatsByPhone.get(p) || 1,
+          hasPhone: Boolean(waPhone),
+          createdAt: o.created_at
+        });
+      }
+    });
+
+    // 4. Add Abandoned Carts Customers
+    (abCarts || []).forEach(row => {
+      try {
+        let meta = {};
+        if (row.description_ar && row.description_ar.startsWith('{')) {
+          meta = JSON.parse(row.description_ar);
+        }
+        const cPhone = meta.customerPhone || meta.phone || '';
+        const cName = meta.customerName || meta.fullName || '';
+        const p = cleanPhone(cPhone);
+        if (p && !customerMap.has(p)) {
+          const waPhone = formatWaPhone(cPhone);
+          customerMap.set(p, {
+            id: row.id,
+            name: cName || 'عميل سلة متروكة',
+            phone: cPhone,
+            waPhone: waPhone,
+            email: meta.customerEmail || '',
+            governorate: meta.governorate || 'القاهرة',
+            source: 'عميل سلة متروكة',
+            ordersCount: 0,
+            hasPhone: Boolean(waPhone),
+            createdAt: row.created_at
+          });
+        }
+      } catch (e) {}
+    });
+
+    const list = Array.from(customerMap.values());
+    // Sort: customers with phone first, then by ordersCount desc, then by createdAt desc
+    list.sort((a, b) => {
+      if (b.hasPhone !== a.hasPhone) return b.hasPhone ? 1 : -1;
+      if (b.ordersCount !== a.ordersCount) return b.ordersCount - a.ordersCount;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+
+    const withPhoneCount = list.filter(c => c.hasPhone).length;
+
+    return {
+      success: true,
+      stats: {
+        totalCustomers: list.length,
+        withPhoneCount: withPhoneCount,
+        withoutPhoneCount: list.length - withPhoneCount
+      },
+      customers: list
+    };
+  } catch (err) {
+    console.error('getWhatsAppBroadcastCustomersAction error:', err);
+    return {
+      success: false,
+      error: err.message || 'فشل جلب قائمة العملاء لحملات الواتساب.',
+      stats: { totalCustomers: 0, withPhoneCount: 0, withoutPhoneCount: 0 },
+      customers: []
+    };
+  }
+}
+
 
 

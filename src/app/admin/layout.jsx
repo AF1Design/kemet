@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import { getAdminSupabase } from '../../lib/supabase/admin.js';
+import AdminHeaderNav from '../../components/admin/AdminHeaderNav';
 
 export default async function AdminLayout({ children }) {
   let isAdmin = false;
@@ -59,7 +60,7 @@ export default async function AdminLayout({ children }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-dark)', color: 'var(--text-primary)', overflowX: 'hidden', maxWidth: '100vw' }}>
       {/* Top Admin Navigation Bar */}
       <header className="admin-header">
         <div className="admin-header-inner">
@@ -80,30 +81,8 @@ export default async function AdminLayout({ children }) {
             </span>
           </div>
 
-          {/* Admin Navigation Tabs - Horizontally Scrollable on Mobile without Wrapping */}
-          <nav className="admin-nav-scroll">
-            <Link href="/admin" className="admin-nav-pill btn-secondary">
-              الإحصائيات
-            </Link>
-            <Link href="/admin#coupons" className="admin-nav-pill btn-secondary">
-              أكواد الخصم
-            </Link>
-            <Link href="/admin/products" className="admin-nav-pill btn-secondary">
-              المنتجات والمخزون
-            </Link>
-            <Link href="/admin/orders" className="admin-nav-pill btn-secondary">
-              إدارة الطلبات
-            </Link>
-            <Link href="/admin/customers-finance" className="admin-nav-pill btn-secondary">
-              الحساب المالي للعملاء
-            </Link>
-            <Link href="/admin/abandoned-carts" className="admin-nav-pill btn-primary" style={{ background: 'var(--gold-gradient)', color: '#000', fontWeight: 900 }}>
-              السلات المتروكة والعملاء
-            </Link>
-            <Link href="/" className="admin-nav-pill btn-secondary">
-              الواجهة الرئيسية
-            </Link>
-          </nav>
+          {/* Admin Navigation Tabs - Horizontally Scrollable & Swipable with Drag and Luxury Gold Scrollbar */}
+          <AdminHeaderNav />
         </div>
       </header>
 
