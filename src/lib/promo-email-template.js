@@ -7,10 +7,32 @@
 
 export const PROMO_CAMPAIGN_PRESETS = [
   {
+    id: 'whatsapp_community',
+    label: 'دعوة قناة الواتساب الحصرية (VIP)',
+    description: 'دعوة العملاء للانضمام لقناة الواتساب للمشاركة في استطلاعات الرأي ومعرفة الكوليكشن الجديد بدري',
+    subject: 'انت اهم جزء في KEMET',
+    previewText: 'شاركنا رأيك واعرف إيه اللي بنحضّره للفترة الجاية.',
+    headline: 'انت اهم جزء في KEMET',
+    badge: '',
+    couponCode: '',
+    discountNote: '',
+    bodyText: `أهلًا بيك في KEMET،
+إحنا بنحضّر لحاجات جديدة، ورأيك يهمنا في اللي جاي.
+على قناة KEMET على واتساب، هتقدر تشارك في استطلاعات الرأي، وتعرف الجديد قبل ما ينزل على السوشيال ميديا.
+اسأله كروية و هداية و فلوجات واحنا بنختار الخامات و كمان هنشاركك كل حاجه وقت التصنيع
+انضم لينا وخليك قريب من كل جديد.`,
+    ctaText: 'انضم لقناة KEMET على واتساب',
+    ctaUrl: 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
+    whatsappChannelText: '',
+    whatsappChannelUrl: '',
+    images: []
+  },
+  {
     id: 'winter_collection',
     label: 'تراكات الأندية الشتوي',
     description: 'أحدث تشكيلة تراكات التدريب الشتوية للأندية والمنتخبات مع صور المنتجات ورابط القناة',
     subject: 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
+    previewText: 'أحدث تشكيلة تراكات شتوية للأندية والمنتخبات متوفرة الآن بكميات محدودة',
     headline: 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
     badge: '',
     couponCode: '',
@@ -35,6 +57,7 @@ export const PROMO_CAMPAIGN_PRESETS = [
     label: 'كود خصم وترحيب',
     description: 'عرض كود خصم حصري لطلبك القادم',
     subject: 'عرض خاص وكود خصم حصري لطلبك القادم من KEMET',
+    previewText: 'خصم استثنائي وكود حصري لطلبك القادم من KEMET',
     headline: 'خصم استثنائي لعملاء KEMET المميزين',
     badge: '',
     couponCode: 'KEMET22',
@@ -52,6 +75,7 @@ export const PROMO_CAMPAIGN_PRESETS = [
     label: 'إطلاق كولكشن جديد',
     description: 'الإعلان عن وصول تشكيلة الموسم الجديد وأحدث الأطقم الرياضية',
     subject: 'وصلت الآن: أحدث تشكيلة أطقم رياضية لموسم 2026 / 2027 من KEMET',
+    previewText: 'أحدث تشكيلة لأطقم الأندية العالمية والمنتخبات لموسم 2026/2027',
     headline: 'تشكيلة الموسم الجديد متوفرة الآن بالكامل',
     badge: '',
     couponCode: '',
@@ -70,6 +94,7 @@ export const PROMO_CAMPAIGN_PRESETS = [
     label: 'حملة مخصصة بالكامل',
     description: 'كتابة محتوى الرسالة والعرض بحرية تامة مع التصميم الرسمي',
     subject: 'رسالة خاصة من متجر KEMET للأزياء الرياضية',
+    previewText: '',
     headline: 'عرض حصري ومميز من KEMET',
     badge: '',
     couponCode: '',
@@ -87,24 +112,22 @@ export const PROMO_CAMPAIGN_PRESETS = [
  * Builds the promotional HTML email matching the exact Order Update email form (No body background wrapper)
  */
 export function buildLuxuryPromoEmailHtml({
-  headline = 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
+  headline = 'انت اهم جزء في KEMET',
+  previewText = '',
   bodyText = '',
-  ctaText = 'اختر تراك فريقك واطلب الآن',
-  ctaUrl = 'https://kemetmisr.com',
-  whatsappChannelText = 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل اي حد',
-  whatsappChannelUrl = 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
-  images = [
-    'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-ahly.jpg',
-    'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-barca.jpg',
-    'https://gamcgqbilnbjabxrvgcu.supabase.co/storage/v1/object/public/products/kemet-track-france.jpg'
-  ],
+  ctaText = 'انضم لقناة KEMET على واتساب',
+  ctaUrl = 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
+  whatsappChannelText = '',
+  whatsappChannelUrl = '',
+  images = [],
   couponCode = '',
   discountNote = '',
   badge = ''
 }) {
-  const cleanHeadline = String(headline || 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥').trim();
-  const cleanCtaText = String(ctaText || 'اختر تراك فريقك واطلب الآن').trim();
-  const cleanCtaUrl = String(ctaUrl || 'https://kemetmisr.com').trim();
+  const cleanHeadline = String(headline || '').trim();
+  const cleanPreviewText = String(previewText || '').trim();
+  const cleanCtaText = String(ctaText || '').trim();
+  const cleanCtaUrl = String(ctaUrl || '').trim();
   const cleanWhatsappText = String(whatsappChannelText || '').trim();
   const cleanWhatsappUrl = String(whatsappChannelUrl || '').trim();
   const cleanCoupon = String(couponCode || '').trim();
@@ -138,10 +161,10 @@ export function buildLuxuryPromoEmailHtml({
         return `
         <tr>
           <td align="center" valign="top" style="padding: 0 0 20px 0;">
-            <a href="${cleanCtaUrl}" target="_blank" style="text-decoration: none; display: block;">
+            <a href="${cleanCtaUrl || 'https://kemetmisr.com'}" target="_blank" style="text-decoration: none; display: block;">
               <img 
                 src="${cleanImgUrl}" 
-                alt="${cleanHeadline} - منتج ${idx + 1}" 
+                alt="${cleanHeadline || 'KEMET'} - منتج ${idx + 1}" 
                 width="560" 
                 style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; display: block; border: 1px solid #E2E8F0; box-shadow: 0 4px 16px rgba(0,0,0,0.06); outline: none; text-decoration: none; margin: 0 auto;" 
               />
@@ -172,7 +195,18 @@ export function buildLuxuryPromoEmailHtml({
     </div>
   ` : '';
 
+  const isWhatsappCta = cleanCtaUrl.toLowerCase().includes('whatsapp.com');
+  const showSecondWhatsappBtn = cleanWhatsappUrl && cleanWhatsappUrl !== cleanCtaUrl && cleanWhatsappText;
+
   return `
+    <!-- Hidden Preheader / Preview Text for Gmail/Apple Mail -->
+    ${cleanPreviewText ? `
+    <div style="display: none; font-size: 1px; color: #FFFFFF; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
+      ${cleanPreviewText}
+      &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+    ` : ''}
+
     <div style="font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px 20px; border: 1px solid #E2E8F0; border-radius: 8px; background-color: #FFFFFF; direction: rtl; text-align: right;">
       
       <!-- Logo Header -->
@@ -183,9 +217,18 @@ export function buildLuxuryPromoEmailHtml({
       </div>
 
       <!-- Headline -->
-      <h2 style="color: #0F172A; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; font-size: 22px; font-weight: 900; margin: 0 0 16px 0; line-height: 1.4; text-align: right;">
+      ${cleanHeadline ? `
+      <h2 style="color: #0F172A; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; font-size: 22px; font-weight: 900; margin: 0 0 ${cleanPreviewText && cleanPreviewText !== cleanHeadline ? '8px' : '16px'} 0; line-height: 1.4; text-align: right;">
         ${cleanHeadline}
       </h2>
+      ` : ''}
+
+      <!-- Subtitle / Visible Preview Text -->
+      ${cleanPreviewText && cleanPreviewText !== cleanHeadline ? `
+      <p style="color: #64748B; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; font-size: 15px; font-weight: 700; margin: 0 0 18px 0; line-height: 1.6; text-align: right;">
+        ${cleanPreviewText}
+      </p>
+      ` : ''}
 
       <!-- Body Paragraphs -->
       <div style="margin: 18px 0 22px 0; text-align: right; direction: rtl;">
@@ -195,16 +238,18 @@ export function buildLuxuryPromoEmailHtml({
       <!-- Optional Coupon Box -->
       ${couponHtml}
 
-      <!-- 3 Product Showcase Cards -->
+      <!-- Product Showcase Cards (if any) -->
       ${imagesHtml}
 
-      <!-- Dual Action Buttons -->
+      <!-- Action Button(s) -->
       <div style="text-align: center; margin-top: 26px; margin-bottom: 20px;">
-        <a href="${cleanCtaUrl}" target="_blank" style="display: block; background: #0F172A; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; text-decoration: none; padding: 13px 26px; border-radius: 8px; font-size: 15px; font-weight: 800; margin-bottom: 10px;">
+        ${cleanCtaText && cleanCtaUrl ? `
+        <a href="${cleanCtaUrl}" target="_blank" style="display: block; background: ${isWhatsappCta ? '#25D366' : '#0F172A'}; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; text-decoration: none; padding: 14px 26px; border-radius: 8px; font-size: 16px; font-weight: 800; text-align: center; ${showSecondWhatsappBtn ? 'margin-bottom: 12px;' : ''}">
           ${cleanCtaText}
         </a>
-        ${cleanWhatsappUrl ? `
-        <a href="${cleanWhatsappUrl}" target="_blank" style="display: block; background: #25D366; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; text-decoration: none; padding: 13px 26px; border-radius: 8px; font-size: 15px; font-weight: 800;">
+        ` : ''}
+        ${showSecondWhatsappBtn ? `
+        <a href="${cleanWhatsappUrl}" target="_blank" style="display: block; background: #25D366; color: #FFFFFF; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; text-decoration: none; padding: 14px 26px; border-radius: 8px; font-size: 16px; font-weight: 800; text-align: center;">
           ${cleanWhatsappText}
         </a>
         ` : ''}

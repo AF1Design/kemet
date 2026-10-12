@@ -4,6 +4,31 @@ import React, { useState, useMemo } from 'react';
 import { CustomerFinancialDetailModal } from './CustomerFinancialDetailModal';
 import { creditCustomerWalletAction } from '../../app/admin/actions';
 
+function buildCustomerWhatsAppUrl(phone) {
+  if (!phone) return null;
+  const digits = String(phone).replace(/\D/g, '');
+  if (!digits) return null;
+  let formatted = digits;
+  if (digits.startsWith('01') && digits.length === 11) {
+    formatted = '20' + digits.slice(1);
+  } else if (digits.startsWith('1') && digits.length === 10) {
+    formatted = '20' + digits;
+  } else if (digits.startsWith('201') && digits.length === 12) {
+    formatted = digits;
+  }
+
+  const message = `أهلًا بيك في KEMET،
+إحنا بنحضّر لحاجات جديدة، ورأيك يهمنا في اللي جاي.
+على قناة KEMET على واتساب، هتقدر تشارك في استطلاعات الرأي، وتعرف الجديد قبل ما ينزل على السوشيال ميديا.
+اسأله كروية و هداية و فلوجات واحنا بنختار الخامات و كمان هنشاركك كل حاجه وقت التصنيع
+انضم لينا وخليك قريب من كل جديد.
+
+رابط قناة KEMET على واتساب:
+https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q`;
+
+  return `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`;
+}
+
 export function CustomersFinanceClient({ initialData }) {
   const [customers, setCustomers] = useState(initialData?.customers || []);
   const [stats, setStats] = useState(initialData?.stats || {
@@ -471,26 +496,56 @@ export function CustomersFinanceClient({ initialData }) {
 
                       {/* Actions */}
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            setIsDetailModalOpen(true);
-                          }}
-                          style={{
-                            background: 'rgba(212, 175, 55, 0.15)',
-                            border: '1px solid var(--border-gold)',
-                            color: 'var(--gold-primary)',
-                            padding: '0.45rem 0.95rem',
-                            borderRadius: '6px',
-                            fontSize: '0.82rem',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          عرض الحساب المالي الكامل
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {customer.phone && buildCustomerWhatsAppUrl(customer.phone) ? (
+                            <a
+                              href={buildCustomerWhatsAppUrl(customer.phone)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                background: '#10B981',
+                                color: '#000000',
+                                border: 'none',
+                                padding: '0.42rem 0.85rem',
+                                borderRadius: '6px',
+                                fontSize: '0.82rem',
+                                fontWeight: 900,
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                transition: 'all 0.15s ease',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title="إرسال رسالة دعوة قناة KEMET على واتساب مباشرة لهذا العميل"
+                            >
+                              <span>💬</span>
+                              <span>دعوة واتساب</span>
+                            </a>
+                          ) : null}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setIsDetailModalOpen(true);
+                            }}
+                            style={{
+                              background: 'rgba(212, 175, 55, 0.15)',
+                              border: '1px solid var(--border-gold)',
+                              color: 'var(--gold-primary)',
+                              padding: '0.42rem 0.85rem',
+                              borderRadius: '6px',
+                              fontSize: '0.82rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            عرض الحساب
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

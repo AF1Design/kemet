@@ -112,6 +112,21 @@ function getOrderConfirmationWhatsAppUrl(order) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 
+function getPromoWhatsAppUrl(order) {
+  const rawPhone = String(order.customer_phone || order.customer?.phone || '').replace(/\D/g, '');
+  if (!rawPhone) return null;
+  const phone = rawPhone.startsWith('20') ? rawPhone : (rawPhone.startsWith('0') ? '2' + rawPhone : '20' + rawPhone);
+  const text = `أهلًا بيك في KEMET،
+إحنا بنحضّر لحاجات جديدة، ورأيك يهمنا في اللي جاي.
+على قناة KEMET على واتساب، هتقدر تشارك في استطلاعات الرأي، وتعرف الجديد قبل ما ينزل على السوشيال ميديا.
+اسأله كروية و هداية و فلوجات واحنا بنختار الخامات و كمان هنشاركك كل حاجه وقت التصنيع
+انضم لينا وخليك قريب من كل جديد.
+
+رابط قناة KEMET على واتساب:
+https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
 export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
   const [mounted, setMounted] = useState(false);
   const [orders, setOrders] = useState(initialOrders || []);
@@ -616,6 +631,32 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
                           </a>
                         )}
 
+                        {/* واتساب دعوة القناة */}
+                        {getPromoWhatsAppUrl(order) && (
+                          <a
+                            href={getPromoWhatsAppUrl(order)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.76rem',
+                              borderRadius: 'var(--radius-md)',
+                              background: '#25D366',
+                              color: '#FFFFFF',
+                              fontWeight: 800,
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                            title="إرسال رسالة دعوة قناة KEMET على واتساب للعميل"
+                          >
+                            <span>💬</span>
+                            <span>دعوة القناة</span>
+                          </a>
+                        )}
+
                         {/* نسخ التأكيد */}
                         <button
                           type="button"
@@ -923,6 +964,33 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
                   >
                     {copiedOrderId === order.id ? 'تم النسخ' : 'نسخ التأكيد'}
                   </button>
+
+                  {/* دعوة قناة الواتساب */}
+                  {getPromoWhatsAppUrl(order) && (
+                    <a
+                      href={getPromoWhatsAppUrl(order)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        padding: '0.55rem',
+                        fontSize: '0.8rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: '#25D366',
+                        color: '#FFFFFF',
+                        fontWeight: 800,
+                        textDecoration: 'none',
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.25rem'
+                      }}
+                      title="إرسال دعوة قناة KEMET على واتساب"
+                    >
+                      <span>💬</span>
+                      <span>دعوة القناة</span>
+                    </a>
+                  )}
 
                   {/* تعديل الطلب */}
                   <button

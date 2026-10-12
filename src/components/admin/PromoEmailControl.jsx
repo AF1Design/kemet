@@ -44,10 +44,11 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
   const [totalUsers, setTotalUsers] = useState(initialTotalUsers);
   const [emailsSentCount, setEmailsSentCount] = useState(0);
 
-  // Campaign State initialized with the First High-Converting Preset (Discount Voucher)
+  // Campaign State initialized with the First High-Converting Preset
   const defaultPreset = PROMO_CAMPAIGN_PRESETS[0];
   const [selectedPresetId, setSelectedPresetId] = useState(defaultPreset.id);
   const [subject, setSubject] = useState(defaultPreset.subject);
+  const [previewText, setPreviewText] = useState(defaultPreset.previewText || '');
   const [headline, setHeadline] = useState(defaultPreset.headline);
   const [badge, setBadge] = useState(defaultPreset.badge);
   const [couponCode, setCouponCode] = useState(defaultPreset.couponCode);
@@ -55,8 +56,8 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
   const [bodyText, setBodyText] = useState(defaultPreset.bodyText);
   const [ctaText, setCtaText] = useState(defaultPreset.ctaText);
   const [ctaUrl, setCtaUrl] = useState(defaultPreset.ctaUrl);
-  const [whatsappChannelText, setWhatsappChannelText] = useState(defaultPreset.whatsappChannelText || 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل أي حد');
-  const [whatsappChannelUrl, setWhatsappChannelUrl] = useState(defaultPreset.whatsappChannelUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q');
+  const [whatsappChannelText, setWhatsappChannelText] = useState(defaultPreset.whatsappChannelText || '');
+  const [whatsappChannelUrl, setWhatsappChannelUrl] = useState(defaultPreset.whatsappChannelUrl || '');
   const [images, setImages] = useState(defaultPreset.images || []);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -87,6 +88,7 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
   const handleSelectPreset = (preset) => {
     setSelectedPresetId(preset.id);
     setSubject(preset.subject);
+    setPreviewText(preset.previewText || '');
     setHeadline(preset.headline);
     setBadge(preset.badge);
     setCouponCode(preset.couponCode);
@@ -109,6 +111,7 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
     try {
       const res = await sendMassPromoEmailAction({
         subject: subject.trim(),
+        previewText: previewText.trim(),
         headline: headline.trim(),
         badge: badge.trim(),
         couponCode: couponCode.trim().toUpperCase(),
@@ -154,6 +157,7 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
       const res = await sendTestPromoEmailAction({
         targetEmail: 'amaarfekry5@gmail.com',
         subject: subject.trim(),
+        previewText: previewText.trim(),
         headline: headline.trim(),
         badge: badge.trim(),
         couponCode: couponCode.trim().toUpperCase(),
@@ -438,6 +442,28 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
                 }}
               />
             </div>
+          </div>
+
+          {/* Row 1.5: Preview Text (Preheader) */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 800, marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+              نص المعاينة بجانب العنوان في صندوق البريد (Preview Text / Preheader):
+            </label>
+            <input
+              type="text"
+              value={previewText}
+              onChange={(e) => setPreviewText(e.target.value)}
+              placeholder="مثال: شاركنا رأيك واعرف إيه اللي بنحضّره للفترة الجاية..."
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0,0,0,0.3)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                color: '#FFFFFF',
+                fontSize: '0.9rem'
+              }}
+            />
           </div>
 
           {/* Row 2: Headline */}
@@ -940,12 +966,26 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
               color: '#0F172A',
               fontSize: '1.35rem',
               fontWeight: 900,
-              margin: '0 0 16px 0',
+              margin: `0 0 ${previewText && previewText !== headline ? '6px' : '16px'} 0`,
               lineHeight: 1.4,
               textAlign: 'right'
             }}>
               {headline || 'عنوان العرض الترويجي'}
             </h2>
+
+            {/* Subtitle / Preview text if present */}
+            {previewText && previewText !== headline && (
+              <p style={{
+                color: '#64748B',
+                fontSize: '0.92rem',
+                fontWeight: 700,
+                margin: '0 0 16px 0',
+                lineHeight: 1.5,
+                textAlign: 'right'
+              }}>
+                {previewText}
+              </p>
+            )}
 
             {/* Text Paragraphs */}
             <div style={{ margin: '16px 0', color: '#0F172A', fontSize: '0.96rem', lineHeight: 1.85 }}>
@@ -1024,7 +1064,7 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
               </div>
             )}
 
-            {/* Dual Action Buttons */}
+            {/* Action Buttons */}
             <div style={{ margin: '26px 0 18px 0', textAlign: 'center' }}>
               <a
                 href={ctaUrl}
@@ -1032,20 +1072,20 @@ export function PromoEmailControl({ initialTotalUsers = 129 }) {
                 rel="noreferrer"
                 style={{
                   display: 'block',
-                  background: '#0F172A',
+                  background: ctaUrl?.toLowerCase().includes('whatsapp.com') ? '#25D366' : '#0F172A',
                   color: '#FFFFFF',
                   fontWeight: 900,
                   fontSize: '0.96rem',
                   padding: '13px 24px',
                   borderRadius: '8px',
                   textDecoration: 'none',
-                  marginBottom: '10px'
+                  marginBottom: (whatsappChannelText && whatsappChannelUrl && whatsappChannelUrl !== ctaUrl) ? '10px' : '0'
                 }}
               >
                 {ctaText}
               </a>
 
-              {whatsappChannelText && whatsappChannelUrl && (
+              {whatsappChannelText && whatsappChannelUrl && whatsappChannelUrl !== ctaUrl && (
                 <a
                   href={whatsappChannelUrl}
                   target="_blank"

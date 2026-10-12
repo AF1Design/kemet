@@ -1374,25 +1374,45 @@ export async function sendMassPromoEmailAction(params) {
       console.warn('Profiles email fetch note:', profErr);
     }
 
+    // 3. Also fetch emails from orders table
+    try {
+      const { data: orders, error: ordErr } = await supabaseAdmin.from('orders').select('customer_email, email');
+      if (!ordErr && orders) {
+        orders.forEach(o => {
+          const em = o.customer_email || o.email;
+          if (em && em.includes('@') && em !== 'admin@kemet.eg' && em !== 'kemet.ya1@gmail.com') {
+            emailSet.add(em.trim().toLowerCase());
+          }
+        });
+      }
+    } catch (ordErr) {
+      console.warn('Orders email fetch note:', ordErr);
+    }
+
     // Default system support email
     emailSet.add('support@kemetmisr.com');
 
     const recipients = Array.from(emailSet);
     
     // Parse campaign parameters (supporting both legacy string and new structured studio format)
-    let emailSubject = 'عرض خاص وحصري من KEMET';
-    let emailHeadline = 'عرض ترويجي حصري لعملاء KEMET';
-    let emailBadge = 'عرض خاص';
+    let emailSubject = 'انت اهم جزء في KEMET';
+    let emailPreviewText = '';
+    let emailHeadline = 'انت اهم جزء في KEMET';
+    let emailBadge = '';
     let couponCode = '';
     let discountNote = '';
     let bodyText = '';
-    let ctaText = 'تصفّح المتجر واستفد بالعرض الآن';
-    let ctaUrl = 'https://kemetmisr.com';
+    let ctaText = 'انضم لقناة KEMET على واتساب';
+    let ctaUrl = 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q';
+    let whatsappChannelText = '';
+    let whatsappChannelUrl = '';
+    let images = [];
 
     if (typeof params === 'string') {
       bodyText = params.trim();
     } else if (params && typeof params === 'object') {
       emailSubject = params.subject || params.emailSubject || emailSubject;
+      emailPreviewText = params.previewText || '';
       emailHeadline = params.headline || params.title || emailHeadline;
       emailBadge = params.badge || emailBadge;
       couponCode = params.couponCode || params.coupon || '';
@@ -1400,24 +1420,28 @@ export async function sendMassPromoEmailAction(params) {
       bodyText = params.promoTextAr || params.textAr || params.promoText || params.bodyText || '';
       ctaText = params.ctaText || ctaText;
       ctaUrl = params.ctaUrl || ctaUrl;
+      whatsappChannelText = typeof params.whatsappChannelText === 'string' ? params.whatsappChannelText : '';
+      whatsappChannelUrl = typeof params.whatsappChannelUrl === 'string' ? params.whatsappChannelUrl : '';
+      images = Array.isArray(params.images) ? params.images : [];
     }
 
     if (!bodyText) {
-      bodyText = 'يسعدنا تقديم أقوى العروض الحصرية على تشكيلة أطقم المنتخبات والأندية لموسم 2026/2027 بأعلى خامات Player Edition الرسمية، مع سرعة التوصيل وضمان استبدال فوري للمقاس.';
+      bodyText = 'أهلًا بيك في KEMET،\nإحنا بنحضّر لحاجات جديدة، ورأيك يهمنا في اللي جاي.\nعلى قناة KEMET على واتساب، هتقدر تشارك في استطلاعات الرأي، وتعرف الجديد قبل ما ينزل على السوشيال ميديا.\nاسأله كروية و هداية و فلوجات واحنا بنختار الخامات و كمان هنشاركك كل حاجه وقت التصنيع\nانضم لينا وخليك قريب من كل جديد.';
     }
 
     const { buildLuxuryPromoEmailHtml } = await import('../../lib/promo-email-template.js');
     const emailHtml = buildLuxuryPromoEmailHtml({
       headline: emailHeadline,
+      previewText: emailPreviewText,
       badge: emailBadge,
       couponCode,
       discountNote,
       bodyText,
       ctaText,
       ctaUrl,
-      whatsappChannelText: params?.whatsappChannelText || 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل أي حد',
-      whatsappChannelUrl: params?.whatsappChannelUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
-      images: Array.isArray(params?.images) && params.images.length > 0 ? params.images : undefined
+      whatsappChannelText,
+      whatsappChannelUrl,
+      images
     });
 
     const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
@@ -1426,6 +1450,8 @@ export async function sendMassPromoEmailAction(params) {
     // High-performance batch sending via Resend (up to 50 per call)
     let sentCount = 0;
     let failedCount = 0;
+    const successfulEmails = [];
+    const failedEmails = [];
 
     const chunkSize = 50;
     for (let i = 0; i < recipients.length; i += chunkSize) {
@@ -1439,12 +1465,25 @@ export async function sendMassPromoEmailAction(params) {
 
       try {
         const batchRes = await resend.batch.send(batchPayload);
-        if (batchRes?.data?.data && Array.isArray(batchRes.data.data)) {
-          sentCount += batchRes.data.data.length;
-        } else if (batchRes?.data && Array.isArray(batchRes.data)) {
-          sentCount += batchRes.data.length;
+        if (batchRes?.error) {
+          throw new Error(batchRes.error.message || 'Resend batch send error');
+        }
+
+        const dataArr = batchRes?.data?.data || batchRes?.data || [];
+        if (Array.isArray(dataArr) && dataArr.length > 0) {
+          dataArr.forEach((item, idx) => {
+            const targetEmail = chunk[idx] || `email-${idx}`;
+            if (item?.id) {
+              sentCount++;
+              successfulEmails.push(targetEmail);
+            } else {
+              failedCount++;
+              failedEmails.push({ email: targetEmail, error: item?.error?.message || 'فشل التوصيل' });
+            }
+          });
         } else {
           sentCount += chunk.length;
+          successfulEmails.push(...chunk);
         }
       } catch (chunkErr) {
         console.warn('Batch send error for chunk, falling back to individual sends:', chunkErr);
@@ -1456,12 +1495,22 @@ export async function sendMassPromoEmailAction(params) {
               subject: emailSubject,
               html: emailHtml
             });
-            if (singleRes?.data?.id) sentCount++;
-            else failedCount++;
+            if (singleRes?.data?.id) {
+              sentCount++;
+              successfulEmails.push(email);
+            } else {
+              failedCount++;
+              failedEmails.push({ email, error: singleRes?.error?.message || 'فشل تسليم الرسالة' });
+            }
           } catch (e) {
             failedCount++;
+            failedEmails.push({ email, error: e.message || 'خطأ في الاتصال' });
           }
         }
+      }
+
+      if (i + chunkSize < recipients.length) {
+        await new Promise(r => setTimeout(r, 600));
       }
     }
 
@@ -1469,7 +1518,9 @@ export async function sendMassPromoEmailAction(params) {
       success: true, 
       sentCount, 
       failedCount, 
-      totalRecipients: recipients.length 
+      totalRecipients: recipients.length,
+      successfulEmails,
+      failedEmails
     };
   } catch (err) {
     console.error('sendMassPromoEmailAction error:', err);
@@ -1483,6 +1534,7 @@ export async function sendMassPromoEmailAction(params) {
 export async function sendTestPromoEmailAction({
   targetEmail = 'amaarfekry5@gmail.com',
   subject = '',
+  previewText = '',
   headline = '',
   badge = '',
   couponCode = '',
@@ -1502,16 +1554,17 @@ export async function sendTestPromoEmailAction({
 
     const { buildLuxuryPromoEmailHtml } = await import('../../lib/promo-email-template.js');
     const emailHtml = buildLuxuryPromoEmailHtml({
-      headline: headline || 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
+      headline: headline || 'انت اهم جزء في KEMET',
+      previewText: previewText || '',
       badge: badge || '',
       couponCode: couponCode || '',
       discountNote: discountNote || '',
       bodyText: promoTextAr || '',
-      ctaText: ctaText || 'اختر تراك فريقك واطلب الآن',
-      ctaUrl: ctaUrl || 'https://kemetmisr.com',
-      whatsappChannelText: whatsappChannelText || 'انضم لقناة الواتساب علشان يوصلك كل جديد قبل أي حد',
-      whatsappChannelUrl: whatsappChannelUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
-      images: Array.isArray(images) && images.length > 0 ? images : undefined
+      ctaText: ctaText || 'انضم لقناة KEMET على واتساب',
+      ctaUrl: ctaUrl || 'https://whatsapp.com/channel/0029Vb6Oet06mYPNwa13nL3Q',
+      whatsappChannelText: typeof whatsappChannelText === 'string' ? whatsappChannelText : '',
+      whatsappChannelUrl: typeof whatsappChannelUrl === 'string' ? whatsappChannelUrl : '',
+      images: Array.isArray(images) ? images : []
     });
 
     const { getResendClient, SENDER_SUPPORT } = await import('../../lib/resend.js');
@@ -1520,7 +1573,7 @@ export async function sendTestPromoEmailAction({
     const resendRes = await resend.emails.send({
       from: SENDER_SUPPORT,
       to: [cleanEmail],
-      subject: subject || 'كوليكشن تراكات الأندية الشتوي وصل! ⚽🔥',
+      subject: subject || 'انت اهم جزء في KEMET',
       html: emailHtml
     });
 
