@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ProductCard } from './ProductCard';
 import { useApp } from '../context/AppContext';
@@ -15,6 +15,78 @@ export function HorizontalProductRail({
 }) {
   const { lang, t } = useApp();
   const scrollContainerRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const isDownRef = useRef(false);
+  const hasDraggedRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+
+  const handleMouseDown = (e) => {
+    // Only handle primary left click
+    if (e.button !== 0) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    isDownRef.current = true;
+    hasDraggedRef.current = false;
+    startXRef.current = e.pageX;
+    scrollLeftRef.current = container.scrollLeft;
+
+    // Temporarily disable smooth scroll and snap for 1:1 real-time drag response
+    container.style.scrollBehavior = 'auto';
+    container.style.scrollSnapType = 'none';
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDownRef.current) return;
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const dx = e.pageX - startXRef.current;
+      if (Math.abs(dx) > 6) {
+        hasDraggedRef.current = true;
+      }
+
+      container.scrollLeft = scrollLeftRef.current - dx;
+    };
+
+    const handleMouseUp = () => {
+      if (!isDownRef.current) return;
+      isDownRef.current = false;
+      setIsDragging(false);
+
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.style.scrollBehavior = 'smooth';
+        container.style.scrollSnapType = 'x mandatory';
+      }
+
+      // Small delay to ensure any subsequent click event from this gesture is suppressed
+      if (hasDraggedRef.current) {
+        setTimeout(() => {
+          hasDraggedRef.current = false;
+        }, 120);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleClickCapture = (e) => {
+    if (hasDraggedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   if (!products || products.length === 0) return null;
 
@@ -81,10 +153,13 @@ export function HorizontalProductRail({
           </div>
         </div>
 
-        {/* Swipeable Scroll Container */}
+        {/* Swipeable & Draggable Scroll Container */}
         <div
           ref={scrollContainerRef}
-          className="rail-scroll-container hide-scrollbar"
+          className={`rail-scroll-container hide-scrollbar ${isDragging ? 'is-dragging' : ''}`}
+          onMouseDown={handleMouseDown}
+          onDragStart={(e) => e.preventDefault()}
+          onClickCapture={handleClickCapture}
         >
           {displayProducts.map((product) => (
             <div

@@ -22,7 +22,7 @@ export function WalletCompensationModal({
   const [orderReference, setOrderReference] = useState(orderId ? String(orderId) : '');
   const [occasionText, setOccasionText] = useState('');
   const [reason, setReason] = useState(
-    orderId ? `هدية تعويض واعتذار بخصوص الطلب #${orderId}` : 'هدية خاصة تقديراً لثقتكم واختياركم لنا'
+    orderId ? `هدية واعتذار بخصوص الطلب #${orderId}` : 'هدية خاصة تقديراً لثقتكم واختياركم لنا'
   );
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState(null);
@@ -55,7 +55,7 @@ export function WalletCompensationModal({
     setGiftCategory(initCat);
     setOrderReference(orderId ? String(orderId) : '');
     setOccasionText('');
-    setReason(orderId ? `هدية تعويض واعتذار بخصوص الطلب #${orderId}` : 'هدية خاصة تقديراً لثقتكم واختياركم لنا');
+    setReason(orderId ? `هدية واعتذار بخصوص الطلب #${orderId}` : 'هدية خاصة تقديراً لثقتكم واختياركم لنا');
 
     setEmailInput(customerEmail || '');
     setSendEmailNotification(Boolean(customerEmail && customerEmail.includes('@')));
@@ -106,7 +106,7 @@ export function WalletCompensationModal({
     setGiftCategory(category);
     if (category === 'order') {
       const ref = orderReference || orderId || '';
-      setReason(ref ? `هدية تعويض واعتذار بخصوص الطلب #${ref}` : 'هدية تعويض واعتذار عن طلب');
+      setReason(ref ? `هدية واعتذار بخصوص الطلب #${ref}` : 'هدية واعتذار عن طلب');
     } else if (category === 'occasion') {
       const occ = occasionText || 'مناسبة خاصة';
       setReason(`هدية خاصة بمناسبة ${occ}`);
@@ -124,7 +124,7 @@ export function WalletCompensationModal({
 
   const handleOrderRefChange = (ref) => {
     setOrderReference(ref);
-    setReason(ref ? `هدية تعويض واعتذار بخصوص الطلب #${ref}` : 'هدية تعويض واعتذار عن طلب');
+    setReason(ref ? `هدية واعتذار بخصوص الطلب #${ref}` : 'هدية واعتذار عن طلب');
   };
 
   const handleSubmitCredit = () => {
@@ -665,7 +665,7 @@ export function WalletCompensationModal({
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
                 {[
-                  { key: 'order', label: 'تعويض عن طلب' },
+                  { key: 'order', label: 'هدية عن طلب' },
                   { key: 'occasion', label: 'مناسبة خاصة' },
                   { key: 'loyalty', label: 'مكافأة ولاء' },
                   { key: 'general', label: 'مخصص / أخرى' }

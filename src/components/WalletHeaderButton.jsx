@@ -312,7 +312,7 @@ export function WalletHeaderButton({ isMobile = false }) {
               {/* Transactions Ledger (Shows order compensation or occasion gift details) */}
               <div style={{ marginBottom: '1rem' }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>سجل العمليات والتعويضات:</span>
+                  <span>سجل العمليات والهدايا:</span>
                   <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>({transactions.length} حركة)</span>
                 </div>
 
@@ -343,7 +343,7 @@ export function WalletHeaderButton({ isMobile = false }) {
                           </span>
                         </div>
                         <div style={{ fontWeight: 700, color: '#E2E8F0', lineHeight: '1.4' }}>
-                          {txn.reason || (txn.type === 'credit' ? 'إيداع رصيد هدية / تعويض' : 'استخدام في طلب')}
+                          {txn.reason || (txn.type === 'credit' ? 'إيداع رصيد هدية' : 'استخدام في طلب')}
                         </div>
                         {txn.orderId && (
                           <div style={{ fontSize: '0.72rem', color: 'var(--gold-primary)', marginTop: '0.2rem', fontWeight: 700 }}>
@@ -463,7 +463,7 @@ export function WalletHeaderButton({ isMobile = false }) {
                               </span>
                             </div>
                             <div style={{ fontWeight: 700, color: '#E2E8F0' }}>
-                              {txn.reason || (txn.type === 'credit' ? 'إيداع رصيد هدية / تعويض' : 'استخدام في طلب')}
+                              {txn.reason || (txn.type === 'credit' ? 'إيداع رصيد هدية' : 'استخدام في طلب')}
                             </div>
                             {txn.orderId && (
                               <div style={{ fontSize: '0.72rem', color: 'var(--gold-primary)', marginTop: '0.2rem', fontWeight: 700 }}>
@@ -518,7 +518,7 @@ export function WalletHeaderButton({ isMobile = false }) {
                 /* Guest Phone Lookup Form */
                 <div>
                   <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.82rem', color: '#CBD5E1', lineHeight: '1.5' }}>
-                    هل حصلت على رصيد هدية أو تعويض من KEMET؟ أدخل رقم هاتفك للاستعلام عن رصيدك وسجل حركاتك:
+                    هل حصلت على رصيد هدية من KEMET؟ أدخل رقم هاتفك للاستعلام عن رصيدك وسجل حركاتك:
                   </p>
 
                   <form onSubmit={handleCheckGuestPhone} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

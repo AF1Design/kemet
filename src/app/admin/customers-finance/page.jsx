@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 export const metadata = {
   title: 'الحساب المالي للعملاء - لوحة تحكم KEMET',
-  description: 'إدارة ومتابعة الحسابات المالية للعملاء، أرصدة المحافظ، وسجلات الشراء والتعويضات'
+  description: 'إدارة ومتابعة الحسابات المالية للعملاء، أرصدة المحافظ، وسجلات الشراء والهدايا'
 };
 
 export default async function AdminCustomersFinancePage() {

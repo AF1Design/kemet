@@ -25,10 +25,6 @@ export function ProductTable({ initialProducts, categories: initialCategories })
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Clean and validate real categories only (ignore internal json/config rows)
   const cleanCategories = (categoriesList || []).filter(c => 
     c &&
@@ -39,6 +35,28 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     !String(c.name_ar || c.nameAr || '').trim().startsWith('[') &&
     !String(c.name_ar || c.nameAr || '').trim().startsWith('{')
   );
+
+  const DEFAULT_CATEGORIES = [
+    { id: 'kits', name_ar: 'اندية و منتخبات', name_en: 'Kits 2027' },
+    { id: 'winter', name_ar: 'الكولكشن الشتوي', name_en: 'Winter Collection' },
+    { id: 'training', name_ar: 'ملابس التدريب والجيم', name_en: 'Gym Wear' },
+    { id: 'shorts', name_ar: 'إكسسوارات ومستلزمات رياضية', name_en: 'Sports Accessories & Gear' }
+  ];
+
+  const effectiveCategories = cleanCategories.length > 0 ? cleanCategories : DEFAULT_CATEGORIES;
+
+  useEffect(() => {
+    setMounted(true);
+    if (!categoriesList || categoriesList.length === 0) {
+      getCategoriesListAction().then(res => {
+        if (res && res.success && Array.isArray(res.categories) && res.categories.length > 0) {
+          setCategoriesList(res.categories);
+        }
+      }).catch(err => {
+        console.warn('Fallback categories load note:', err);
+      });
+    }
+  }, []);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,7 +168,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
     setEditingProduct(null);
     setFormData({
       id: generateCleanShortId(products),
-      categoryId: cleanCategories[0]?.id || 'kits',
+      categoryId: effectiveCategories[0]?.id || 'kits',
       nameAr: '',
       nameEn: '',
       descriptionAr: '',
@@ -1059,7 +1077,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                     </button>
                   </div>
                   <select 
-                    value={formData.categoryId} 
+                    value={formData.categoryId || effectiveCategories[0]?.id || 'kits'} 
                     onChange={e => setFormData({ ...formData, categoryId: e.target.value })} 
                     style={{ 
                       width: '100%', 
@@ -1076,7 +1094,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                       appearance: 'auto'
                     }}
                   >
-                    {cleanCategories.map(cat => {
+                    {effectiveCategories.map(cat => {
                       const displayName = cat.name_ar || cat.nameAr || cat.name_en || cat.nameEn || cat.id;
                       return (
                         <option 
@@ -1608,7 +1626,7 @@ export function ProductTable({ initialProducts, categories: initialCategories })
                 إضافة فئات الكتالوج الأخرى إلى الصفحة الرئيسية:
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {cleanCategories.map(cat => {
+                {effectiveCategories.map(cat => {
                   const isAlreadyAdded = homepageSections.some(s => s.categoryId === cat.id);
                   if (isAlreadyAdded) return null;
 

@@ -285,7 +285,7 @@ export function CustomersFinanceClient({ initialData }) {
             {stats.totalGiftsIssued} ج.م
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            إجمالي مبالغ الهدايا والتعويضات
+            إجمالي مبالغ الهدايا والمكافآت
           </span>
         </div>
       </div>

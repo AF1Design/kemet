@@ -48,7 +48,7 @@ export function CustomerFinancialDetailModal({
     setGiftCategory(category);
     if (category === 'order') {
       const oId = selectedOrderId || (customer.orders?.[0]?.id) || '';
-      setDepositReason(oId ? `هدية تعويض واعتذار بخصوص الطلب #${oId}` : 'هدية تعويض واعتذار عن طلب');
+      setDepositReason(oId ? `هدية واعتذار بخصوص الطلب #${oId}` : 'هدية واعتذار عن طلب');
     } else if (category === 'occasion') {
       const occ = occasionText || 'مناسبة خاصة';
       setDepositReason(`هدية خاصة بمناسبة ${occ}`);
@@ -66,7 +66,7 @@ export function CustomerFinancialDetailModal({
 
   const handleOrderChange = (oId) => {
     setSelectedOrderId(oId);
-    setDepositReason(oId ? `هدية تعويض واعتذار بخصوص الطلب #${oId}` : 'هدية تعويض واعتذار عن طلب');
+    setDepositReason(oId ? `هدية واعتذار بخصوص الطلب #${oId}` : 'هدية واعتذار عن طلب');
   };
 
   const handleSubmitDeposit = () => {
@@ -303,7 +303,7 @@ export function CustomerFinancialDetailModal({
         }}>
           {[
             { id: 'overview', label: 'نظرة عامة وسريعة' },
-            { id: 'deposit', label: 'إيداع رصيد هدية / تعويض' },
+            { id: 'deposit', label: 'إيداع رصيد هدية' },
             { id: 'adjust', label: 'تعديل وتصحيح الرصيد (إصلاح خطأ)' },
             { id: 'ledger', label: `سجل المحفظة (${customer.walletTransactions?.length || 0})` },
             { id: 'orders', label: `سجل الطلبات (${customer.orders?.length || 0})` }
@@ -356,10 +356,10 @@ export function CustomerFinancialDetailModal({
                 }}>
                   <div>
                     <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--gold-primary)', fontSize: '1.05rem', fontWeight: 900 }}>
-                      إيداع رصيد هدية أو تعويض
+                      إيداع رصيد هدية
                     </h4>
                     <p style={{ margin: 0, fontSize: '0.84rem', color: '#CBD5E1', lineHeight: '1.6' }}>
-                      إضافة رصيد مالي لحساب العميل كهدية مناسبة أو تعويض عن طلب محدد، مع إرسال إشعار فوري عبر واتساب والبريد.
+                      إضافة رصيد مالي لحساب العميل كهدية مناسبة أو هدية عن طلب محدد، مع إرسال إشعار فوري عبر واتساب والبريد.
                     </p>
                   </div>
                   <button
@@ -706,7 +706,7 @@ export function CustomerFinancialDetailModal({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
                       {[
                         { key: 'occasion', label: 'مناسبة خاصة' },
-                        { key: 'order', label: 'تعويض عن طلب محدد' },
+                        { key: 'order', label: 'هدية عن طلب محدد' },
                         { key: 'loyalty', label: 'مكافأة ولاء وتقدير' },
                         { key: 'general', label: 'مخصص / أخرى' }
                       ].map(item => (
@@ -1260,7 +1260,7 @@ export function CustomerFinancialDetailModal({
                           onClick={() => {
                             setSelectedOrderId(String(order.id));
                             setGiftCategory('order');
-                            setDepositReason(`هدية تعويض واعتذار بخصوص الطلب #${order.id}`);
+                            setDepositReason(`هدية واعتذار بخصوص الطلب #${order.id}`);
                             setActiveTab('deposit');
                           }}
                           style={{

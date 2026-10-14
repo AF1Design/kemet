@@ -191,9 +191,9 @@ body::before {
 /* Container */
 .container {
   width: 100%;
-  max-width: 1440px;
+  max-width: 1540px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 1.75rem;
 }
 
 button {
@@ -486,8 +486,15 @@ select option {
   border-bottom: 1px solid var(--border-color);
 }
 
+.horizontal-rail-section .container.rail-container {
+  max-width: 1540px !important;
+  margin: 0 auto !important;
+  padding-left: 1.75rem !important;
+  padding-right: 1.75rem !important;
+}
+
 .rail-container {
-  padding-inline: var(--container-padding, 1.5rem);
+  padding-inline: var(--container-padding, 2rem);
 }
 
 .rail-header-row {
@@ -575,6 +582,26 @@ select option {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rail-scroll-container.is-dragging {
+  cursor: grabbing !important;
+  scroll-snap-type: none !important;
+  scroll-behavior: auto !important;
+}
+
+.rail-scroll-container.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+.rail-scroll-container img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
 }
 
 .rail-item-wrapper {
@@ -1842,21 +1869,49 @@ select option {
   transform: translateX(450px);
 }
 
-/* Responsive Grid Breakpoints & Mobile Specific Layout */
-@media (max-width: 1200px) {
+/* Compact Desktop & Landscape Tablet Layout (1081px to 1366px: Laptops, Nest Hub Max 1280px, etc.) */
+@media (max-width: 1366px) {
   .header-container {
-    padding: 0 1.5rem;
-    gap: 1.5rem;
+    padding: 0 1.25rem !important;
+    gap: 1rem !important;
   }
+
   .nav-menu {
-    gap: 1.5rem;
+    gap: 1.15rem !important;
   }
+
+  .nav-link {
+    font-size: 0.92rem !important;
+    padding: 0.4rem 0 !important;
+  }
+
   .search-bar-wrapper {
-    width: 180px;
+    width: 170px !important;
+  }
+
+  .search-input {
+    font-size: 0.84rem !important;
+    padding: 0.45rem 2.2rem 0.45rem 0.75rem !important;
+  }
+
+  .header-actions {
+    gap: 0.55rem !important;
+  }
+
+  .action-icon-btn {
+    padding: 0.45rem !important;
+  }
+
+  .brand-text-img {
+    width: 130px !important;
+  }
+
+  .animated-logo-container {
+    width: 140px !important;
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1080px) {
   .hero-main-heading {
     font-size: 2.8rem;
   }
@@ -1865,6 +1920,154 @@ select option {
   }
   .mega-menu-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Dedicated Tablet Responsive Standards (769px to 1080px)
+   Engineered for Apple iPads (Mini, 10.2, Air, Pro 11, Pro 12.9, Pro 13) & Android Tablets
+   Strictly isolated to ensure ZERO impact on mobile (<769px) or desktop (>1080px)
+   ========================================================================== */
+@media (min-width: 769px) and (max-width: 1080px) {
+  /* Layout & Container Comfort */
+  .container {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    max-width: 100% !important;
+  }
+
+  .section {
+    padding: 3rem 0 !important;
+  }
+
+  /* Header & Navigation Bar on Tablet */
+  .header-container {
+    height: 70px !important;
+    padding: 0 1.25rem !important;
+    gap: 1rem !important;
+  }
+
+  /* Hide bulky desktop navigation links from header on tablet */
+  .nav-menu {
+    display: none !important;
+  }
+
+  /* Enable tablet hamburger drawer button to open full slide-out menu */
+  .mobile-hamburger-btn,
+  .action-icon-btn.mobile-only {
+    display: inline-flex !important;
+  }
+
+  /* Keep mobile bottom bar hidden on tablet to preserve full screen height */
+  .mobile-bottom-bar {
+    display: none !important;
+  }
+
+  /* Keep core action buttons neatly spaced without wrapping */
+  .header-actions {
+    gap: 0.65rem !important;
+  }
+
+  /* Compact responsive search bar on tablet */
+  .search-bar-wrapper {
+    width: 165px !important;
+  }
+
+  .search-input {
+    font-size: 0.82rem !important;
+    padding: 0.45rem 2rem 0.45rem 0.75rem !important;
+  }
+
+  /* Hide desktop language and theme buttons from tablet header as they are in drawer */
+  .header-actions button[title*="Language"],
+  .header-actions button[title*="تغيير اللغة"],
+  .header-actions button[title*="Toggle Theme"],
+  .header-actions button[title*="تغيير المود"] {
+    display: none !important;
+  }
+
+  /* Ensure cart and profile icons are clearly visible and tappable */
+  .action-icon-btn.desktop-only {
+    display: inline-flex !important;
+  }
+
+  /* Hide mobile redundant wallet and mobile search toggle in header */
+  .wallet-header-wrapper.mobile-only,
+  button.action-icon-btn.mobile-only[title="Search"] {
+    display: none !important;
+  }
+
+  /* Products Grid: 2 spacious columns for ideal tablet card proportions */
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+
+  .product-image-box {
+    height: 380px !important;
+  }
+
+  .product-info {
+    padding: 1.25rem 1.15rem !important;
+  }
+
+  .product-title {
+    font-size: 1.1rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Horizontal Product Rails on Tablet */
+  .horizontal-rail-section {
+    padding: 1.75rem 0 !important;
+  }
+
+  .horizontal-rail-section .container.rail-container {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    max-width: 100% !important;
+  }
+
+  .rail-scroll-container {
+    gap: 14px !important;
+    padding-bottom: 0.85rem !important;
+  }
+
+  .rail-item-wrapper {
+    width: 270px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .rail-item-wrapper .product-image-box {
+    height: 270px !important;
+  }
+
+  /* Hero Banner on Tablet */
+  .hero-fullwidth-section {
+    min-height: 480px !important;
+    max-height: 580px !important;
+  }
+
+  .hero-content-container {
+    padding: 3.5rem 2rem !important;
+  }
+
+  .hero-main-heading {
+    font-size: 2.5rem !important;
+  }
+
+  .hero-sub-heading {
+    font-size: 1.75rem !important;
+  }
+
+  /* Modals on Tablet */
+  .admin-modal-container {
+    max-width: 760px !important;
+    max-height: 90vh !important;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
   }
 }
 
