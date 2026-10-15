@@ -4,6 +4,7 @@ import { getAdminSupabase } from '../../lib/supabase/admin';
 import { getRegisteredUsersStatsAction } from './actions';
 import { PromoEmailControl } from '../../components/admin/PromoEmailControl';
 import { CouponsControl } from '../../components/admin/CouponsControl';
+import { BlacklistControl } from '../../components/admin/BlacklistControl';
 import { AnnouncementBarControl } from '../../components/admin/AnnouncementBarControl';
 import { WhatsAppBroadcastControl } from '../../components/admin/WhatsAppBroadcastControl';
 
@@ -92,6 +93,11 @@ export default async function AdminDashboardPage() {
       {/* Coupons / Promo Codes Management */}
       <div id="coupons">
         <CouponsControl />
+      </div>
+
+      {/* Customer Blacklist Management */}
+      <div id="blacklist">
+        <BlacklistControl />
       </div>
 
       {/* WhatsApp Broadcast & Offers Management */}

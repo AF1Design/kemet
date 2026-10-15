@@ -44,9 +44,23 @@ export default function CategoryPage({ params }) {
       try {
         let query = supabase.from('products').select('*, product_variants(*)').eq('is_active', true);
 
-        // 1. Category Filter - Filter by category_id if not 'all'
-        if (id && id !== 'all') {
-          query = query.eq('category_id', id);
+        const rawId = String(id || 'all').toLowerCase().trim();
+        const isBestSeller = rawId === 'best-sellers' || rawId === 'best_sellers';
+        const isNewArrivals = rawId === 'new-arrivals' || rawId === 'new_arrivals';
+        const isWinter = rawId === 'winter';
+        const isSummer = rawId === 'summer';
+
+        // 1. Category Filter - Filter by query or virtual category
+        if (isBestSeller) {
+          query = query.eq('is_best_seller', true);
+        } else if (isNewArrivals) {
+          query = query.eq('is_new', true);
+        } else if (isWinter) {
+          query = query.or('category_id.eq.winter,name_ar.ilike.%تراك%,name_ar.ilike.%شتوي%,name_en.ilike.%winter%,name_en.ilike.%track%');
+        } else if (isSummer) {
+          query = query.neq('category_id', 'winter');
+        } else if (rawId !== 'all') {
+          query = query.eq('category_id', rawId);
         }
 
         query = query.order('created_at', { ascending: false });
@@ -76,6 +90,17 @@ export default function CategoryPage({ params }) {
           }));
 
           let list = mappedProducts;
+
+          // Double check precision for virtual & seasonal categories
+          if (isBestSeller) {
+            list = list.filter(p => p.isBestSeller);
+          } else if (isNewArrivals) {
+            list = list.filter(p => p.isNew);
+          } else if (isWinter) {
+            list = list.filter(p => p.category === 'winter' || /تراك|شتوي|winter|track/i.test(p.nameAr || ''));
+          } else if (isSummer) {
+            list = list.filter(p => p.category !== 'winter' && !/تراك|شتوي|winter|track/i.test(p.nameAr || ''));
+          }
 
           // 2. Multi-word Intelligent Search Filter across Arabic & English fields
           if (searchQueryParam.trim()) {
@@ -109,20 +134,35 @@ export default function CategoryPage({ params }) {
     loadCategoryProducts();
   }, [id, searchQueryParam]);
 
+  const rawId = String(id || 'all').toLowerCase().trim();
+
   const getCategoryTitle = () => {
     if (searchQueryParam) {
       return lang === 'ar' ? `نتائج البحث عن: "${searchQueryParam}"` : `Search Results for: "${searchQueryParam}"`;
     }
+
+    if (rawId === 'best-sellers' || rawId === 'best_sellers') {
+      return lang === 'ar' ? 'المنتجات الأكثر مبيعاً' : 'Best Selling Products';
+    }
+    if (rawId === 'winter') {
+      return lang === 'ar' ? 'الكولكشن الشتوي' : 'Winter Collection';
+    }
+    if (rawId === 'summer') {
+      return lang === 'ar' ? 'الكولكشن الصيفي' : 'Summer Collection';
+    }
+    if (rawId === 'new-arrivals' || rawId === 'new_arrivals') {
+      return lang === 'ar' ? 'وصل حديثاً' : 'New Arrivals';
+    }
     
     // Check if category exists dynamically in DB categories list
-    if (id && id !== 'all' && dbCategories && dbCategories.length > 0) {
-      const match = dbCategories.find(c => c.id.toLowerCase() === id.toLowerCase());
+    if (rawId && rawId !== 'all' && dbCategories && dbCategories.length > 0) {
+      const match = dbCategories.find(c => c.id.toLowerCase() === rawId);
       if (match) {
         return lang === 'ar' ? (match.name_ar || match.nameAr) : (match.name_en || match.nameEn || match.id);
       }
     }
 
-    switch (id) {
+    switch (rawId) {
       case 'kits':
         return t('navKits');
       case 'training':
@@ -141,7 +181,28 @@ export default function CategoryPage({ params }) {
         ? `عثرنا على (${filteredProducts.length}) منتجات تطابق كلماتك البحثية` 
         : `Found (${filteredProducts.length}) products matching your search`;
     }
-    if (!id || id === 'all') {
+
+    if (rawId === 'best-sellers' || rawId === 'best_sellers') {
+      return lang === 'ar'
+        ? 'تشكيلة القطع الأكثر طلباً وإقبالاً في كولكشن KEMET'
+        : 'Most popular and featured KEMET sportswear and official kits';
+    }
+    if (rawId === 'winter') {
+      return lang === 'ar'
+        ? 'أحدث تشكيلة من الملابس الشتوية والترنجات وتراكات الأندية العالمية'
+        : 'Latest winter training tracksuits and cold weather collection';
+    }
+    if (rawId === 'summer') {
+      return lang === 'ar'
+        ? 'أحدث تشكيلة من أطقم كرة القدم وملابس التدريب الصيفية الخفيفة'
+        : 'Lightweight summer football kits and athletic performance wear';
+    }
+    if (rawId === 'new-arrivals' || rawId === 'new_arrivals') {
+      return lang === 'ar'
+        ? 'أحدث ما تم إضافته حديثاً في متجر KEMET الرياضي'
+        : 'Latest arrivals and fresh releases in KEMET sports collection';
+    }
+    if (!rawId || rawId === 'all') {
       return lang === 'ar' 
         ? 'استعرض جميع أطقم ومستلزمات KEMET الرياضية الفاخرة' 
         : 'Explore all KEMET sportswear products, kits, and gym wear';
@@ -150,6 +211,13 @@ export default function CategoryPage({ params }) {
       ? 'استعرض أحدث تشكيلة من ملابس وأطقم KEMET الرياضية المصممة بمواصفات عالمية'
       : 'Explore KEMET official sportswear designed to high athletic standards';
   };
+
+  useEffect(() => {
+    const title = getCategoryTitle();
+    if (typeof document !== 'undefined' && title) {
+      document.title = `${title} | KEMET`;
+    }
+  }, [id, searchQueryParam, lang, filteredProducts.length]);
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>

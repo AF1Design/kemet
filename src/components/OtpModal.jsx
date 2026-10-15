@@ -111,6 +111,19 @@ export const OtpModal = ({
     }
   }, [isOpen, otpLength, mode]);
 
+  // Lock background scrolling while modal is active
+  useEffect(() => {
+    if (!isOpen) return;
+    const origBody = document.body.style.overflow;
+    const origHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = origBody;
+      document.documentElement.style.overflow = origHtml;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Handle Digit Change with Arabic Transliteration & Auto Focus Next

@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'الإحصائيات', id: 'stats' },
   { href: '/admin#whatsapp', label: '💬 عروض الواتساب', id: 'whatsapp', whatsapp: true },
   { href: '/admin#coupons', label: 'أكواد الخصم', id: 'coupons' },
+  { href: '/admin#blacklist', label: 'قائمة الحظر (Blacklist)', id: 'blacklist', danger: true },
   { href: '/admin/products', label: 'المنتجات والمخزون', id: 'products' },
   { href: '/admin/orders', label: 'إدارة الطلبات', id: 'orders' },
   { href: '/admin/customers-finance', label: 'الحساب المالي للعملاء', id: 'finance' },
@@ -182,24 +183,30 @@ export default function AdminHeaderNav() {
                 textDecoration: 'none',
                 padding: '0.45rem 0.95rem',
                 fontSize: '0.84rem',
-                fontWeight: active || item.special || item.whatsapp ? 900 : 700,
+                fontWeight: active || item.special || item.whatsapp || item.danger ? 900 : 700,
                 borderRadius: 'var(--radius-md)',
                 transition: 'all 0.15s ease',
                 background: active
                   ? 'var(--gold-primary)'
-                  : (item.whatsapp 
-                      ? 'rgba(37, 211, 102, 0.14)' 
-                      : (item.special ? 'rgba(212, 175, 55, 0.15)' : 'rgba(255, 255, 255, 0.05)')),
+                  : (item.danger
+                      ? 'rgba(239, 68, 68, 0.14)'
+                      : (item.whatsapp 
+                          ? 'rgba(37, 211, 102, 0.14)' 
+                          : (item.special ? 'rgba(212, 175, 55, 0.15)' : 'rgba(255, 255, 255, 0.05)'))),
                 color: active
                   ? '#000'
-                  : (item.whatsapp 
-                      ? '#25D366' 
-                      : (item.special ? 'var(--gold-primary)' : 'var(--text-primary)')),
+                  : (item.danger
+                      ? '#EF4444'
+                      : (item.whatsapp 
+                          ? '#25D366' 
+                          : (item.special ? 'var(--gold-primary)' : 'var(--text-primary)'))),
                 border: active
                   ? '1px solid var(--gold-primary)'
-                  : (item.whatsapp 
-                      ? '1px solid rgba(37, 211, 102, 0.4)' 
-                      : (item.special ? '1px solid var(--border-gold)' : '1px solid rgba(255, 255, 255, 0.1)')),
+                  : (item.danger
+                      ? '1px solid rgba(239, 68, 68, 0.45)'
+                      : (item.whatsapp 
+                          ? '1px solid rgba(37, 211, 102, 0.4)' 
+                          : (item.special ? '1px solid var(--border-gold)' : '1px solid rgba(255, 255, 255, 0.1)'))),
                 boxShadow: active ? '0 2px 10px rgba(212, 175, 55, 0.35)' : 'none'
               }}
             >

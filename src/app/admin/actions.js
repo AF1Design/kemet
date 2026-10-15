@@ -15,6 +15,12 @@ import {
   generateWalletApologyMessage, 
   getWalletApologyWhatsAppUrl 
 } from '../../lib/wallet.js';
+import {
+  getBlacklistData,
+  isCustomerBlacklisted,
+  addCustomerToBlacklist,
+  removeCustomerFromBlacklist
+} from '../../lib/blacklist.js';
 
 // Helper to safely invoke revalidatePath in Next.js environment without blocking response
 async function triggerBackgroundRevalidate(paths = []) {
@@ -536,15 +542,37 @@ export async function createOrderAction(orderData) {
       }
     }
 
+    const customerPhone = orderData.customer?.phone || orderData.customerPhone || '';
+    const customerEmail = orderData.customer?.email || orderData.customerEmail || '';
+
+    // Security Guard: Check if customer is blacklisted from using coupons
+    const blacklistCheck = await isCustomerBlacklisted({
+      phone: customerPhone,
+      email: customerEmail,
+      userId: validUserId
+    });
+
+    let calcDiscount = Number(orderData.discount || 0);
+    let couponCode = orderData.coupon_code || orderData.couponCode || null;
+
+    if (blacklistCheck.isBlacklisted && (couponCode || calcDiscount > 0)) {
+      // Customer is blacklisted: strictly neutralize coupon and discount
+      couponCode = null;
+      calcDiscount = 0;
+    }
+
     const calcSubtotal = Number(orderData.subtotal || 0);
     const calcShipping = Number(orderData.shipping ?? orderData.shipping_fee ?? 50);
-    const calcDiscount = Number(orderData.discount || 0);
     const rawTotal = orderData.total ?? orderData.total_amount ?? orderData.totalAmount;
-    const calcTotal = rawTotal != null && Number(rawTotal) > 0 ? Number(rawTotal) : Math.max(0, calcSubtotal - calcDiscount) + calcShipping;
+    const calcTotal = (blacklistCheck.isBlacklisted && (orderData.coupon_code || orderData.couponCode))
+      ? (calcSubtotal + calcShipping)
+      : (rawTotal != null && Number(rawTotal) > 0 ? Number(rawTotal) : Math.max(0, calcSubtotal - calcDiscount) + calcShipping);
 
-    const couponCode = orderData.coupon_code || orderData.couponCode || null;
     let finalDeliveryNotes = orderData.customer?.notes || orderData.notes || '';
-    if (couponCode) {
+    if (blacklistCheck.isBlacklisted) {
+      const blacklistTag = `[تنبيه: العميل محظور من كوبونات الخصم - القائمة السوداء (السبب: ${blacklistCheck.entry?.reason || 'غير محدد'})]`;
+      finalDeliveryNotes = finalDeliveryNotes ? `${blacklistTag} ${finalDeliveryNotes}` : blacklistTag;
+    } else if (couponCode) {
       const couponTag = `[كود الخصم: ${String(couponCode).trim().toUpperCase()}${calcDiscount > 0 ? ` | خصم: ${calcDiscount} ج.م` : ''}]`;
       finalDeliveryNotes = finalDeliveryNotes ? `${couponTag} ${finalDeliveryNotes}` : couponTag;
     }
@@ -3495,5 +3523,60 @@ export async function getWhatsAppBroadcastCustomersAction() {
   }
 }
 
+/**
+ * Server Action: Fetches all blacklisted customers from Supabase
+ */
+export async function getBlacklistAction() {
+  try {
+    const res = await getBlacklistData();
+    return res;
+  } catch (err) {
+    console.error('getBlacklistAction error:', err);
+    return { success: false, blacklist: [], error: err.message };
+  }
+}
 
+/**
+ * Server Action: Adds or updates a customer in the blacklist
+ */
+export async function addCustomerToBlacklistAction(customerData) {
+  try {
+    const res = await addCustomerToBlacklist(customerData);
+    if (res.success) {
+      triggerBackgroundRevalidate(['/admin', '/admin/orders', '/checkout']);
+    }
+    return res;
+  } catch (err) {
+    console.error('addCustomerToBlacklistAction error:', err);
+    return { success: false, error: err.message || 'فشل إضافة العميل لقائمة الحظر.' };
+  }
+}
 
+/**
+ * Server Action: Removes a customer from the blacklist
+ */
+export async function removeCustomerFromBlacklistAction(phone) {
+  try {
+    const res = await removeCustomerFromBlacklist(phone);
+    if (res.success) {
+      triggerBackgroundRevalidate(['/admin', '/admin/orders', '/checkout']);
+    }
+    return res;
+  } catch (err) {
+    console.error('removeCustomerFromBlacklistAction error:', err);
+    return { success: false, error: err.message || 'فشل إزالة العميل من قائمة الحظر.' };
+  }
+}
+
+/**
+ * Server Action: Checks if a customer is blacklisted
+ */
+export async function checkBlacklistStatusAction({ phone = null, email = null, userId = null }) {
+  try {
+    const res = await isCustomerBlacklisted({ phone, email, userId });
+    return { success: true, ...res };
+  } catch (err) {
+    console.error('checkBlacklistStatusAction error:', err);
+    return { success: false, isBlacklisted: false, entry: null };
+  }
+}

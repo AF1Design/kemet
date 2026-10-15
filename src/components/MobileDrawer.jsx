@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '../context/AppContext';
 import { AnimatedLogo } from './AnimatedLogo';
@@ -8,10 +8,37 @@ import { AnimatedLogo } from './AnimatedLogo';
 export const MobileDrawer = ({ isOpen, onClose }) => {
   const { lang, theme, user, toggleLang, toggleTheme, t } = useApp();
 
+  // Lock background scrolling while drawer is active
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.touchAction = originalBodyTouchAction;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="mobile-drawer-overlay" onClick={onClose}>
+    <div 
+      className="mobile-drawer-overlay" 
+      onClick={onClose}
+      onTouchMove={e => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      }}
+    >
       <div className="mobile-drawer-content" onClick={e => e.stopPropagation()}>
         
         {/* Mobile Drawer Header - Prominent Language & Theme Toggles at the Top */}
@@ -103,6 +130,9 @@ export const MobileDrawer = ({ isOpen, onClose }) => {
           </Link>
 
           <div className="mobile-menu-section-title">{lang === 'ar' ? 'الأقسام والفئات 2027' : '2027 Categories'}</div>
+          <Link href="/category/winter" className="mobile-menu-sublink" onClick={onClose}>
+            {lang === 'ar' ? 'الكولكشن الشتوي' : 'Winter Collection'}
+          </Link>
           <Link href="/category/kits" className="mobile-menu-sublink" onClick={onClose}>
             {t('navKits')} (280 {t('currency')})
           </Link>

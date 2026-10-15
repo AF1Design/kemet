@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '../context/AppContext';
 import { trackRemoveFromCart, trackBeginCheckout } from '../lib/analytics';
@@ -19,6 +19,25 @@ export const CartDrawer = () => {
   } = useApp();
   const router = useRouter();
 
+  // Senior-level Body Scroll Lock on Cart Open
+  useEffect(() => {
+    if (!isCartOpen) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.touchAction = originalBodyTouchAction;
+    };
+  }, [isCartOpen]);
+
   if (!isCartOpen) return null;
 
   const currency = t('currency');
@@ -33,18 +52,31 @@ export const CartDrawer = () => {
   };
 
   return (
-    <div className="cart-drawer-overlay active" onClick={() => setIsCartOpen(false)}>
+    <div 
+      className="cart-drawer-overlay active" 
+      onClick={() => setIsCartOpen(false)}
+      onTouchMove={e => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      }}
+    >
       <div className="cart-drawer" onClick={e => e.stopPropagation()}>
         
         {/* Cart Drawer Header */}
-        <div style={{ 
-          padding: '1.4rem 1.6rem', 
-          borderBottom: '1px solid var(--border-color)', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          background: 'var(--bg-card)'
-        }}>
+        <div 
+          className="cart-drawer-header"
+          style={{ 
+            padding: '1.4rem 1.6rem', 
+            borderBottom: '1px solid var(--border-color)', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            background: 'var(--bg-card)',
+            flexShrink: 0,
+            touchAction: 'none'
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <span style={{ fontSize: '1.4rem' }}>🛍️</span>
             <div>
@@ -78,15 +110,23 @@ export const CartDrawer = () => {
         </div>
 
         {/* Cart Items Body */}
-        <div style={{ 
-          padding: '1.4rem 1.6rem', 
-          flexGrow: 1, 
-          overflowY: 'auto', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '1.2rem',
-          background: 'var(--bg-deep)'
-        }}>
+        <div 
+          className="cart-items-body"
+          style={{ 
+            padding: '1.4rem 1.6rem', 
+            flex: '1 1 auto', 
+            minHeight: 0,
+            overflowY: 'auto', 
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain',
+            touchAction: 'pan-y',
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1.2rem',
+            background: 'var(--bg-deep)'
+          }}
+        >
           {cart.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: '3.5rem', marginBottom: '1.2rem' }}>🛒</div>
@@ -404,15 +444,20 @@ export const CartDrawer = () => {
 
         {/* Cart Drawer Footer */}
         {cart.length > 0 && (
-          <div style={{ 
-            padding: '1.4rem 1.6rem', 
-            borderTop: '1px solid var(--border-color)', 
-            background: 'var(--bg-card)', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '0.85rem',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
-          }}>
+          <div 
+            className="cart-drawer-footer"
+            style={{ 
+              padding: '1.4rem 1.6rem', 
+              borderTop: '1px solid var(--border-color)', 
+              background: 'var(--bg-card)', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.85rem',
+              boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+              flexShrink: 0,
+              touchAction: 'none'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.95rem' }}>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{t('cartSubtotal')}</span>
               <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-en)' }}>{subtotal} {currency}</span>

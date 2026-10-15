@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { createPortal } from 'react-dom';
-import { updateOrderStatusAction, deleteOrderAction, sendDirectCustomerEmailAction } from '../../app/admin/actions';
+import { 
+  updateOrderStatusAction, 
+  deleteOrderAction, 
+  sendDirectCustomerEmailAction,
+  getBlacklistAction,
+  addCustomerToBlacklistAction,
+  removeCustomerFromBlacklistAction
+} from '../../app/admin/actions';
+import { normalizePhone } from '../../lib/blacklist';
 import { AdminOrderEditModal } from './AdminOrderEditModal';
 import { SupplierPreparationManifestModal } from './SupplierPreparationManifestModal';
 import { WalletCompensationModal } from './WalletCompensationModal';
@@ -159,11 +167,39 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
   // Wallet Compensation Modal State
   const [walletModalOrder, setWalletModalOrder] = useState(null);
 
+  // Blacklist State
+  const [blacklistMap, setBlacklistMap] = useState(new Map());
+  const [blacklistModalOrder, setBlacklistModalOrder] = useState(null);
+  const [blacklistReason, setBlacklistReason] = useState('رفض استلام الأوردر بعد الشحن بدون سبب (شحن على الفاضي)');
+  const [blacklistCustomReason, setBlacklistCustomReason] = useState('');
+  const [isSubmittingBlacklist, setIsSubmittingBlacklist] = useState(false);
+  const [blacklistError, setBlacklistError] = useState(null);
+
+  // Load Blacklist on mount
+  useEffect(() => {
+    async function loadBlacklist() {
+      try {
+        const res = await getBlacklistAction();
+        if (res.success && Array.isArray(res.blacklist)) {
+          const map = new Map();
+          res.blacklist.forEach(item => {
+            const p = normalizePhone(item.phone);
+            if (p) map.set(p, item);
+          });
+          setBlacklistMap(map);
+        }
+      } catch (err) {
+        console.warn('Blacklist load error:', err);
+      }
+    }
+    loadBlacklist();
+  }, []);
+
   const [isPending, startTransition] = useTransition();
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder || isManifestOpen || walletModalOrder;
+    const isAnyModalOpen = selectedOrderDetails || trackingModalOrder || emailModalOrder || editingOrder || isManifestOpen || walletModalOrder || blacklistModalOrder;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -172,7 +208,79 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder, editingOrder, isManifestOpen, walletModalOrder]);
+  }, [selectedOrderDetails, trackingModalOrder, emailModalOrder, editingOrder, isManifestOpen, walletModalOrder, blacklistModalOrder]);
+
+  const handleOpenBlacklistModal = (order) => {
+    setBlacklistModalOrder(order);
+    setBlacklistReason('رفض استلام الأوردر بعد الشحن بدون سبب (شحن على الفاضي)');
+    setBlacklistCustomReason('');
+    setBlacklistError(null);
+  };
+
+  const handleConfirmBlacklist = async () => {
+    if (!blacklistModalOrder) return;
+    const phone = blacklistModalOrder.customer_phone || blacklistModalOrder.customer?.phone;
+    if (!phone) {
+      setBlacklistError('لا يوجد رقم هاتف مسجل لهذا الطلب.');
+      return;
+    }
+    setIsSubmittingBlacklist(true);
+    setBlacklistError(null);
+    try {
+      const finalReason = blacklistReason === 'custom'
+        ? (blacklistCustomReason.trim() || 'رفض استلام الأوردر بعد الشحن بدون سبب')
+        : blacklistReason;
+
+      const res = await addCustomerToBlacklistAction({
+        phone: phone,
+        name: blacklistModalOrder.customer_name || blacklistModalOrder.customer?.fullName || 'عميل',
+        email: blacklistModalOrder.customer?.email || '',
+        orderId: blacklistModalOrder.id,
+        orderAmount: blacklistModalOrder.total_amount ?? blacklistModalOrder.total ?? 0,
+        governorate: blacklistModalOrder.governorate || blacklistModalOrder.customer?.governorate || '',
+        address: blacklistModalOrder.address || blacklistModalOrder.customer?.address || '',
+        reason: finalReason,
+        addedBy: 'إدارة الطلبات'
+      });
+
+      if (res.success) {
+        setBlacklistMap(prev => {
+          const next = new Map(prev);
+          const p = normalizePhone(phone);
+          if (p) next.set(p, res.entry);
+          return next;
+        });
+        setBlacklistModalOrder(null);
+      } else {
+        setBlacklistError(res.error || 'حدث خطأ أثناء إضافة العميل للقائمة السوداء.');
+      }
+    } catch (err) {
+      setBlacklistError(err.message || 'حدث خطأ غير متوقع.');
+    } finally {
+      setIsSubmittingBlacklist(false);
+    }
+  };
+
+  const handleRemoveFromBlacklist = async (order) => {
+    const phone = order.customer_phone || order.customer?.phone;
+    if (!phone) return;
+    const cleanP = normalizePhone(phone);
+    if (!window.confirm(`هل أنت متأكد من إلغاء حظر الخصومات عن العميل صاحب الرقم (${phone})؟`)) {
+      return;
+    }
+    try {
+      const res = await removeCustomerFromBlacklistAction(phone);
+      if (res.success) {
+        setBlacklistMap(prev => {
+          const next = new Map(prev);
+          next.delete(cleanP);
+          return next;
+        });
+      }
+    } catch (err) {
+      alert('فشل إلغاء الحظر: ' + err.message);
+    }
+  };
 
   const handleCopyConfirmation = (order) => {
     const text = generateOrderConfirmationText(order);
@@ -484,6 +592,8 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
                 const productNames = itemsList.map(i => i.product_name_ar || i.nameAr || i.title || 'منتج KEMET').join(' + ');
                 const productSizes = Array.from(new Set(itemsList.map(i => i.size || 'M'))).join(', ');
                 const orderCoupon = extractCouponCode(order);
+                const orderPhoneKey = normalizePhone(order.customer_phone || order.customer?.phone);
+                const isOrderCustomerBlacklisted = Boolean(orderPhoneKey && blacklistMap.has(orderPhoneKey));
 
                 return (
                   <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -521,7 +631,23 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
 
                     {/* 4. رقم الهاتف */}
                     <td style={{ padding: '1rem', fontSize: '0.85rem', direction: 'ltr', textAlign: 'right', fontWeight: 700 }}>
-                      {order.customer_phone || order.customer?.phone || 'غير مسجل'}
+                      <div>{order.customer_phone || order.customer?.phone || 'غير مسجل'}</div>
+                      {isOrderCustomerBlacklisted && (
+                        <div style={{ marginTop: '0.35rem', direction: 'rtl' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '0.15rem 0.45rem',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.45)',
+                            color: '#EF4444',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            fontWeight: 800
+                          }}>
+                            محظور من الخصومات
+                          </span>
+                        </div>
+                      )}
                     </td>
 
                     {/* 5. العنوان */}
@@ -713,6 +839,47 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
                         >
                           هدية (محفظة)
                         </button>
+
+                        {/* زر حظر الخصومات / فك الحظر */}
+                        {isOrderCustomerBlacklisted ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFromBlacklist(order)}
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.76rem',
+                              borderRadius: 'var(--radius-md)',
+                              border: '1px solid rgba(16, 185, 129, 0.5)',
+                              background: 'rgba(16, 185, 129, 0.12)',
+                              color: '#10B981',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="إلغاء حظر العميل والسماح له باستخدام كوبونات الخصم مجدداً"
+                          >
+                            فك الحظر
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBlacklistModal(order)}
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.76rem',
+                              borderRadius: 'var(--radius-md)',
+                              border: '1px solid rgba(239, 68, 68, 0.5)',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#EF4444',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="إضافة العميل للبلاك ليست لمنع استخدامه لأي كوبونات خصم بسبب عدم الاستلام أو الشحن على الفاضي"
+                          >
+                            حظر الخصومات
+                          </button>
+                        )}
 
                         <button
                           type="button"
@@ -1376,6 +1543,173 @@ export function AdminOrdersTable({ initialOrders, catalogProducts = [] }) {
           userId={walletModalOrder.user_id || walletModalOrder.userId || null}
           orderId={walletModalOrder.id}
         />
+      )}
+
+      {/* Blacklist Confirmation Modal */}
+      {mounted && blacklistModalOrder && createPortal(
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid rgba(239, 68, 68, 0.6)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '2rem',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 25px rgba(239, 68, 68, 0.25)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem', color: '#EF4444', fontWeight: 900 }}>[حظر]</span>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
+                  حظر العميل من كوبونات الخصم (Blacklist)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBlacklistModalOrder(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.4rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Customer & Order Summary Card */}
+            <div style={{
+              background: 'var(--bg-main)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '1rem',
+              marginBottom: '1.25rem',
+              fontSize: '0.85rem',
+              lineHeight: 1.6
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>العميل:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  {blacklistModalOrder.customer_name || blacklistModalOrder.customer?.fullName || 'غير محدد'}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>رقم الهاتف:</span>
+                <strong style={{ color: '#EF4444', fontFamily: 'monospace' }}>
+                  {blacklistModalOrder.customer_phone || blacklistModalOrder.customer?.phone || 'غير مسجل'}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>رقم الطلب:</span>
+                <span style={{ color: 'var(--gold-primary)', fontWeight: 800 }}>#{blacklistModalOrder.id}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>قيمة الأوردر:</span>
+                <span style={{ fontWeight: 800 }}>{blacklistModalOrder.total_amount || blacklistModalOrder.total} ج.م</span>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#EF4444',
+              fontSize: '0.82rem',
+              lineHeight: 1.5,
+              marginBottom: '1.25rem'
+            }}>
+              <strong>تنبيه:</strong> سيتم إدراج هذا العميل في قائمة الحظر، ولن يتمكن نهائياً من تطبيق أي كوبونات أو أكواد خصم عند الشراء من المتجر في المستقبل.
+            </div>
+
+            {blacklistError && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid #EF4444',
+                color: '#EF4444',
+                fontSize: '0.84rem',
+                fontWeight: 800,
+                marginBottom: '1rem'
+              }}>
+                {blacklistError}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
+                سبب الحظر:
+              </label>
+              <select
+                value={blacklistReason}
+                onChange={(e) => setBlacklistReason(e.target.value)}
+                className="admin-input"
+                style={{ width: '100%', background: 'var(--bg-main)', fontSize: '0.85rem' }}
+              >
+                <option value="رفض استلام الأوردر بعد الشحن بدون سبب (شحن على الفاضي)">رفض استلام الأوردر بعد الشحن بدون سبب (شحن على الفاضي)</option>
+                <option value="عدم الرد على المندوب وإلغاء الطلب بعد خروجه للتوصيل">عدم الرد على المندوب وإلغاء الطلب بعد خروجه للتوصيل</option>
+                <option value="رفض الاستلام والتهرب من دفع مصاريف الشحن">رفض الاستلام والتهرب من دفع مصاريف الشحن</option>
+                <option value="طلبات متكررة وهمية وعدم الجدية">طلبات متكررة وهمية وعدم الجدية</option>
+                <option value="custom">كتابة سبب مخصص آخر...</option>
+              </select>
+            </div>
+
+            {blacklistReason === 'custom' && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--gold-primary)', marginBottom: '0.4rem' }}>
+                  اكتب سبب الحظر المخصص:
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="سبب الحظر بالتفصيل..."
+                  value={blacklistCustomReason}
+                  onChange={(e) => setBlacklistCustomReason(e.target.value)}
+                  className="admin-input"
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setBlacklistModalOrder(null)}
+                className="btn-secondary"
+                style={{ padding: '0.65rem 1.25rem', fontSize: '0.85rem' }}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBlacklist}
+                disabled={isSubmittingBlacklist}
+                className="btn-primary"
+                style={{
+                  padding: '0.65rem 1.5rem',
+                  fontSize: '0.85rem',
+                  background: '#EF4444',
+                  border: 'none',
+                  color: '#FFF',
+                  fontWeight: 800
+                }}
+              >
+                {isSubmittingBlacklist ? 'جاري الحفظ...' : 'تأكيد الحظر من الخصومات'}
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

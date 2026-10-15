@@ -224,11 +224,31 @@ export default function Home() {
           {activeSections.map(section => {
             let sectionProducts = [];
 
-            if (section.filterType === 'best_seller') {
+            const isBestSellerSection = section.filterType === 'best_seller' || 
+              section.id === 'best_sellers' || 
+              section.categoryId === 'best-sellers' || 
+              section.categoryId === 'best_sellers';
+
+            const isNewArrivalsSection = section.filterType === 'new_arrivals' || 
+              section.id === 'new_arrivals' || 
+              section.categoryId === 'new-arrivals' || 
+              section.categoryId === 'new_arrivals';
+
+            const isWinterSection = section.id === 'cat_winter' || 
+              section.categoryId === 'winter';
+
+            const isSummerSection = section.id === 'cat_summer' || 
+              section.categoryId === 'summer';
+
+            if (isBestSellerSection) {
               sectionProducts = allProducts.filter(p => p.isBestSeller);
               if (sectionProducts.length === 0) sectionProducts = allProducts; // graceful fallback
-            } else if (section.filterType === 'new_arrivals') {
+            } else if (isNewArrivalsSection) {
               sectionProducts = allProducts.filter(p => p.isNew);
+            } else if (isWinterSection) {
+              sectionProducts = allProducts.filter(p => p.category === 'winter' || /تراك|شتوي|winter|track/i.test(p.nameAr || ''));
+            } else if (isSummerSection) {
+              sectionProducts = allProducts.filter(p => p.category !== 'winter' && !/تراك|شتوي|winter|track/i.test(p.nameAr || ''));
             } else if (section.categoryId && section.categoryId !== 'all') {
               sectionProducts = allProducts.filter(p => p.category === section.categoryId);
             } else {
@@ -237,9 +257,18 @@ export default function Home() {
 
             if (sectionProducts.length === 0) return null;
 
-            const categoryHref = section.categoryId && section.categoryId !== 'all' 
-              ? `/category/${section.categoryId}` 
-              : '/category/all';
+            let categoryHref = '/category/all';
+            if (isBestSellerSection) {
+              categoryHref = '/category/best-sellers';
+            } else if (isNewArrivalsSection) {
+              categoryHref = '/category/new-arrivals';
+            } else if (isWinterSection) {
+              categoryHref = '/category/winter';
+            } else if (isSummerSection) {
+              categoryHref = '/category/summer';
+            } else if (section.categoryId && section.categoryId !== 'all') {
+              categoryHref = `/category/${section.categoryId}`;
+            }
 
             const sectionTitle = lang === 'ar' 
               ? (section.titleAr || section.title) 
@@ -249,6 +278,10 @@ export default function Home() {
               ? section.subtitleAr 
               : section.subtitleEn;
 
+            const badgeText = isBestSellerSection
+              ? (lang === 'ar' ? 'الأكثر طلباً' : 'Best Seller')
+              : (lang === 'ar' ? 'مميز' : 'Featured');
+
             return (
               <HorizontalProductRail
                 key={section.id}
@@ -257,7 +290,7 @@ export default function Home() {
                 categoryHref={categoryHref}
                 products={sectionProducts}
                 limit={section.limit || 8}
-                badge={section.filterType === 'best_seller' ? '🔥 الأكثر طلباً' : '✨ مميز'}
+                badge={badgeText}
               />
             );
           })}

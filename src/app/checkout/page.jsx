@@ -10,7 +10,8 @@ import {
   recordCouponUsageAction, 
   syncCustomerCartAction,
   getCustomerWalletAction,
-  debitCustomerWalletAction
+  debitCustomerWalletAction,
+  checkBlacklistStatusAction
 } from '../admin/actions';
 import { DEFAULT_COUPONS, isWinterProduct, isSummerProduct } from '../../lib/coupons';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
@@ -131,6 +132,27 @@ export default function CheckoutPage() {
       isCancelled = true;
     };
   }, [user, formData.phone]);
+
+  // Security Guard: Watch phone input and enforce blacklist against active coupons
+  useEffect(() => {
+    const rawDigits = String(formData.phone || user?.phone || '').replace(/\D/g, '');
+    if (rawDigits.length >= 11 && appliedCoupon) {
+      checkBlacklistStatusAction({
+        phone: rawDigits,
+        email: user?.email || '',
+        userId: user?.id || null
+      }).then(res => {
+        if (res?.isBlacklisted) {
+          setAppliedCoupon(null);
+          setCouponInput('');
+          setCouponMsg({
+            type: 'error',
+            text: 'تم إلغاء كود الخصم، هذا الرقم غير مؤهل لاستخدام كوبونات الخصم.'
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [formData.phone, appliedCoupon, user]);
 
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 280) * item.quantity, 0);
   const totalCartPieces = cart.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
@@ -298,7 +320,7 @@ export default function CheckoutPage() {
   }, [cart, formData.fullName, formData.phone, formData.governorate, formData.address, user, isSubmitted]);
 
   // Handle Apply Coupon
-  const handleApplyCoupon = (explicitCode = null) => {
+  const handleApplyCoupon = async (explicitCode = null) => {
     // STRICT RULE: Mutual exclusivity between promo coupon and wallet store credit
     if (isWalletApplied) {
       setCouponMsg({ 
@@ -306,6 +328,29 @@ export default function CheckoutPage() {
         text: 'لا يمكن استخدام كود الخصم أثناء تفعيل رصيد المحفظة. يرجى إلغاء تفعيل رصيد المحفظة أولاً.' 
       });
       return;
+    }
+
+    const candidatePhone = formData.phone || user?.phone || '';
+    const candidateEmail = user?.email || '';
+
+    // Check Blacklist: Deny coupons for blacklisted customers
+    if (candidatePhone || candidateEmail || user?.id) {
+      try {
+        const blCheck = await checkBlacklistStatusAction({
+          phone: candidatePhone,
+          email: candidateEmail,
+          userId: user?.id || null
+        });
+        if (blCheck?.isBlacklisted) {
+          setCouponMsg({
+            type: 'error',
+            text: 'عذراً، استخدام كوبونات الخصم غير متاح لهذا الحساب أو رقم الهاتف.'
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Blacklist check exception:', err);
+      }
     }
 
     const rawCode = (typeof explicitCode === 'string' && explicitCode.trim()) ? explicitCode : couponInput;
@@ -489,6 +534,27 @@ export default function CheckoutPage() {
 
     // Safety re-check: Verify user usage limits & expiration on final submission to prevent bypassing
     if (appliedCoupon) {
+      // 0. Verify customer is not blacklisted
+      try {
+        const blCheck = await checkBlacklistStatusAction({
+          phone: cleanPhone,
+          email: user?.email || '',
+          userId: user?.id || null
+        });
+        if (blCheck?.isBlacklisted) {
+          setAppliedCoupon(null);
+          setCouponInput('');
+          setCouponMsg({
+            type: 'error',
+            text: 'عذراً، هذا الحساب أو رقم الهاتف غير مؤهل لاستخدام كوبونات الخصم، تم إلغاء الكوبون.'
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (e) {
+        console.warn('Blacklist final check note:', e);
+      }
+
       if (appliedCoupon.expiresAt && new Date(appliedCoupon.expiresAt).getTime() < Date.now()) {
         setCouponMsg({ 
           type: 'error', 

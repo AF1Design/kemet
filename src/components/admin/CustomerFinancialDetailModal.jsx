@@ -5,7 +5,10 @@ import { createPortal } from 'react-dom';
 import { 
   creditCustomerWalletAction, 
   adjustCustomerWalletAction, 
-  sendWalletCompensationEmailAction 
+  sendWalletCompensationEmailAction,
+  checkBlacklistStatusAction,
+  addCustomerToBlacklistAction,
+  removeCustomerFromBlacklistAction
 } from '../../app/admin/actions';
 
 export function CustomerFinancialDetailModal({
@@ -37,6 +40,79 @@ export function CustomerFinancialDetailModal({
   const [adjustmentError, setAdjustmentError] = useState(null);
   const [adjustmentSuccess, setAdjustmentSuccess] = useState(false);
   const [isPendingAdjustment, startAdjustmentTransition] = useTransition();
+
+  // Blacklist State
+  const [isBlacklisted, setIsBlacklisted] = useState(false);
+  const [blacklistEntry, setBlacklistEntry] = useState(null);
+  const [isTogglingBlacklist, setIsTogglingBlacklist] = useState(false);
+
+  React.useEffect(() => {
+    if (!isOpen || !customer) return;
+    const phone = customer.phone;
+    if (!phone) return;
+    checkBlacklistStatusAction({ phone, email: customer.email, userId: customer.userId })
+      .then(res => {
+        setIsBlacklisted(Boolean(res?.isBlacklisted));
+        setBlacklistEntry(res?.entry || null);
+      })
+      .catch(() => {});
+  }, [isOpen, customer]);
+
+  // Lock background scrolling while modal is open
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const origBody = document.body.style.overflow;
+    const origHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = origBody;
+      document.documentElement.style.overflow = origHtml;
+    };
+  }, [isOpen]);
+
+  const handleToggleBlacklist = async () => {
+    const phone = customer.phone;
+    if (!phone) return;
+    setIsTogglingBlacklist(true);
+    try {
+      if (isBlacklisted) {
+        if (!window.confirm(`هل أنت متأكد من فك حظر الخصومات عن العميل (${customer.name || phone})؟`)) {
+          setIsTogglingBlacklist(false);
+          return;
+        }
+        const res = await removeCustomerFromBlacklistAction(phone);
+        if (res.success) {
+          setIsBlacklisted(false);
+          setBlacklistEntry(null);
+        }
+      } else {
+        const reason = window.prompt(
+          'أدخل سبب حظر العميل من كوبونات الخصم:',
+          'رفض استلام الأوردر بعد الشحن بدون سبب (شحن على الفاضي)'
+        );
+        if (reason === null) {
+          setIsTogglingBlacklist(false);
+          return;
+        }
+        const res = await addCustomerToBlacklistAction({
+          phone: phone,
+          name: customer.name || '',
+          email: customer.email || '',
+          reason: reason.trim() || 'رفض استلام الأوردر بعد الشحن بدون سبب',
+          addedBy: 'ملف العميل المالي'
+        });
+        if (res.success) {
+          setIsBlacklisted(true);
+          setBlacklistEntry(res.entry);
+        }
+      }
+    } catch (e) {
+      alert('حدث خطأ: ' + e.message);
+    } finally {
+      setIsTogglingBlacklist(false);
+    }
+  };
 
   if (!isOpen || !customer) return null;
 
@@ -222,6 +298,41 @@ export function CustomerFinancialDetailModal({
               }}>
                 {customer.isRegistered ? 'حساب مسجل' : 'عميل زائر'}
               </span>
+
+              {isBlacklisted && (
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '999px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#EF4444',
+                  border: '1px solid rgba(239, 68, 68, 0.4)'
+                }}>
+                  محظور من الخصومات
+                </span>
+              )}
+
+              {customer.phone && (
+                <button
+                  type="button"
+                  onClick={handleToggleBlacklist}
+                  disabled={isTogglingBlacklist}
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    padding: '0.2rem 0.65rem',
+                    borderRadius: '999px',
+                    background: isBlacklisted ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                    color: isBlacklisted ? '#10B981' : '#EF4444',
+                    border: `1px solid ${isBlacklisted ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                    cursor: 'pointer'
+                  }}
+                  title={isBlacklisted ? 'فك حظر الخصومات عن العميل' : 'إضافة العميل للبلاك ليست لمنع استخدامه لأي كوبونات'}
+                >
+                  {isTogglingBlacklist ? 'جاري المعالجة...' : (isBlacklisted ? 'فك الحظر' : 'حظر الخصومات')}
+                </button>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.35rem', fontSize: '0.82rem', color: '#94A3B8' }}>
               {customer.phone && (

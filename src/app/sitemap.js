@@ -9,6 +9,10 @@ export default async function sitemap() {
   const staticRoutes = [
     '',
     '/category/all',
+    '/category/best-sellers',
+    '/category/winter',
+    '/category/summer',
+    '/category/new-arrivals',
     '/category/kits',
     '/category/training',
     '/category/shorts',

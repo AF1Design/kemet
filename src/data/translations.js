@@ -19,6 +19,10 @@ export const translations = {
     themeLight: "لايت ☀️",
     accountSettingsTitle: "إعدادات الحساب",
     allProductsCategory: "جميع المنتجات",
+    navWinter: "الكولكشن الشتوي",
+    navSummer: "الكولكشن الصيفي",
+    navBestSellers: "المنتجات الأكثر مبيعاً",
+    navNewArrivals: "وصل حديثاً",
     
     // Hero Section
     heroBadge: "👑 أطقم 2027 الرسمية (Player Edition)",
@@ -177,6 +181,10 @@ export const translations = {
     themeLight: "Light ☀️",
     accountSettingsTitle: "Account Settings",
     allProductsCategory: "All Products",
+    navWinter: "Winter Collection",
+    navSummer: "Summer Collection",
+    navBestSellers: "Best Selling Products",
+    navNewArrivals: "New Arrivals",
 
     // Hero Section
     heroBadge: "👑 Official 2027 Player Edition Kits",
