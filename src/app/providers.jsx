@@ -19,8 +19,12 @@ const AppShell = ({ children }) => {
 
   return (
     <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {!isAdminRoute && <AnnouncementBar />}
-      {!isAdminRoute && <Navbar onOpenMobileMenu={() => setIsMobileMenuOpen(true)} />}
+      {!isAdminRoute && (
+        <div className="sticky-header-wrapper">
+          <AnnouncementBar />
+          <Navbar onOpenMobileMenu={() => setIsMobileMenuOpen(true)} />
+        </div>
+      )}
       
       {!isAdminRoute && (
         <MobileDrawer 

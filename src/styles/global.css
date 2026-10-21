@@ -303,6 +303,14 @@ select option {
   filter: blur(20px);
 }
 
+/* Sticky Unified Header (Announcement Bar + Navbar) */
+.sticky-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+}
+
 /* Announcement Bar */
 .announcement-bar {
   background: linear-gradient(90deg, #8E6516 0%, #B88924 30%, #C9962D 50%, #B88924 70%, #8E6516 100%);
@@ -316,11 +324,9 @@ select option {
   color: #FFFFFF;
 }
 
-
 /* Header */
 .header {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 100;
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
@@ -410,6 +416,16 @@ select option {
   .cart-drawer-overlay, .mobile-menu-overlay {
     will-change: opacity, transform;
     transform: translateZ(0);
+  }
+
+  /* Compact Announcement Bar on Mobile */
+  .announcement-bar {
+    padding: 0.35rem 0.65rem !important;
+    min-height: 35px !important;
+  }
+
+  .announcement-text {
+    font-size: 0.82rem !important;
   }
 
   /* Compact Mobile Product Rails (Curva / Global Brands Standards: Wide & Clean) */

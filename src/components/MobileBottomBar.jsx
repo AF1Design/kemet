@@ -24,7 +24,7 @@ export const MobileBottomBar = () => {
       </Link>
 
       {/* 2. الأكثر مبيعاً (Best Sellers - PURE VIBRANT RED STAR ICON & RED TEXT) */}
-      <Link href="/category/all" className={`mobile-nav-item red-item ${pathname === '/category/all' ? 'active' : ''}`}>
+      <Link href="/category/best-sellers" className={`mobile-nav-item red-item ${pathname === '/category/best-sellers' ? 'active' : ''}`}>
         <svg viewBox="0 0 24 24" fill="#FF0000" stroke="#FF0000" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>
@@ -54,7 +54,7 @@ export const MobileBottomBar = () => {
       </Link>
 
       {/* 5. الفئات (Categories) */}
-      <Link href="/category/kits" className={`mobile-nav-item ${pathname.startsWith('/category') && pathname !== '/category/all' ? 'active' : ''}`}>
+      <Link href="/category/kits" className={`mobile-nav-item ${pathname.startsWith('/category') && pathname !== '/category/all' && pathname !== '/category/best-sellers' ? 'active' : ''}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1"></rect>
           <rect x="14" y="3" width="7" height="7" rx="1"></rect>
